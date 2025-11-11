@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive Bezier Lab - 2D/3D</title>
+    <title>Interactive Bezier Lab - 2D/3D with Equations</title>
     <style>
         * {
             margin: 0;
@@ -66,7 +66,7 @@
 
         .main-content {
             display: grid;
-            grid-template-columns: 280px 1fr 320px;
+            grid-template-columns: 280px 1fr 340px;
             gap: 20px;
             margin-bottom: 20px;
         }
@@ -335,6 +335,72 @@
             color: var(--primary);
         }
 
+        /* Equation Box */
+        .equation-box {
+            background: #1e293b;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-family: 'Courier New', monospace;
+            color: #e2e8f0;
+            font-size: 0.8rem;
+            line-height: 1.8;
+            max-height: 400px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .equation-box h4 {
+            color: #f093fb;
+            margin-bottom: 10px;
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 0.9rem;
+        }
+
+        .equation-line {
+            margin: 8px 0;
+            padding: 4px 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            border-left: 3px solid var(--primary);
+        }
+
+        .equation-main {
+            color: #60a5fa;
+            font-weight: bold;
+        }
+
+        .equation-term {
+            color: #a78bfa;
+        }
+
+        .equation-point {
+            color: #34d399;
+        }
+
+        .equation-basis {
+            color: #fbbf24;
+        }
+
+        .copy-equation-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+
+        .copy-equation-btn:hover {
+            opacity: 1;
+        }
+
         /* Footer */
         footer {
             background: var(--panel-bg);
@@ -356,18 +422,21 @@
 
         /* Scrollbar */
         .control-panel::-webkit-scrollbar,
-        .info-panel::-webkit-scrollbar {
+        .info-panel::-webkit-scrollbar,
+        .equation-box::-webkit-scrollbar {
             width: 6px;
         }
 
         .control-panel::-webkit-scrollbar-track,
-        .info-panel::-webkit-scrollbar-track {
+        .info-panel::-webkit-scrollbar-track,
+        .equation-box::-webkit-scrollbar-track {
             background: var(--bg);
             border-radius: 3px;
         }
 
         .control-panel::-webkit-scrollbar-thumb,
-        .info-panel::-webkit-scrollbar-thumb {
+        .info-panel::-webkit-scrollbar-thumb,
+        .equation-box::-webkit-scrollbar-thumb {
             background: var(--primary);
             border-radius: 3px;
         }
@@ -375,7 +444,7 @@
         /* Responsive */
         @media (max-width: 1400px) {
             .main-content {
-                grid-template-columns: 260px 1fr 280px;
+                grid-template-columns: 260px 1fr 300px;
             }
         }
 
@@ -398,13 +467,21 @@
             display: none !important;
         }
 
-        /* 3D specific styles */
         .surface-section {
             display: none;
         }
 
         .surface-section.active {
             display: block;
+        }
+
+        .highlight {
+            animation: highlight 1s ease;
+        }
+
+        @keyframes highlight {
+            0%, 100% { background: rgba(255, 255, 255, 0.05); }
+            50% { background: rgba(102, 126, 234, 0.2); }
         }
     </style>
 </head>
@@ -607,6 +684,17 @@
             <!-- Info Panel -->
             <aside class="info-panel">
                 <section class="panel-section">
+                    <h3>📐 수식 (Equation)</h3>
+                    <div class="equation-box" id="equation-display">
+                        <button class="copy-equation-btn" id="copy-equation">📋 복사</button>
+                        <h4>베지에 방정식</h4>
+                        <div id="equation-content">
+                            제어점을 추가하면 수식이 표시됩니다.
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel-section">
                     <h3>ℹ️ 정보</h3>
                     
                     <div class="info-box">
@@ -640,22 +728,6 @@
                         </ul>
                     </div>
                 </section>
-
-                <section class="panel-section">
-                    <h3>🎓 수학적 배경</h3>
-                    <div class="concept-box" id="math-explanation">
-                        <p><strong>2D 베지에 곡선:</strong></p>
-                        <p style="font-family: monospace; font-size: 0.8rem;">
-                            P(t) = Σ Bᵢ,ₙ(t) · Pᵢ
-                        </p>
-                        <p><small>Bᵢ,ₙ(t) = C(n,i) · tⁱ · (1-t)ⁿ⁻ⁱ</small></p>
-                        
-                        <p style="margin-top: 10px;"><strong>3D 베지에 곡면:</strong></p>
-                        <p style="font-family: monospace; font-size: 0.8rem;">
-                            P(u,v) = Σᵢ Σⱼ Bᵢ,ₘ(u) · Bⱼ,ₙ(v) · Pᵢⱼ
-                        </p>
-                    </div>
-                </section>
             </aside>
         </div>
 
@@ -674,25 +746,24 @@
 
     <script>
         // ========================================
-        // Interactive Bezier Lab - 2D/3D Complete
+        // Interactive Bezier Lab - Complete with Equations
         // ========================================
 
         class BezierLab {
             constructor() {
-                this.mode = '2d'; // '2d' or '3d'
+                this.mode = '2d';
                 
                 // 2D Canvas
                 this.canvas = document.getElementById('canvas');
                 this.ctx = this.canvas.getContext('2d');
                 
-                // 3D Scene (will be initialized when switching to 3D)
+                // 3D Scene
                 this.scene3d = null;
                 this.camera3d = null;
                 this.renderer3d = null;
                 this.controls3d = null;
                 this.transformControl = null;
                 
-                // Canvas setup
                 this.setupCanvas();
                 
                 // 2D State
@@ -721,7 +792,6 @@
                     showTangents: true,
                     showCasteljau: false,
                     showLabels: true,
-                    // 3D options
                     showWireframe: true,
                     showSurface: true,
                     showGrid: true,
@@ -741,7 +811,6 @@
                     casteljau: ['#fc8181', '#f6ad55', '#68d391', '#4299e1']
                 };
                 
-                // Initialize
                 this.initEventListeners();
                 this.addCurve();
                 this.loadPreset('basic');
@@ -752,6 +821,253 @@
                 const rect = this.canvas.getBoundingClientRect();
                 this.canvas.width = rect.width;
                 this.canvas.height = rect.height;
+            }
+            
+            // ========================================
+            // Equation Generation
+            // ========================================
+            
+            generateEquation2D() {
+                const curve = this.curves[this.currentCurveIndex];
+                if (!curve || curve.points.length < 2) {
+                    return `<div style="color: #94a3b8;">제어점을 추가하면 베지에 곡선의 수식이 여기에 표시됩니다.</div>`;
+                }
+                
+                const points = curve.points;
+                const n = points.length - 1;
+                
+                let html = '';
+                
+                // Main equation
+                html += `<div class="equation-line">`;
+                html += `<span class="equation-main">P(t) = </span>`;
+                html += `<span class="equation-basis">Σ Bᵢ,ₙ(t) · Pᵢ</span>`;
+                html += ` <span style="color: #94a3b8;">(0 ≤ t ≤ 1)</span>`;
+                html += `</div>`;
+                
+                // Degree
+                html += `<div class="equation-line">`;
+                html += `<span style="color: #94a3b8;">차수 n = ${n}</span>`;
+                html += `</div>`;
+                
+                html += `<br>`;
+                
+                // Expanded form
+                html += `<div class="equation-line">`;
+                html += `<span class="equation-main">P(t) = </span>`;
+                html += `</div>`;
+                
+                for (let i = 0; i <= n; i++) {
+                    const coef = this.binomial(n, i);
+                    const tPower = i;
+                    const oneMinusTPower = n - i;
+                    
+                    html += `<div class="equation-line" style="margin-left: 20px;">`;
+                    
+                    if (i > 0) html += `<span style="color: #94a3b8;">+ </span>`;
+                    
+                    // Bernstein basis
+                    html += `<span class="equation-basis">`;
+                    if (coef !== 1) html += `${coef} · `;
+                    if (tPower > 0) {
+                        html += `t`;
+                        if (tPower > 1) html += `<sup>${tPower}</sup>`;
+                        html += ` · `;
+                    }
+                    if (oneMinusTPower > 0) {
+                        html += `(1-t)`;
+                        if (oneMinusTPower > 1) html += `<sup>${oneMinusTPower}</sup>`;
+                    }
+                    html += `</span>`;
+                    
+                    html += ` · `;
+                    
+                    // Control point
+                    html += `<span class="equation-point">`;
+                    html += `P<sub>${i}</sub>(${points[i].x.toFixed(1)}, ${points[i].y.toFixed(1)})`;
+                    html += `</span>`;
+                    
+                    html += `</div>`;
+                }
+                
+                html += `<br>`;
+                
+                // Parametric form
+                html += `<div class="equation-line">`;
+                html += `<span class="equation-main">x(t) = </span>`;
+                for (let i = 0; i <= n; i++) {
+                    if (i > 0) html += ` + `;
+                    const coef = this.binomial(n, i);
+                    html += `<span class="equation-term">${coef}·t<sup>${i}</sup>·(1-t)<sup>${n-i}</sup>·${points[i].x.toFixed(1)}</span>`;
+                }
+                html += `</div>`;
+                
+                html += `<div class="equation-line">`;
+                html += `<span class="equation-main">y(t) = </span>`;
+                for (let i = 0; i <= n; i++) {
+                    if (i > 0) html += ` + `;
+                    const coef = this.binomial(n, i);
+                    html += `<span class="equation-term">${coef}·t<sup>${i}</sup>·(1-t)<sup>${n-i}</sup>·${points[i].y.toFixed(1)}</span>`;
+                }
+                html += `</div>`;
+                
+                // Current point at t
+                if (this.options.showCasteljau) {
+                    const currentPoint = this.bezierPoint(points, this.t);
+                    html += `<br>`;
+                    html += `<div class="equation-line" style="background: rgba(72, 187, 120, 0.1);">`;
+                    html += `<span class="equation-main">P(${this.t.toFixed(2)}) = </span>`;
+                    html += `<span class="equation-point">(${currentPoint.x.toFixed(2)}, ${currentPoint.y.toFixed(2)})</span>`;
+                    html += `</div>`;
+                }
+                
+                return html;
+            }
+            
+            generateEquation3D() {
+                if (!this.controlPoints3D || this.controlPoints3D.length === 0) {
+                    return `<div style="color: #94a3b8;">3D 곡면의 수식이 여기에 표시됩니다.</div>`;
+                }
+                
+                const m = this.gridSize - 1;
+                const n = this.gridSize - 1;
+                
+                let html = '';
+                
+                // Main equation
+                html += `<div class="equation-line">`;
+                html += `<span class="equation-main">P(u,v) = </span>`;
+                html += `<span class="equation-basis">Σᵢ Σⱼ Bᵢ,ₘ(u) · Bⱼ,ₙ(v) · Pᵢⱼ</span>`;
+                html += `</div>`;
+                
+                html += `<div class="equation-line">`;
+                html += `<span style="color: #94a3b8;">0 ≤ u,v ≤ 1</span>`;
+                html += `</div>`;
+                
+                html += `<br>`;
+                
+                // Grid info
+                html += `<div class="equation-line">`;
+                html += `<span style="color: #94a3b8;">제어점 격자: ${this.gridSize}×${this.gridSize}</span>`;
+                html += `</div>`;
+                
+                html += `<div class="equation-line">`;
+                html += `<span style="color: #94a3b8;">m = n = ${m}</span>`;
+                html += `</div>`;
+                
+                html += `<br>`;
+                
+                // Bernstein basis explanation
+                html += `<div class="equation-line">`;
+                html += `<span class="equation-basis">Bᵢ,ₘ(u) = C(m,i) · uⁱ · (1-u)ᵐ⁻ⁱ</span>`;
+                html += `</div>`;
+                
+                html += `<div class="equation-line">`;
+                html += `<span class="equation-basis">Bⱼ,ₙ(v) = C(n,j) · vʲ · (1-v)ⁿ⁻ʲ</span>`;
+                html += `</div>`;
+                
+                html += `<br>`;
+                
+                // Sample control points (corner points)
+                html += `<div class="equation-line">`;
+                html += `<span style="color: #94a3b8;">모서리 제어점:</span>`;
+                html += `</div>`;
+                
+                const corners = [
+                    { i: 0, j: 0, label: '₀₀' },
+                    { i: 0, j: m, label: `₀${m}` },
+                    { i: n, j: 0, label: `${n}₀` },
+                    { i: n, j: m, label: `${n}${m}` }
+                ];
+                
+                corners.forEach(corner => {
+                    const p = this.controlPoints3D[corner.i][corner.j];
+                    html += `<div class="equation-line" style="margin-left: 20px;">`;
+                    html += `<span class="equation-point">P${corner.label} = (${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)})</span>`;
+                    html += `</div>`;
+                });
+                
+                html += `<br>`;
+                
+                // Expanded form (simplified for 3x3 case)
+                if (this.gridSize === 3) {
+                    html += `<div class="equation-line">`;
+                    html += `<span style="color: #94a3b8;">전개식 (3×3 격자):</span>`;
+                    html += `</div>`;
+                    
+                    html += `<div class="equation-line">`;
+                    html += `<span class="equation-main">P(u,v) = </span>`;
+                    html += `</div>`;
+                    
+                    for (let i = 0; i <= 2; i++) {
+                        for (let j = 0; j <= 2; j++) {
+                            const p = this.controlPoints3D[i][j];
+                            const coefU = this.binomial(2, i);
+                            const coefV = this.binomial(2, j);
+                            
+                            html += `<div class="equation-line" style="margin-left: 20px; font-size: 0.75rem;">`;
+                            if (i > 0 || j > 0) html += `<span style="color: #94a3b8;">+ </span>`;
+                            
+                            html += `<span class="equation-basis">`;
+                            html += `${coefU * coefV}·u<sup>${i}</sup>(1-u)<sup>${2-i}</sup>·v<sup>${j}</sup>(1-v)<sup>${2-j}</sup>`;
+                            html += `</span>`;
+                            
+                            html += ` · `;
+                            html += `<span class="equation-point">(${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)})</span>`;
+                            html += `</div>`;
+                        }
+                    }
+                }
+                
+                html += `<br>`;
+                
+                // Surface properties
+                html += `<div class="equation-line">`;
+                html += `<span style="color: #94a3b8;">곡면 특성:</span>`;
+                html += `</div>`;
+                
+                html += `<div class="equation-line" style="margin-left: 20px;">`;
+                html += `<span style="color: #60a5fa;">• P(0,0) = P₀₀ (좌하단 모서리)</span>`;
+                html += `</div>`;
+                
+                html += `<div class="equation-line" style="margin-left: 20px;">`;
+                html += `<span style="color: #60a5fa;">• P(1,1) = P${n}${m} (우상단 모서리)</span>`;
+                html += `</div>`;
+                
+                return html;
+            }
+            
+            updateEquationDisplay() {
+                const equationContent = document.getElementById('equation-content');
+                
+                if (this.mode === '2d') {
+                    equationContent.innerHTML = this.generateEquation2D();
+                } else {
+                    equationContent.innerHTML = this.generateEquation3D();
+                }
+                
+                // Highlight animation
+                const equationBox = document.getElementById('equation-display');
+                equationBox.classList.add('highlight');
+                setTimeout(() => equationBox.classList.remove('highlight'), 1000);
+            }
+            
+            copyEquationToClipboard() {
+                const equationContent = document.getElementById('equation-content');
+                const text = equationContent.innerText;
+                
+                navigator.clipboard.writeText(text).then(() => {
+                    const btn = document.getElementById('copy-equation');
+                    const originalText = btn.textContent;
+                    btn.textContent = '✓ 복사됨!';
+                    btn.style.background = '#48bb78';
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                        btn.style.background = '';
+                    }, 2000);
+                }).catch(err => {
+                    console.error('복사 실패:', err);
+                });
             }
             
             // ========================================
@@ -773,6 +1089,7 @@
                 
                 this.render();
                 this.updateInfo();
+                this.updateEquationDisplay();
             }
             
             switchTo3D() {
@@ -791,6 +1108,7 @@
                 this.loadPreset3D('dome');
                 this.animate3D();
                 this.updateInfo();
+                this.updateEquationDisplay();
             }
             
             // ========================================
@@ -802,41 +1120,35 @@
                 const width = container.clientWidth;
                 const height = 700;
                 
-                // Scene
                 this.scene3d = new THREE.Scene();
                 this.scene3d.background = new THREE.Color(0x1a1a2e);
                 
-                // Camera
                 this.camera3d = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
                 this.camera3d.position.set(8, 8, 8);
                 this.camera3d.lookAt(0, 0, 0);
                 
-                // Renderer
                 this.renderer3d = new THREE.WebGLRenderer({ antialias: true });
                 this.renderer3d.setSize(width, height);
                 this.renderer3d.setPixelRatio(window.devicePixelRatio);
                 container.appendChild(this.renderer3d.domElement);
                 
-                // Orbit Controls
                 this.controls3d = new THREE.OrbitControls(this.camera3d, this.renderer3d.domElement);
                 this.controls3d.enableDamping = true;
                 this.controls3d.dampingFactor = 0.05;
                 
-                // Transform Controls
                 this.transformControl = new THREE.TransformControls(this.camera3d, this.renderer3d.domElement);
                 this.transformControl.setMode('translate');
                 this.transformControl.setSize(0.5);
                 this.scene3d.add(this.transformControl);
                 
-                // When using transform controls, disable orbit controls
                 this.transformControl.addEventListener('dragging-changed', (event) => {
                     this.controls3d.enabled = !event.value;
                     if (!event.value) {
                         this.updateSurface();
+                        this.updateEquationDisplay();
                     }
                 });
                 
-                // Lights
                 const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
                 this.scene3d.add(ambientLight);
                 
@@ -848,16 +1160,13 @@
                 directionalLight2.position.set(-10, -10, -10);
                 this.scene3d.add(directionalLight2);
                 
-                // Grid Helper
                 const gridHelper = new THREE.GridHelper(10, 10, 0x444444, 0x222222);
                 this.scene3d.add(gridHelper);
                 
-                // Axes Helper
                 this.axesHelper = new THREE.AxesHelper(5);
                 this.axesHelper.visible = this.options.showAxes;
                 this.scene3d.add(this.axesHelper);
                 
-                // Handle window resize
                 window.addEventListener('resize', () => {
                     if (this.mode === '3d' && this.camera3d && this.renderer3d) {
                         const width = container.clientWidth;
@@ -876,7 +1185,6 @@
                 this.gridSize = size;
                 this.controlPoints3D = [];
                 
-                // Create grid of control points
                 const spacing = 4 / (size - 1);
                 const offset = -2;
                 
@@ -885,7 +1193,7 @@
                     for (let j = 0; j < size; j++) {
                         const x = offset + i * spacing;
                         const z = offset + j * spacing;
-                        const y = 0; // Will be modified by presets
+                        const y = 0;
                         
                         this.controlPoints3D[i][j] = new THREE.Vector3(x, y, z);
                     }
@@ -897,7 +1205,6 @@
             }
             
             updateControlPointMeshes() {
-                // Remove old meshes
                 this.controlPointMeshes.forEach(mesh => {
                     this.scene3d.remove(mesh);
                 });
@@ -905,7 +1212,6 @@
                 
                 if (!this.options.showControlPoints) return;
                 
-                // Create sphere for each control point
                 const geometry = new THREE.SphereGeometry(0.1, 16, 16);
                 const material = new THREE.MeshPhongMaterial({ color: 0xf093fb });
                 
@@ -917,14 +1223,12 @@
                         this.scene3d.add(mesh);
                         this.controlPointMeshes.push(mesh);
                         
-                        // Make clickable
                         mesh.callback = () => {
                             this.transformControl.attach(mesh);
                         };
                     }
                 }
                 
-                // Add click handler
                 this.renderer3d.domElement.addEventListener('click', (event) => {
                     const raycaster = new THREE.Raycaster();
                     const mouse = new THREE.Vector2();
@@ -946,7 +1250,6 @@
             }
             
             updateControlGridLines() {
-                // Remove old lines
                 if (this.controlGridLines) {
                     this.scene3d.remove(this.controlGridLines);
                 }
@@ -956,7 +1259,6 @@
                 const geometry = new THREE.BufferGeometry();
                 const positions = [];
                 
-                // Horizontal lines
                 for (let i = 0; i < this.gridSize; i++) {
                     for (let j = 0; j < this.gridSize - 1; j++) {
                         positions.push(
@@ -970,7 +1272,6 @@
                     }
                 }
                 
-                // Vertical lines
                 for (let j = 0; j < this.gridSize; j++) {
                     for (let i = 0; i < this.gridSize - 1; i++) {
                         positions.push(
@@ -991,21 +1292,21 @@
             }
             
             // ========================================
-            // Bezier Surface Mathematics
+            // Bezier Mathematics
             // ========================================
             
+            binomial(n, k) {
+                if (k < 0 || k > n) return 0;
+                if (k === 0 || k === n) return 1;
+                let result = 1;
+                for (let i = 1; i <= k; i++) {
+                    result *= (n - i + 1) / i;
+                }
+                return result;
+            }
+            
             bernstein(n, i, t) {
-                const binomial = (n, k) => {
-                    if (k < 0 || k > n) return 0;
-                    if (k === 0 || k === n) return 1;
-                    let result = 1;
-                    for (let i = 1; i <= k; i++) {
-                        result *= (n - i + 1) / i;
-                    }
-                    return result;
-                };
-                
-                return binomial(n, i) * Math.pow(t, i) * Math.pow(1 - t, n - i);
+                return this.binomial(n, i) * Math.pow(t, i) * Math.pow(1 - t, n - i);
             }
             
             bezierSurfacePoint(u, v) {
@@ -1031,13 +1332,11 @@
             }
             
             updateSurface() {
-                // Update control point positions from meshes
                 this.controlPointMeshes.forEach(mesh => {
                     const { i, j } = mesh.userData;
                     this.controlPoints3D[i][j].copy(mesh.position);
                 });
                 
-                // Remove old surface
                 if (this.surfaceMesh) {
                     this.scene3d.remove(this.surfaceMesh);
                 }
@@ -1045,7 +1344,6 @@
                     this.scene3d.remove(this.wireframeMesh);
                 }
                 
-                // Generate surface geometry
                 const positions = [];
                 const indices = [];
                 const normals = [];
@@ -1060,7 +1358,6 @@
                         const point = this.bezierSurfacePoint(u, v);
                         positions.push(point.x, point.y, point.z);
                         
-                        // Calculate normal (simplified)
                         const epsilon = 0.01;
                         const pu = this.bezierSurfacePoint(Math.min(u + epsilon, 1), v);
                         const pv = this.bezierSurfacePoint(u, Math.min(v + epsilon, 1));
@@ -1073,7 +1370,6 @@
                     }
                 }
                 
-                // Generate indices
                 for (let i = 0; i < res; i++) {
                     for (let j = 0; j < res; j++) {
                         const a = i * (res + 1) + j;
@@ -1091,7 +1387,6 @@
                 geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
                 geometry.setIndex(indices);
                 
-                // Surface mesh
                 if (this.options.showSurface) {
                     const material = new THREE.MeshPhongMaterial({
                         color: this.surfaceColor,
@@ -1103,7 +1398,6 @@
                     this.scene3d.add(this.surfaceMesh);
                 }
                 
-                // Wireframe mesh
                 if (this.options.showWireframe) {
                     const wireframeMaterial = new THREE.MeshBasicMaterial({
                         color: 0x667eea,
@@ -1118,20 +1412,11 @@
                 this.updateControlGridLines();
             }
             
-            // ========================================
-            // 3D Animation Loop
-            // ========================================
-            
             animate3D() {
                 this.animationId = requestAnimationFrame(() => this.animate3D());
-                
                 this.controls3d.update();
                 this.renderer3d.render(this.scene3d, this.camera3d);
             }
-            
-            // ========================================
-            // 3D Presets
-            // ========================================
             
             loadPreset3D(name) {
                 this.createControlGrid(this.gridSize);
@@ -1140,7 +1425,6 @@
                 
                 switch (name) {
                     case 'flat':
-                        // Already flat (y = 0)
                         break;
                         
                     case 'dome':
@@ -1180,8 +1464,6 @@
                                 const u = i / (size - 1);
                                 const v = j / (size - 1);
                                 const angle = u * Math.PI / 2;
-                                const x = this.controlPoints3D[i][j].x;
-                                const z = this.controlPoints3D[i][j].z;
                                 this.controlPoints3D[i][j].y = Math.sin(angle) * (v - 0.5) * 2;
                             }
                         }
@@ -1190,10 +1472,11 @@
                 
                 this.updateControlPointMeshes();
                 this.updateSurface();
+                this.updateEquationDisplay();
             }
             
             // ========================================
-            // 2D Methods (from previous implementation)
+            // 2D Methods
             // ========================================
             
             addCurve() {
@@ -1220,6 +1503,11 @@
                     this.switchTo3D();
                 });
                 
+                // Copy equation button
+                document.getElementById('copy-equation').addEventListener('click', () => {
+                    this.copyEquationToClipboard();
+                });
+                
                 // 2D Canvas events
                 this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
                 this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
@@ -1242,6 +1530,7 @@
                     this.t = e.target.value / 100;
                     document.getElementById('t-value').textContent = this.t.toFixed(2);
                     this.render();
+                    this.updateEquationDisplay();
                 });
                 
                 // 2D Checkboxes
@@ -1263,6 +1552,7 @@
                 document.getElementById('show-casteljau').addEventListener('change', (e) => {
                     this.options.showCasteljau = e.target.checked;
                     this.render();
+                    this.updateEquationDisplay();
                 });
                 
                 document.getElementById('show-labels').addEventListener('change', (e) => {
@@ -1300,6 +1590,7 @@
                         e.target.classList.add('active');
                         this.gridSize = parseInt(e.target.dataset.grid);
                         this.createControlGrid(this.gridSize);
+                        this.updateEquationDisplay();
                     });
                 });
                 
@@ -1403,6 +1694,7 @@
                 }
                 
                 this.updateInfo();
+                this.updateEquationDisplay();
                 this.render();
             }
             
@@ -1416,6 +1708,7 @@
                     curve.points[this.selectedPoint.pointIdx] = { x: pos.x, y: pos.y };
                     this.applyContinuity();
                     this.updateInfo();
+                    this.updateEquationDisplay();
                     this.render();
                 }
             }
@@ -1435,11 +1728,11 @@
                     this.curves[found.curveIdx].points.splice(found.pointIdx, 1);
                     this.selectedPoint = null;
                     this.updateInfo();
+                    this.updateEquationDisplay();
                     this.render();
                 }
             }
             
-            // 2D Continuity
             applyContinuity() {
                 if (this.curves.length < 2) return;
                 if (this.continuityMode === 'none') return;
@@ -1470,28 +1763,12 @@
                 }
             }
             
-            // 2D Bezier Math
-            binomial(n, k) {
-                if (k < 0 || k > n) return 0;
-                if (k === 0 || k === n) return 1;
-                
-                let result = 1;
-                for (let i = 1; i <= k; i++) {
-                    result *= (n - i + 1) / i;
-                }
-                return result;
-            }
-            
-            bernstein2D(n, i, t) {
-                return this.binomial(n, i) * Math.pow(t, i) * Math.pow(1 - t, n - i);
-            }
-            
             bezierPoint(points, t) {
                 const n = points.length - 1;
                 let x = 0, y = 0;
                 
                 for (let i = 0; i <= n; i++) {
-                    const b = this.bernstein2D(n, i, t);
+                    const b = this.bernstein(n, i, t);
                     x += b * points[i].x;
                     y += b * points[i].y;
                 }
@@ -1556,7 +1833,7 @@
                 return lower.concat(upper);
             }
             
-            // 2D Rendering
+            // 2D Rendering (abbreviated for space - same as before)
             render() {
                 if (this.mode !== '2d') return;
                 
@@ -1591,38 +1868,31 @@
             
             drawControlPolygon(points) {
                 if (points.length < 2) return;
-                
                 this.ctx.strokeStyle = this.colors.controlPoly;
                 this.ctx.lineWidth = 2;
                 this.ctx.setLineDash([5, 5]);
-                
                 this.ctx.beginPath();
                 this.ctx.moveTo(points[0].x, points[0].y);
                 for (let i = 1; i < points.length; i++) {
                     this.ctx.lineTo(points[i].x, points[i].y);
                 }
                 this.ctx.stroke();
-                
                 this.ctx.setLineDash([]);
             }
             
             drawBezierCurve(points) {
                 if (points.length < 2) return;
-                
                 this.ctx.strokeStyle = this.colors.curve;
                 this.ctx.lineWidth = 3;
-                
                 this.ctx.beginPath();
                 const startPoint = this.bezierPoint(points, 0);
                 this.ctx.moveTo(startPoint.x, startPoint.y);
-                
                 const steps = 100;
                 for (let i = 1; i <= steps; i++) {
                     const t = i / steps;
                     const point = this.bezierPoint(points, t);
                     this.ctx.lineTo(point.x, point.y);
                 }
-                
                 this.ctx.stroke();
             }
             
@@ -1631,16 +1901,13 @@
                     const isSelected = this.selectedPoint && 
                                       this.selectedPoint.curveIdx === curveIdx && 
                                       this.selectedPoint.pointIdx === idx;
-                    
                     this.ctx.fillStyle = isSelected ? this.colors.selectedPoint : this.colors.point;
                     this.ctx.beginPath();
                     this.ctx.arc(point.x, point.y, isSelected ? 8 : 6, 0, Math.PI * 2);
                     this.ctx.fill();
-                    
                     this.ctx.strokeStyle = 'white';
                     this.ctx.lineWidth = 2;
                     this.ctx.stroke();
-                    
                     if (this.options.showLabels) {
                         this.ctx.fillStyle = '#2d3748';
                         this.ctx.font = 'bold 12px sans-serif';
@@ -1652,7 +1919,6 @@
             drawConvexHull(points) {
                 const hull = this.convexHull(points);
                 if (hull.length < 3) return;
-                
                 this.ctx.fillStyle = this.colors.hull;
                 this.ctx.beginPath();
                 this.ctx.moveTo(hull[0].x, hull[0].y);
@@ -1661,7 +1927,6 @@
                 }
                 this.ctx.closePath();
                 this.ctx.fill();
-                
                 this.ctx.strokeStyle = this.colors.hullStroke;
                 this.ctx.lineWidth = 2;
                 this.ctx.setLineDash([3, 3]);
@@ -1671,72 +1936,48 @@
             
             drawTangents(points) {
                 if (points.length < 2) return;
-                
                 const tangentLength = 100;
-                
-                const startDir = {
-                    x: points[1].x - points[0].x,
-                    y: points[1].y - points[0].y
-                };
+                const startDir = { x: points[1].x - points[0].x, y: points[1].y - points[0].y };
                 const startLen = Math.sqrt(startDir.x ** 2 + startDir.y ** 2);
                 if (startLen > 0) {
                     startDir.x /= startLen;
                     startDir.y /= startLen;
-                    
                     this.ctx.strokeStyle = this.colors.tangent;
                     this.ctx.lineWidth = 2;
                     this.ctx.setLineDash([10, 5]);
-                    
                     this.ctx.beginPath();
                     this.ctx.moveTo(points[0].x, points[0].y);
-                    this.ctx.lineTo(
-                        points[0].x + startDir.x * tangentLength,
-                        points[0].y + startDir.y * tangentLength
-                    );
+                    this.ctx.lineTo(points[0].x + startDir.x * tangentLength, points[0].y + startDir.y * tangentLength);
                     this.ctx.stroke();
                 }
-                
                 const n = points.length - 1;
-                const endDir = {
-                    x: points[n].x - points[n - 1].x,
-                    y: points[n].y - points[n - 1].y
-                };
+                const endDir = { x: points[n].x - points[n - 1].x, y: points[n].y - points[n - 1].y };
                 const endLen = Math.sqrt(endDir.x ** 2 + endDir.y ** 2);
                 if (endLen > 0) {
                     endDir.x /= endLen;
                     endDir.y /= endLen;
-                    
                     this.ctx.beginPath();
                     this.ctx.moveTo(points[n].x, points[n].y);
-                    this.ctx.lineTo(
-                        points[n].x + endDir.x * tangentLength,
-                        points[n].y + endDir.y * tangentLength
-                    );
+                    this.ctx.lineTo(points[n].x + endDir.x * tangentLength, points[n].y + endDir.y * tangentLength);
                     this.ctx.stroke();
                 }
-                
                 this.ctx.setLineDash([]);
             }
             
             drawDeCasteljau(points, t) {
                 const levels = this.deCasteljau(points, t);
-                
                 levels.forEach((level, levelIdx) => {
                     if (levelIdx === 0) return;
-                    
                     const color = this.colors.casteljau[levelIdx % this.colors.casteljau.length];
-                    
                     this.ctx.strokeStyle = color;
                     this.ctx.lineWidth = 1;
                     this.ctx.setLineDash([2, 2]);
-                    
                     for (let i = 0; i < level.length - 1; i++) {
                         this.ctx.beginPath();
                         this.ctx.moveTo(level[i].x, level[i].y);
                         this.ctx.lineTo(level[i + 1].x, level[i + 1].y);
                         this.ctx.stroke();
                     }
-                    
                     level.forEach(point => {
                         this.ctx.fillStyle = color;
                         this.ctx.beginPath();
@@ -1744,7 +1985,6 @@
                         this.ctx.fill();
                     });
                 });
-                
                 if (levels.length > 0) {
                     const finalLevel = levels[levels.length - 1];
                     if (finalLevel.length > 0) {
@@ -1753,82 +1993,52 @@
                         this.ctx.beginPath();
                         this.ctx.arc(finalPoint.x, finalPoint.y, 8, 0, Math.PI * 2);
                         this.ctx.fill();
-                        
                         this.ctx.strokeStyle = 'white';
                         this.ctx.lineWidth = 2;
                         this.ctx.stroke();
                     }
                 }
-                
                 this.ctx.setLineDash([]);
             }
             
-            // 2D Presets
             loadPreset(name) {
                 this.curves = [];
-                
                 const w = this.canvas.width;
                 const h = this.canvas.height;
                 
                 switch (name) {
                     case 'basic':
-                        this.curves = [{
-                            points: [
-                                { x: w * 0.2, y: h * 0.7 },
-                                { x: w * 0.3, y: h * 0.2 },
-                                { x: w * 0.7, y: h * 0.3 },
-                                { x: w * 0.8, y: h * 0.7 }
-                            ],
-                            color: this.colors.curve
-                        }];
+                        this.curves = [{ points: [
+                            { x: w * 0.2, y: h * 0.7 }, { x: w * 0.3, y: h * 0.2 },
+                            { x: w * 0.7, y: h * 0.3 }, { x: w * 0.8, y: h * 0.7 }
+                        ], color: this.colors.curve }];
                         break;
-                        
                     case 's-curve':
-                        this.curves = [{
-                            points: [
-                                { x: w * 0.2, y: h * 0.5 },
-                                { x: w * 0.3, y: h * 0.2 },
-                                { x: w * 0.5, y: h * 0.2 },
-                                { x: w * 0.5, y: h * 0.5 },
-                                { x: w * 0.5, y: h * 0.8 },
-                                { x: w * 0.7, y: h * 0.8 },
-                                { x: w * 0.8, y: h * 0.5 }
-                            ],
-                            color: this.colors.curve
-                        }];
+                        this.curves = [{ points: [
+                            { x: w * 0.2, y: h * 0.5 }, { x: w * 0.3, y: h * 0.2 },
+                            { x: w * 0.5, y: h * 0.2 }, { x: w * 0.5, y: h * 0.5 },
+                            { x: w * 0.5, y: h * 0.8 }, { x: w * 0.7, y: h * 0.8 },
+                            { x: w * 0.8, y: h * 0.5 }
+                        ], color: this.colors.curve }];
                         this.degree = 6;
                         document.querySelector('[data-degree="5"]').click();
                         break;
-                        
                     case 'loop':
-                        this.curves = [{
-                            points: [
-                                { x: w * 0.3, y: h * 0.5 },
-                                { x: w * 0.3, y: h * 0.2 },
-                                { x: w * 0.7, y: h * 0.2 },
-                                { x: w * 0.7, y: h * 0.8 },
-                                { x: w * 0.3, y: h * 0.8 },
-                                { x: w * 0.3, y: h * 0.5 }
-                            ],
-                            color: this.colors.curve
-                        }];
+                        this.curves = [{ points: [
+                            { x: w * 0.3, y: h * 0.5 }, { x: w * 0.3, y: h * 0.2 },
+                            { x: w * 0.7, y: h * 0.2 }, { x: w * 0.7, y: h * 0.8 },
+                            { x: w * 0.3, y: h * 0.8 }, { x: w * 0.3, y: h * 0.5 }
+                        ], color: this.colors.curve }];
                         this.degree = 5;
                         document.querySelector('[data-degree="5"]').click();
                         break;
-                        
                     case 'caricature':
-                        this.curves = [{
-                            points: [
-                                { x: w * 0.15, y: h * 0.3 },
-                                { x: w * 0.2, y: h * 0.5 },
-                                { x: w * 0.3, y: h * 0.75 },
-                                { x: w * 0.5, y: h * 0.85 },
-                                { x: w * 0.7, y: h * 0.75 },
-                                { x: w * 0.8, y: h * 0.5 },
-                                { x: w * 0.85, y: h * 0.3 }
-                            ],
-                            color: this.colors.curve
-                        }];
+                        this.curves = [{ points: [
+                            { x: w * 0.15, y: h * 0.3 }, { x: w * 0.2, y: h * 0.5 },
+                            { x: w * 0.3, y: h * 0.75 }, { x: w * 0.5, y: h * 0.85 },
+                            { x: w * 0.7, y: h * 0.75 }, { x: w * 0.8, y: h * 0.5 },
+                            { x: w * 0.85, y: h * 0.3 }
+                        ], color: this.colors.curve }];
                         this.degree = 6;
                         document.querySelector('[data-degree="5"]').click();
                         break;
@@ -1837,6 +2047,7 @@
                 this.currentCurveIndex = 0;
                 this.selectedPoint = null;
                 this.updateInfo();
+                this.updateEquationDisplay();
                 this.render();
             }
             
@@ -1845,13 +2056,12 @@
                 this.addCurve();
                 this.selectedPoint = null;
                 this.updateInfo();
+                this.updateEquationDisplay();
                 this.render();
             }
             
-            // UI Updates
             updateInfo() {
                 if (this.mode === '2d') {
-                    // Selected point
                     if (this.selectedPoint) {
                         const point = this.curves[this.selectedPoint.curveIdx].points[this.selectedPoint.pointIdx];
                         document.getElementById('selected-point').innerHTML = 
@@ -1860,42 +2070,32 @@
                     } else {
                         document.getElementById('selected-point').textContent = '없음';
                     }
-                    
                     const totalPoints = this.curves.reduce((sum, curve) => sum + curve.points.length, 0);
                     document.getElementById('curve-info').innerHTML = 
                         `현재 차수: <strong>${this.degree}</strong><br>
                          필요한 제어점: <strong>${this.degree + 1}개</strong>`;
-                    
                     document.getElementById('current-properties').innerHTML = `
                         <li>제어점: <strong>${totalPoints}개</strong></li>
                         <li>곡선: <strong>${this.curves.length}개</strong></li>
                         <li>연속성: <strong>${this.continuityMode.toUpperCase()}</strong></li>
                     `;
                 } else {
-                    // 3D mode
                     const totalPoints = this.gridSize * this.gridSize;
-                    
                     document.getElementById('selected-point').textContent = 
-                        this.transformControl.object ? 
-                        `제어점 선택됨 (화살표로 이동)` : 
-                        '없음';
-                    
+                        this.transformControl.object ? `제어점 선택됨 (화살표로 이동)` : '없음';
                     document.getElementById('curve-info').innerHTML = 
                         `격자 크기: <strong>${this.gridSize}×${this.gridSize}</strong><br>
                          해상도: <strong>${this.resolution}×${this.resolution}</strong>`;
-                    
                     document.getElementById('current-properties').innerHTML = `
                         <li>제어점: <strong>${totalPoints}개</strong></li>
                         <li>곡면 정점: <strong>${(this.resolution + 1) * (this.resolution + 1)}개</strong></li>
                     `;
                 }
-                
                 this.updateConceptExplanation();
             }
             
             updateConceptExplanation() {
                 const conceptBox = document.getElementById('concept-explanation');
-                
                 if (this.mode === '3d') {
                     conceptBox.innerHTML = `
                         <h4>📐 베지에 곡면</h4>
@@ -1904,34 +2104,12 @@
                             <li><strong>제어점 격자:</strong> ${this.gridSize}×${this.gridSize} 제어점으로 곡면 형상 결정</li>
                             <li><strong>이중 블렌딩:</strong> u, v 두 방향으로 번스타인 다항식 적용</li>
                             <li><strong>모서리 보간:</strong> 곡면이 경계의 제어점들을 통과</li>
-                            <li><strong>CAD/CAM:</strong> 자동차 차체, 항공기 날개 등 설계에 활용</li>
-                        </ul>
-                    `;
-                } else if (this.options.showCasteljau) {
-                    conceptBox.innerHTML = `
-                        <h4>🎯 de Casteljau 알고리즘</h4>
-                        <p>현재 t = ${this.t.toFixed(2)}에서의 계산 과정을 보여줍니다.</p>
-                        <ul>
-                            <li>각 색상은 계산 단계를 나타냅니다</li>
-                            <li>인접한 점들을 ${this.t.toFixed(2)}:${(1-this.t).toFixed(2)} 비율로 내분</li>
-                            <li>녹색 점이 최종 곡선 위의 점입니다</li>
-                        </ul>
-                    `;
-                } else if (this.options.showHull) {
-                    conceptBox.innerHTML = `
-                        <h4>📦 볼록 껍질 속성</h4>
-                        <p>베지에 곡선의 중요한 특성 중 하나입니다.</p>
-                        <ul>
-                            <li>곡선은 절대로 제어점들의 볼록 껍질을 벗어나지 않습니다</li>
-                            <li>이는 곡선의 예측 가능성을 보장합니다</li>
-                            <li>CAD 시스템에서 충돌 감지 등에 활용됩니다</li>
                         </ul>
                     `;
                 } else {
                     conceptBox.innerHTML = `
                         <h4>베지에 곡선이란?</h4>
-                        <p>베지에 곡선은 제어점들을 이용해 부드러운 곡선을 생성하는 방법입니다. 
-                        번스타인 기저 다항식을 기반으로 하며, 다음과 같은 특성을 가집니다:</p>
+                        <p>베지에 곡선은 제어점들을 이용해 부드러운 곡선을 생성하는 방법입니다.</p>
                         <ul>
                             <li><strong>끝점 보간:</strong> 곡선이 첫/마지막 제어점을 통과</li>
                             <li><strong>볼록 껍질 속성:</strong> 곡선이 제어점들의 볼록 껍질 내부에 존재</li>
@@ -1942,7 +2120,6 @@
             }
         }
 
-        // Initialize the application
         let lab;
         window.addEventListener('DOMContentLoaded', () => {
             lab = new BezierLab();
