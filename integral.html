@@ -494,12 +494,14 @@
             p = parseFloat(p);
 
             // Generate data for f(x) = exp(-px) * sin(x) / x
+            // Extended range for better zooming/panning experience
             const xValues = [];
             const yValues = [];
-            const numPoints = 500;
+            const numPoints = 1000;
+            const maxX = 50; // Extended from 20 to 50
             
             for (let i = 1; i <= numPoints; i++) {
-                const x = (i / numPoints) * 20; // 0 to 20
+                const x = (i / numPoints) * maxX;
                 if (x > 0) {
                     const y = Math.exp(-p * x) * Math.sin(x) / x;
                     xValues.push(x);
@@ -524,7 +526,8 @@
                 xaxis: { 
                     title: 'x',
                     gridcolor: '#334155',
-                    zerolinecolor: '#475569'
+                    zerolinecolor: '#475569',
+                    range: [0, 20] // Initial view
                 },
                 yaxis: { 
                     title: 'f(x)',
@@ -534,7 +537,12 @@
                 margin: { t: 20, r: 20, b: 50, l: 50 }
             };
 
-            Plotly.newPlot('feynman-graph', [trace], layout, {responsive: true});
+            const config = {
+                responsive: true,
+                scrollZoom: true
+            };
+
+            Plotly.newPlot('feynman-graph', [trace], layout, config);
 
             // Update mathematical steps
             const integralValue = (Math.PI/2 - Math.atan(p)).toFixed(4);
@@ -615,13 +623,14 @@
                 return;
             }
 
-            // Generate curve data
+            // Extended range for better zooming
+            const extendedA = a * 2; // Plot up to 2x the given range
             const xValues = [];
             const yValues = [];
-            const numPoints = 200;
+            const numPoints = 500;
             
             for (let i = 0; i <= numPoints; i++) {
-                const x = (i / numPoints) * a;
+                const x = (i / numPoints) * extendedA;
                 const y = Math.pow(x, q);
                 xValues.push(x);
                 yValues.push(y);
@@ -657,6 +666,17 @@
                 line: { color: '#10b981', width: 3 }
             };
 
+            // Add markers at start and end of the calculated segment
+            const traceMarkers = {
+                x: [0, a],
+                y: [0, Math.pow(a, q)],
+                type: 'scatter',
+                mode: 'markers',
+                name: 'Range endpoints',
+                marker: { color: '#ef4444', size: 10 }
+            };
+
+            const maxY = Math.pow(extendedA, q);
             const layout = {
                 paper_bgcolor: '#0f172a',
                 plot_bgcolor: '#0f172a',
@@ -664,17 +684,24 @@
                 xaxis: { 
                     title: 'x',
                     gridcolor: '#334155',
-                    zerolinecolor: '#475569'
+                    zerolinecolor: '#475569',
+                    range: [-0.1, a * 1.2] // Initial view slightly larger than input
                 },
                 yaxis: { 
                     title: 'y',
                     gridcolor: '#334155',
-                    zerolinecolor: '#475569'
+                    zerolinecolor: '#475569',
+                    range: [-0.1, Math.pow(a, q) * 1.2]
                 },
                 margin: { t: 20, r: 20, b: 50, l: 50 }
             };
 
-            Plotly.newPlot('bernoulli-graph', [trace], layout, {responsive: true});
+            const config = {
+                responsive: true,
+                scrollZoom: true
+            };
+
+            Plotly.newPlot('bernoulli-graph', [trace, traceMarkers], layout, config);
 
             // Display result
             document.getElementById('bernoulli-result').classList.remove('hidden');
@@ -704,24 +731,39 @@
         function updateSymmetry(n) {
             n = parseInt(n);
 
-            // Generate data
+            // Generate data with extended range
             const xValues = [];
             const y1Values = []; // f(x)
             const y2Values = []; // f(π/2 - x)
             const ySumValues = []; // f(x) + f(π/2 - x)
-            const numPoints = 200;
+            const numPoints = 500; // Increased for smoother curves
+            
+            // Extended range: from -0.2 to π/2 + 0.2 for better panning
+            const start = -0.2;
+            const end = Math.PI / 2 + 0.2;
+            const range = end - start;
             
             for (let i = 0; i <= numPoints; i++) {
-                const x = (i / numPoints) * Math.PI / 2;
-                const sinN = Math.pow(Math.sin(x), n);
-                const cosN = Math.pow(Math.cos(x), n);
-                const y1 = sinN / (sinN + cosN);
-                const y2 = cosN / (sinN + cosN); // This is f(π/2 - x)
+                const x = start + (i / numPoints) * range;
                 
-                xValues.push(x);
-                y1Values.push(y1);
-                y2Values.push(y2);
-                ySumValues.push(y1 + y2); // Should always be 1
+                // Handle values outside [0, π/2] gracefully
+                if (x >= 0 && x <= Math.PI / 2) {
+                    const sinN = Math.pow(Math.sin(x), n);
+                    const cosN = Math.pow(Math.cos(x), n);
+                    const y1 = sinN / (sinN + cosN);
+                    const y2 = cosN / (sinN + cosN);
+                    
+                    xValues.push(x);
+                    y1Values.push(y1);
+                    y2Values.push(y2);
+                    ySumValues.push(y1 + y2);
+                } else {
+                    // Extend with NaN for areas outside domain
+                    xValues.push(x);
+                    y1Values.push(NaN);
+                    y2Values.push(NaN);
+                    ySumValues.push(NaN);
+                }
             }
 
             // Plot
@@ -752,10 +794,13 @@
                 line: { color: '#fbbf24', width: 3, dash: 'dash' }
             };
 
-            // Fill between curves
+            // Fill between curves (only in valid domain)
+            const validX = xValues.filter(x => x >= 0 && x <= Math.PI/2);
+            const validY1 = y1Values.filter((y, i) => !isNaN(y));
+            
             const traceFill = {
-                x: [...xValues, ...xValues.reverse()],
-                y: [...y1Values, ...new Array(y1Values.length).fill(0)],
+                x: [...validX, ...validX.slice().reverse()],
+                y: [...validY1, ...new Array(validY1.length).fill(0)],
                 fill: 'toself',
                 fillcolor: 'rgba(168, 85, 247, 0.2)',
                 line: { color: 'transparent' },
@@ -770,18 +815,24 @@
                 xaxis: { 
                     title: 'x',
                     gridcolor: '#334155',
-                    zerolinecolor: '#475569'
+                    zerolinecolor: '#475569',
+                    range: [0, Math.PI / 2] // Initial view
                 },
                 yaxis: { 
                     title: 'y',
                     gridcolor: '#334155',
                     zerolinecolor: '#475569',
-                    range: [0, 1.2]
+                    range: [-0.1, 1.3] // Initial view
                 },
                 margin: { t: 20, r: 20, b: 50, l: 50 }
             };
 
-            Plotly.newPlot('symmetry-graph', [traceFill, trace1, trace2, trace3], layout, {responsive: true});
+            const config = {
+                responsive: true,
+                scrollZoom: true
+            };
+
+            Plotly.newPlot('symmetry-graph', [traceFill, trace1, trace2, trace3], layout, config);
 
             // Update mathematical steps
             const steps = `
@@ -852,23 +903,35 @@
             document.getElementById('hyperbolic-area').innerHTML = 
                 `A = t/2 = ${(t/2).toFixed(3)}`;
 
-            // Generate hyperbola data (right branch)
-            const hyperbolaX = [];
-            const hyperbolaY = [];
-            const numPoints = 200;
+            // Generate hyperbola data (both branches, extended range)
+            const hyperbolaXPos = [];
+            const hyperbolaYPos = [];
+            const hyperbolaXNeg = [];
+            const hyperbolaYNeg = [];
+            const numPoints = 500;
+            const maxT = 4; // Extended from 3 to 4
             
             for (let i = 0; i <= numPoints; i++) {
-                const tParam = (i / numPoints) * 3; // 0 to 3
-                hyperbolaX.push(Math.cosh(tParam));
-                hyperbolaY.push(Math.sinh(tParam));
+                const tParam = (i / numPoints) * maxT;
+                
+                // Right branch (positive x)
+                hyperbolaXPos.push(Math.cosh(tParam));
+                hyperbolaYPos.push(Math.sinh(tParam));
+            }
+            
+            // Add negative y part of right branch
+            for (let i = 0; i <= numPoints; i++) {
+                const tParam = (i / numPoints) * maxT;
+                hyperbolaXNeg.push(Math.cosh(tParam));
+                hyperbolaYNeg.push(-Math.sinh(tParam));
             }
 
             // Generate sector fill
             const sectorX = [1];
             const sectorY = [0];
             
-            for (let i = 0; i <= 50; i++) {
-                const tParam = (i / 50) * t;
+            for (let i = 0; i <= 100; i++) {
+                const tParam = (i / 100) * t;
                 sectorX.push(Math.cosh(tParam));
                 sectorY.push(Math.sinh(tParam));
             }
@@ -876,13 +939,24 @@
             sectorY.push(0);
 
             // Traces
-            const traceHyperbola = {
-                x: hyperbolaX,
-                y: hyperbolaY,
+            const traceHyperbolaPos = {
+                x: hyperbolaXPos,
+                y: hyperbolaYPos,
                 type: 'scatter',
                 mode: 'lines',
-                name: 'x² - y² = 1',
-                line: { color: '#fbbf24', width: 3 }
+                name: 'x² - y² = 1 (upper)',
+                line: { color: '#fbbf24', width: 3 },
+                showlegend: false
+            };
+
+            const traceHyperbolaNeg = {
+                x: hyperbolaXNeg,
+                y: hyperbolaYNeg,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'x² - y² = 1 (lower)',
+                line: { color: '#fbbf24', width: 3 },
+                showlegend: false
             };
 
             const traceSector = {
@@ -913,6 +987,30 @@
                 line: { color: '#ef4444', width: 2, dash: 'dot' }
             };
 
+            // Add asymptote lines for reference
+            const asymptoteX = [0, Math.cosh(maxT)];
+            const asymptoteYPos = [0, Math.cosh(maxT)]; // y = x
+            const asymptoteYNeg = [0, -Math.cosh(maxT)]; // y = -x
+
+            const traceAsymptotePos = {
+                x: asymptoteX,
+                y: asymptoteYPos,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Asymptotes',
+                line: { color: '#64748b', width: 1, dash: 'dot' },
+                showlegend: false
+            };
+
+            const traceAsymptoteNeg = {
+                x: asymptoteX,
+                y: asymptoteYNeg,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: '#64748b', width: 1, dash: 'dot' },
+                showlegend: false
+            };
+
             const layout = {
                 paper_bgcolor: '#0f172a',
                 plot_bgcolor: '#0f172a',
@@ -921,20 +1019,29 @@
                     title: 'x',
                     gridcolor: '#334155',
                     zerolinecolor: '#475569',
-                    range: [0, 4]
+                    range: [-1, 5] // Initial view
                 },
                 yaxis: { 
                     title: 'y',
                     gridcolor: '#334155',
                     zerolinecolor: '#475569',
-                    range: [-2, 4]
+                    range: [-4, 5], // Initial view
+                    scaleanchor: 'x',
+                    scaleratio: 1
                 },
                 margin: { t: 20, r: 20, b: 50, l: 50 },
                 showlegend: true
             };
 
-            Plotly.newPlot('hyperbolic-graph', [traceSector, traceHyperbola, traceOrigin, tracePoint], 
-                          layout, {responsive: true});
+            const config = {
+                responsive: true,
+                scrollZoom: true
+            };
+
+            Plotly.newPlot('hyperbolic-graph', 
+                [traceAsymptotePos, traceAsymptoteNeg, traceHyperbolaPos, traceHyperbolaNeg, 
+                 traceSector, traceOrigin, tracePoint], 
+                layout, config);
 
             // Update mathematical steps
             const steps = `
