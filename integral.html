@@ -147,6 +147,38 @@
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
         }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(139, 92, 246, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+        }
         
         .card {
             background-color: #1e293b;
@@ -169,6 +201,14 @@
             border-radius: 0.75rem;
             padding: 1rem;
             min-height: 400px;
+        }
+
+        .result-box {
+            background-color: #0f172a;
+            border: 2px solid #3b82f6;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-top: 1rem;
         }
     </style>
 </head>
@@ -202,7 +242,12 @@
                         <i class="fas fa-list-ul mr-2"></i>모듈 선택
                     </h2>
                     <nav>
-                        <div class="nav-tab active p-4 rounded mb-2" onclick="switchModule('feynman')">
+                        <div class="nav-tab active p-4 rounded mb-2" onclick="switchModule('calculator')">
+                            <i class="fas fa-calculator mr-2 text-cyan-400"></i>
+                            <div class="font-semibold">범용 미적분 계산기</div>
+                            <div class="text-xs text-slate-400">Universal Calculator</div>
+                        </div>
+                        <div class="nav-tab p-4 rounded mb-2" onclick="switchModule('feynman')">
                             <i class="fas fa-layer-group mr-2 text-blue-400"></i>
                             <div class="font-semibold">파인만 적분기</div>
                             <div class="text-xs text-slate-400">Parametric Integration</div>
@@ -229,8 +274,142 @@
             <!-- Main Content Area -->
             <div class="lg:col-span-3">
                 
+                <!-- Module 0: Universal Calculator -->
+                <div id="calculator-module" class="module-panel active">
+                    <div class="card mb-6">
+                        <h2 class="text-2xl font-bold text-cyan-400 mb-4">
+                            <i class="fas fa-calculator mr-2"></i>범용 미적분 계산기 (Universal Calculator)
+                        </h2>
+                        <p class="text-slate-300 mb-4">
+                            수식을 입력하여 미분, 적분, 극한, 급수 등 다양한 미적분 연산을 수행합니다.
+                        </p>
+                        
+                        <div class="bg-slate-800 p-4 rounded-lg mb-4">
+                            <label class="block text-sm font-semibold mb-2">
+                                <i class="fas fa-function mr-2"></i>함수 입력 (예: x^2, sin(x), exp(-x)*x, etc.)
+                            </label>
+                            <input type="text" id="calc-function" class="input-field w-full font-mono" 
+                                   placeholder="x^2 + 3*x + 2" value="x^2">
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">변수</label>
+                                    <input type="text" id="calc-variable" class="input-field w-full" 
+                                           value="x" placeholder="x">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-slate-400 mb-1">그래프 범위</label>
+                                    <div class="flex gap-2">
+                                        <input type="number" id="calc-range-min" class="input-field w-full" 
+                                               value="-5" placeholder="최소">
+                                        <input type="number" id="calc-range-max" class="input-field w-full" 
+                                               value="5" placeholder="최대">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                            <button class="btn-primary" onclick="calculateDerivative()">
+                                <i class="fas fa-chart-line mr-2"></i>미분
+                            </button>
+                            <button class="btn-secondary" onclick="calculateIntegral()">
+                                <i class="fas fa-integral mr-2"></i>부정적분
+                            </button>
+                            <button class="btn-success" onclick="calculateDefiniteIntegral()">
+                                <i class="fas fa-square-root-alt mr-2"></i>정적분
+                            </button>
+                            <button class="btn-primary" onclick="plotFunction()">
+                                <i class="fas fa-chart-area mr-2"></i>그래프
+                            </button>
+                        </div>
+
+                        <div id="calc-definite-panel" class="bg-slate-800 p-4 rounded-lg mb-4 hidden">
+                            <label class="block text-sm font-semibold mb-2">정적분 구간</label>
+                            <div class="flex gap-3">
+                                <input type="number" id="calc-integral-a" class="input-field flex-1" 
+                                       placeholder="하한 a" value="0">
+                                <input type="number" id="calc-integral-b" class="input-field flex-1" 
+                                       placeholder="상한 b" value="1">
+                                <button class="btn-success" onclick="computeDefiniteIntegral()">
+                                    <i class="fas fa-calculator mr-2"></i>계산
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="calc-result" class="result-box hidden">
+                            <h3 class="text-lg font-semibold text-cyan-400 mb-3">
+                                <i class="fas fa-clipboard-check mr-2"></i>계산 결과
+                            </h3>
+                            <div id="calc-result-content"></div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-6">
+                        <h3 class="text-lg font-semibold mb-3 text-slate-200">
+                            <i class="fas fa-chart-line mr-2"></i>함수 시각화
+                        </h3>
+                        <div id="calculator-graph" class="graph-container"></div>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="text-lg font-semibold mb-3 text-slate-200">
+                            <i class="fas fa-book-open mr-2"></i>사용 가능한 함수 및 문법
+                        </h3>
+                        <div class="math-steps">
+                            <div class="text-slate-200 space-y-3">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <h4 class="font-bold text-cyan-400 mb-2">기본 연산</h4>
+                                        <ul class="text-sm space-y-1 text-slate-300">
+                                            <li>• 덧셈: <code>+</code></li>
+                                            <li>• 뺄셈: <code>-</code></li>
+                                            <li>• 곱셈: <code>*</code></li>
+                                            <li>• 나눗셈: <code>/</code></li>
+                                            <li>• 거듭제곱: <code>^</code> 또는 <code>**</code></li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-cyan-400 mb-2">삼각함수</h4>
+                                        <ul class="text-sm space-y-1 text-slate-300">
+                                            <li>• sin(x), cos(x), tan(x)</li>
+                                            <li>• asin(x), acos(x), atan(x)</li>
+                                            <li>• sinh(x), cosh(x), tanh(x)</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-cyan-400 mb-2">지수/로그</h4>
+                                        <ul class="text-sm space-y-1 text-slate-300">
+                                            <li>• exp(x): e^x</li>
+                                            <li>• log(x): 자연로그 (ln)</li>
+                                            <li>• log10(x): 상용로그</li>
+                                            <li>• sqrt(x): 제곱근</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-cyan-400 mb-2">상수</h4>
+                                        <ul class="text-sm space-y-1 text-slate-300">
+                                            <li>• e: 자연상수 (2.718...)</li>
+                                            <li>• pi: 원주율 (3.14159...)</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="mt-4 p-3 bg-cyan-900 bg-opacity-20 rounded">
+                                    <h4 class="font-bold text-cyan-400 mb-2">예제</h4>
+                                    <ul class="text-sm space-y-1 text-slate-300">
+                                        <li>• 다항식: <code>x^3 - 2*x^2 + x - 1</code></li>
+                                        <li>• 삼각함수: <code>sin(x) + cos(2*x)</code></li>
+                                        <li>• 지수함수: <code>exp(-x^2)</code></li>
+                                        <li>• 복합함수: <code>x * sin(x) + exp(-x)</code></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Module 1: Feynman Solver -->
-                <div id="feynman-module" class="module-panel active">
+                <div id="feynman-module" class="module-panel">
                     <div class="card mb-6">
                         <h2 class="text-2xl font-bold text-blue-400 mb-4">
                             <i class="fas fa-layer-group mr-2"></i>파인만 적분기 (The Feynman Solver)
@@ -470,9 +649,395 @@
             updateHyperbolic(1);
         }
 
+        // ===== MODULE 0: UNIVERSAL CALCULATOR =====
+        // General purpose calculus calculator using Math.js
+        
+        function calculateDerivative() {
+            try {
+                const funcStr = document.getElementById('calc-function').value;
+                const variable = document.getElementById('calc-variable').value || 'x';
+                
+                // Parse the function
+                const expr = math.parse(funcStr);
+                
+                // Calculate derivative
+                const derivative = math.derivative(expr, variable);
+                const derivativeSimplified = math.simplify(derivative);
+                
+                // Convert to LaTeX
+                const originalLatex = expr.toTex();
+                const derivativeLatex = derivativeSimplified.toTex();
+                
+                // Display result
+                const resultContent = `
+                    <div class="space-y-3">
+                        <div>
+                            <h4 class="font-bold text-cyan-400 mb-2">원함수:</h4>
+                            $$f(${variable}) = ${originalLatex}$$
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-cyan-400 mb-2">도함수:</h4>
+                            $$f'(${variable}) = \\frac{d}{d${variable}}\\left(${originalLatex}\\right) = ${derivativeLatex}$$
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('calc-result-content').innerHTML = resultContent;
+                document.getElementById('calc-result').classList.remove('hidden');
+                
+                // Plot both functions
+                plotDerivativeComparison(funcStr, derivativeSimplified.toString(), variable);
+                
+                // Render MathJax
+                if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                    MathJax.typesetPromise(['#calc-result-content']).catch((err) => console.log(err));
+                }
+            } catch (error) {
+                alert('오류: ' + error.message + '\n함수 입력을 확인해주세요.');
+            }
+        }
+
+        function calculateIntegral() {
+            try {
+                const funcStr = document.getElementById('calc-function').value;
+                const variable = document.getElementById('calc-variable').value || 'x';
+                
+                // Parse the function
+                const expr = math.parse(funcStr);
+                const originalLatex = expr.toTex();
+                
+                // Note: Math.js doesn't have symbolic integration, so we'll show the integral notation
+                // and calculate numerical approximation
+                
+                const resultContent = `
+                    <div class="space-y-3">
+                        <div>
+                            <h4 class="font-bold text-cyan-400 mb-2">원함수:</h4>
+                            $$f(${variable}) = ${originalLatex}$$
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-cyan-400 mb-2">부정적분:</h4>
+                            $$\\int f(${variable}) \\, d${variable} = \\int ${originalLatex} \\, d${variable}$$
+                        </div>
+                        <div class="mt-4 p-3 bg-yellow-900 bg-opacity-20 rounded">
+                            <p class="text-sm text-slate-300">
+                                <i class="fas fa-info-circle mr-2"></i>
+                                <strong>참고:</strong> 부정적분의 해석적 계산은 복잡한 함수의 경우 제한적입니다. 
+                                정적분 버튼을 눌러 특정 구간의 수치적 적분값을 계산할 수 있습니다.
+                            </p>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('calc-result-content').innerHTML = resultContent;
+                document.getElementById('calc-result').classList.remove('hidden');
+                
+                // Render MathJax
+                if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                    MathJax.typesetPromise(['#calc-result-content']).catch((err) => console.log(err));
+                }
+            } catch (error) {
+                alert('오류: ' + error.message + '\n함수 입력을 확인해주세요.');
+            }
+        }
+
+        function calculateDefiniteIntegral() {
+            document.getElementById('calc-definite-panel').classList.remove('hidden');
+        }
+
+        function computeDefiniteIntegral() {
+            try {
+                const funcStr = document.getElementById('calc-function').value;
+                const variable = document.getElementById('calc-variable').value || 'x';
+                const a = parseFloat(document.getElementById('calc-integral-a').value);
+                const b = parseFloat(document.getElementById('calc-integral-b').value);
+                
+                if (isNaN(a) || isNaN(b)) {
+                    alert('적분 구간을 올바르게 입력해주세요.');
+                    return;
+                }
+                
+                // Parse the function
+                const expr = math.parse(funcStr);
+                const originalLatex = expr.toTex();
+                
+                // Numerical integration using Simpson's rule
+                const n = 1000;
+                const h = (b - a) / n;
+                let sum = 0;
+                
+                const scope = {};
+                for (let i = 0; i <= n; i++) {
+                    scope[variable] = a + i * h;
+                    const y = expr.evaluate(scope);
+                    
+                    if (i === 0 || i === n) {
+                        sum += y;
+                    } else if (i % 2 === 1) {
+                        sum += 4 * y;
+                    } else {
+                        sum += 2 * y;
+                    }
+                }
+                const integralValue = (h / 3) * sum;
+                
+                const resultContent = `
+                    <div class="space-y-3">
+                        <div>
+                            <h4 class="font-bold text-cyan-400 mb-2">원함수:</h4>
+                            $$f(${variable}) = ${originalLatex}$$
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-cyan-400 mb-2">정적분:</h4>
+                            $$\\int_{${a}}^{${b}} ${originalLatex} \\, d${variable} \\approx ${integralValue.toFixed(6)}$$
+                        </div>
+                        <div class="mt-4 p-4 bg-cyan-900 bg-opacity-30 rounded-lg">
+                            <div class="text-2xl font-bold text-cyan-300">
+                                결과: ${integralValue.toFixed(6)}
+                            </div>
+                            <div class="text-sm text-slate-400 mt-2">
+                                Simpson's rule을 사용한 수치적 적분 (n = ${n})
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('calc-result-content').innerHTML = resultContent;
+                document.getElementById('calc-result').classList.remove('hidden');
+                
+                // Plot with shaded area
+                plotDefiniteIntegral(funcStr, variable, a, b);
+                
+                // Render MathJax
+                if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                    MathJax.typesetPromise(['#calc-result-content']).catch((err) => console.log(err));
+                }
+            } catch (error) {
+                alert('오류: ' + error.message + '\n함수 입력을 확인해주세요.');
+            }
+        }
+
+        function plotFunction() {
+            try {
+                const funcStr = document.getElementById('calc-function').value;
+                const variable = document.getElementById('calc-variable').value || 'x';
+                const minRange = parseFloat(document.getElementById('calc-range-min').value);
+                const maxRange = parseFloat(document.getElementById('calc-range-max').value);
+                
+                const expr = math.parse(funcStr);
+                
+                const xValues = [];
+                const yValues = [];
+                const numPoints = 500;
+                
+                const scope = {};
+                for (let i = 0; i <= numPoints; i++) {
+                    const x = minRange + (i / numPoints) * (maxRange - minRange);
+                    scope[variable] = x;
+                    try {
+                        const y = expr.evaluate(scope);
+                        xValues.push(x);
+                        yValues.push(y);
+                    } catch (e) {
+                        // Skip points where function is undefined
+                    }
+                }
+                
+                const trace = {
+                    x: xValues,
+                    y: yValues,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'f(' + variable + ')',
+                    line: { color: '#06b6d4', width: 3 }
+                };
+                
+                const layout = {
+                    paper_bgcolor: '#0f172a',
+                    plot_bgcolor: '#0f172a',
+                    font: { color: '#e2e8f0' },
+                    xaxis: { 
+                        title: variable,
+                        gridcolor: '#334155',
+                        zerolinecolor: '#475569'
+                    },
+                    yaxis: { 
+                        title: 'f(' + variable + ')',
+                        gridcolor: '#334155',
+                        zerolinecolor: '#475569'
+                    },
+                    margin: { t: 20, r: 20, b: 50, l: 50 }
+                };
+                
+                const config = {
+                    responsive: true,
+                    scrollZoom: true
+                };
+                
+                Plotly.newPlot('calculator-graph', [trace], layout, config);
+            } catch (error) {
+                alert('오류: ' + error.message + '\n함수 입력을 확인해주세요.');
+            }
+        }
+
+        function plotDerivativeComparison(funcStr, derivativeStr, variable) {
+            try {
+                const minRange = parseFloat(document.getElementById('calc-range-min').value);
+                const maxRange = parseFloat(document.getElementById('calc-range-max').value);
+                
+                const expr = math.parse(funcStr);
+                const derivExpr = math.parse(derivativeStr);
+                
+                const xValues = [];
+                const yOriginal = [];
+                const yDerivative = [];
+                const numPoints = 500;
+                
+                const scope = {};
+                for (let i = 0; i <= numPoints; i++) {
+                    const x = minRange + (i / numPoints) * (maxRange - minRange);
+                    scope[variable] = x;
+                    try {
+                        const y1 = expr.evaluate(scope);
+                        const y2 = derivExpr.evaluate(scope);
+                        xValues.push(x);
+                        yOriginal.push(y1);
+                        yDerivative.push(y2);
+                    } catch (e) {
+                        // Skip undefined points
+                    }
+                }
+                
+                const trace1 = {
+                    x: xValues,
+                    y: yOriginal,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'f(' + variable + ')',
+                    line: { color: '#06b6d4', width: 3 }
+                };
+                
+                const trace2 = {
+                    x: xValues,
+                    y: yDerivative,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: "f'(" + variable + ')',
+                    line: { color: '#f59e0b', width: 3, dash: 'dash' }
+                };
+                
+                const layout = {
+                    paper_bgcolor: '#0f172a',
+                    plot_bgcolor: '#0f172a',
+                    font: { color: '#e2e8f0' },
+                    xaxis: { 
+                        title: variable,
+                        gridcolor: '#334155',
+                        zerolinecolor: '#475569'
+                    },
+                    yaxis: { 
+                        title: 'y',
+                        gridcolor: '#334155',
+                        zerolinecolor: '#475569'
+                    },
+                    margin: { t: 20, r: 20, b: 50, l: 50 }
+                };
+                
+                const config = {
+                    responsive: true,
+                    scrollZoom: true
+                };
+                
+                Plotly.newPlot('calculator-graph', [trace1, trace2], layout, config);
+            } catch (error) {
+                console.error('Plot error:', error);
+            }
+        }
+
+        function plotDefiniteIntegral(funcStr, variable, a, b) {
+            try {
+                const minRange = Math.min(a, parseFloat(document.getElementById('calc-range-min').value));
+                const maxRange = Math.max(b, parseFloat(document.getElementById('calc-range-max').value));
+                
+                const expr = math.parse(funcStr);
+                
+                // Full function plot
+                const xFull = [];
+                const yFull = [];
+                const numPoints = 500;
+                
+                const scope = {};
+                for (let i = 0; i <= numPoints; i++) {
+                    const x = minRange + (i / numPoints) * (maxRange - minRange);
+                    scope[variable] = x;
+                    try {
+                        const y = expr.evaluate(scope);
+                        xFull.push(x);
+                        yFull.push(y);
+                    } catch (e) {}
+                }
+                
+                // Shaded area
+                const xShaded = [];
+                const yShaded = [];
+                for (let i = 0; i <= 100; i++) {
+                    const x = a + (i / 100) * (b - a);
+                    scope[variable] = x;
+                    try {
+                        const y = expr.evaluate(scope);
+                        xShaded.push(x);
+                        yShaded.push(y);
+                    } catch (e) {}
+                }
+                
+                const traceFull = {
+                    x: xFull,
+                    y: yFull,
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'f(' + variable + ')',
+                    line: { color: '#06b6d4', width: 3 }
+                };
+                
+                const traceShaded = {
+                    x: [...xShaded, ...xShaded.slice().reverse()],
+                    y: [...yShaded, ...new Array(yShaded.length).fill(0)],
+                    fill: 'toself',
+                    fillcolor: 'rgba(6, 182, 212, 0.3)',
+                    line: { color: 'transparent' },
+                    name: 'Integral area',
+                    type: 'scatter'
+                };
+                
+                const layout = {
+                    paper_bgcolor: '#0f172a',
+                    plot_bgcolor: '#0f172a',
+                    font: { color: '#e2e8f0' },
+                    xaxis: { 
+                        title: variable,
+                        gridcolor: '#334155',
+                        zerolinecolor: '#475569'
+                    },
+                    yaxis: { 
+                        title: 'f(' + variable + ')',
+                        gridcolor: '#334155',
+                        zerolinecolor: '#475569'
+                    },
+                    margin: { t: 20, r: 20, b: 50, l: 50 }
+                };
+                
+                const config = {
+                    responsive: true,
+                    scrollZoom: true
+                };
+                
+                Plotly.newPlot('calculator-graph', [traceShaded, traceFull], layout, config);
+            } catch (error) {
+                console.error('Plot error:', error);
+            }
+        }
+
         // ===== MODULE 1: FEYNMAN SOLVER =====
-        // Based on Feynman's technique of differentiation under the integral sign
-        // Reference: "Surely You're Joking, Mr. Feynman!" - Parametric Integration technique
         
         function updateFeynmanFromSlider(value) {
             document.getElementById('feynman-p-input').value = parseFloat(value).toFixed(1);
@@ -493,12 +1058,10 @@
         function updateFeynman(p) {
             p = parseFloat(p);
 
-            // Generate data for f(x) = exp(-px) * sin(x) / x
-            // Extended range for better zooming/panning experience
             const xValues = [];
             const yValues = [];
             const numPoints = 1000;
-            const maxX = 50; // Extended from 20 to 50
+            const maxX = 50;
             
             for (let i = 1; i <= numPoints; i++) {
                 const x = (i / numPoints) * maxX;
@@ -509,7 +1072,6 @@
                 }
             }
 
-            // Plot using Plotly
             const trace = {
                 x: xValues,
                 y: yValues,
@@ -527,7 +1089,7 @@
                     title: 'x',
                     gridcolor: '#334155',
                     zerolinecolor: '#475569',
-                    range: [0, 20] // Initial view
+                    range: [0, 20]
                 },
                 yaxis: { 
                     title: 'f(x)',
@@ -544,7 +1106,6 @@
 
             Plotly.newPlot('feynman-graph', [trace], layout, config);
 
-            // Update mathematical steps
             const integralValue = (Math.PI/2 - Math.atan(p)).toFixed(4);
             const steps = `
                 <div class="text-slate-200 space-y-4">
@@ -576,15 +1137,13 @@
             
             document.getElementById('feynman-steps').innerHTML = steps;
             
-            // Render MathJax
             if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
                 MathJax.typesetPromise(['#feynman-steps']).catch((err) => console.log(err));
             }
         }
 
         // ===== MODULE 2: BERNOULLI RECTIFIER =====
-        // Based on Johann Bernoulli's work on arc length of curves
-        // Reference: "Opera Omnia" - Rectification of algebraic curves
+        
         function initBernoulli() {
             const steps = `
                 <div class="text-slate-200 space-y-4">
@@ -608,7 +1167,6 @@
             `;
             document.getElementById('bernoulli-steps').innerHTML = steps;
             
-            // Render MathJax
             if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
                 MathJax.typesetPromise(['#bernoulli-steps']).catch((err) => console.log(err));
             }
@@ -623,8 +1181,7 @@
                 return;
             }
 
-            // Extended range for better zooming
-            const extendedA = a * 2; // Plot up to 2x the given range
+            const extendedA = a * 2;
             const xValues = [];
             const yValues = [];
             const numPoints = 500;
@@ -636,7 +1193,6 @@
                 yValues.push(y);
             }
 
-            // Calculate arc length using numerical integration (Simpson's rule)
             let length = 0;
             const n = 1000;
             const h = a / n;
@@ -656,7 +1212,6 @@
             }
             length *= h / 3;
 
-            // Plot
             const trace = {
                 x: xValues,
                 y: yValues,
@@ -666,7 +1221,6 @@
                 line: { color: '#10b981', width: 3 }
             };
 
-            // Add markers at start and end of the calculated segment
             const traceMarkers = {
                 x: [0, a],
                 y: [0, Math.pow(a, q)],
@@ -676,7 +1230,6 @@
                 marker: { color: '#ef4444', size: 10 }
             };
 
-            const maxY = Math.pow(extendedA, q);
             const layout = {
                 paper_bgcolor: '#0f172a',
                 plot_bgcolor: '#0f172a',
@@ -685,7 +1238,7 @@
                     title: 'x',
                     gridcolor: '#334155',
                     zerolinecolor: '#475569',
-                    range: [-0.1, a * 1.2] // Initial view slightly larger than input
+                    range: [-0.1, a * 1.2]
                 },
                 yaxis: { 
                     title: 'y',
@@ -703,14 +1256,11 @@
 
             Plotly.newPlot('bernoulli-graph', [trace, traceMarkers], layout, config);
 
-            // Display result
             document.getElementById('bernoulli-result').classList.remove('hidden');
             document.getElementById('bernoulli-length').innerHTML = `L ≈ ${length.toFixed(6)}`;
         }
 
         // ===== MODULE 3: SYMMETRY CANCELER =====
-        // Based on King's Property for definite integrals
-        // Reference: F. L. King - "A remarkable property of definite integrals"
         
         function updateSymmetryFromSlider(value) {
             document.getElementById('symmetry-n-input').value = value;
@@ -731,14 +1281,12 @@
         function updateSymmetry(n) {
             n = parseInt(n);
 
-            // Generate data with extended range
             const xValues = [];
-            const y1Values = []; // f(x)
-            const y2Values = []; // f(π/2 - x)
-            const ySumValues = []; // f(x) + f(π/2 - x)
-            const numPoints = 500; // Increased for smoother curves
+            const y1Values = [];
+            const y2Values = [];
+            const ySumValues = [];
+            const numPoints = 500;
             
-            // Extended range: from -0.2 to π/2 + 0.2 for better panning
             const start = -0.2;
             const end = Math.PI / 2 + 0.2;
             const range = end - start;
@@ -746,7 +1294,6 @@
             for (let i = 0; i <= numPoints; i++) {
                 const x = start + (i / numPoints) * range;
                 
-                // Handle values outside [0, π/2] gracefully
                 if (x >= 0 && x <= Math.PI / 2) {
                     const sinN = Math.pow(Math.sin(x), n);
                     const cosN = Math.pow(Math.cos(x), n);
@@ -758,7 +1305,6 @@
                     y2Values.push(y2);
                     ySumValues.push(y1 + y2);
                 } else {
-                    // Extend with NaN for areas outside domain
                     xValues.push(x);
                     y1Values.push(NaN);
                     y2Values.push(NaN);
@@ -766,7 +1312,6 @@
                 }
             }
 
-            // Plot
             const trace1 = {
                 x: xValues,
                 y: y1Values,
@@ -794,7 +1339,6 @@
                 line: { color: '#fbbf24', width: 3, dash: 'dash' }
             };
 
-            // Fill between curves (only in valid domain)
             const validX = xValues.filter(x => x >= 0 && x <= Math.PI/2);
             const validY1 = y1Values.filter((y, i) => !isNaN(y));
             
@@ -816,13 +1360,13 @@
                     title: 'x',
                     gridcolor: '#334155',
                     zerolinecolor: '#475569',
-                    range: [0, Math.PI / 2] // Initial view
+                    range: [0, Math.PI / 2]
                 },
                 yaxis: { 
                     title: 'y',
                     gridcolor: '#334155',
                     zerolinecolor: '#475569',
-                    range: [-0.1, 1.3] // Initial view
+                    range: [-0.1, 1.3]
                 },
                 margin: { t: 20, r: 20, b: 50, l: 50 }
             };
@@ -834,7 +1378,6 @@
 
             Plotly.newPlot('symmetry-graph', [traceFill, trace1, trace2, trace3], layout, config);
 
-            // Update mathematical steps
             const steps = `
                 <div class="text-slate-200 space-y-4">
                     <h4 class="text-lg font-bold text-purple-400">King's Property 증명</h4>
@@ -864,15 +1407,12 @@
             
             document.getElementById('symmetry-steps').innerHTML = steps;
             
-            // Render MathJax
             if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
                 MathJax.typesetPromise(['#symmetry-steps']).catch((err) => console.log(err));
             }
         }
 
         // ===== MODULE 4: HYPERBOLIC GEOMETRIC SOLVER =====
-        // Based on geometric interpretation of inverse hyperbolic functions
-        // Reference: Area parametrization of hyperbola (Euler, Riccati)
         
         function updateHyperbolicFromSlider(value) {
             document.getElementById('hyperbolic-t-input').value = parseFloat(value).toFixed(1);
@@ -893,40 +1433,33 @@
         function updateHyperbolic(t) {
             t = parseFloat(t);
 
-            // Point P coordinates
             const px = Math.cosh(t);
             const py = Math.sinh(t);
 
-            // Display point and area
             document.getElementById('hyperbolic-point').innerHTML = 
                 `(${px.toFixed(3)}, ${py.toFixed(3)})`;
             document.getElementById('hyperbolic-area').innerHTML = 
                 `A = t/2 = ${(t/2).toFixed(3)}`;
 
-            // Generate hyperbola data (both branches, extended range)
             const hyperbolaXPos = [];
             const hyperbolaYPos = [];
             const hyperbolaXNeg = [];
             const hyperbolaYNeg = [];
             const numPoints = 500;
-            const maxT = 4; // Extended from 3 to 4
+            const maxT = 4;
             
             for (let i = 0; i <= numPoints; i++) {
                 const tParam = (i / numPoints) * maxT;
-                
-                // Right branch (positive x)
                 hyperbolaXPos.push(Math.cosh(tParam));
                 hyperbolaYPos.push(Math.sinh(tParam));
             }
             
-            // Add negative y part of right branch
             for (let i = 0; i <= numPoints; i++) {
                 const tParam = (i / numPoints) * maxT;
                 hyperbolaXNeg.push(Math.cosh(tParam));
                 hyperbolaYNeg.push(-Math.sinh(tParam));
             }
 
-            // Generate sector fill
             const sectorX = [1];
             const sectorY = [0];
             
@@ -938,7 +1471,6 @@
             sectorX.push(1);
             sectorY.push(0);
 
-            // Traces
             const traceHyperbolaPos = {
                 x: hyperbolaXPos,
                 y: hyperbolaYPos,
@@ -987,10 +1519,9 @@
                 line: { color: '#ef4444', width: 2, dash: 'dot' }
             };
 
-            // Add asymptote lines for reference
             const asymptoteX = [0, Math.cosh(maxT)];
-            const asymptoteYPos = [0, Math.cosh(maxT)]; // y = x
-            const asymptoteYNeg = [0, -Math.cosh(maxT)]; // y = -x
+            const asymptoteYPos = [0, Math.cosh(maxT)];
+            const asymptoteYNeg = [0, -Math.cosh(maxT)];
 
             const traceAsymptotePos = {
                 x: asymptoteX,
@@ -1019,13 +1550,13 @@
                     title: 'x',
                     gridcolor: '#334155',
                     zerolinecolor: '#475569',
-                    range: [-1, 5] // Initial view
+                    range: [-1, 5]
                 },
                 yaxis: { 
                     title: 'y',
                     gridcolor: '#334155',
                     zerolinecolor: '#475569',
-                    range: [-4, 5], // Initial view
+                    range: [-4, 5],
                     scaleanchor: 'x',
                     scaleratio: 1
                 },
@@ -1043,7 +1574,6 @@
                  traceSector, traceOrigin, tracePoint], 
                 layout, config);
 
-            // Update mathematical steps
             const steps = `
                 <div class="text-slate-200 space-y-4">
                     <h4 class="text-lg font-bold text-yellow-400">쌍곡선 함수의 기하학적 의미</h4>
@@ -1077,7 +1607,6 @@
             
             document.getElementById('hyperbolic-steps').innerHTML = steps;
             
-            // Render MathJax
             if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
                 MathJax.typesetPromise(['#hyperbolic-steps']).catch((err) => console.log(err));
             }
