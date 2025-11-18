@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>인터랙티브 SVD 변환 시각화 도구</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.5.0/math.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/numeric/1.2.6/numeric.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -307,6 +307,27 @@
         let currentStep = 0;
         let U, D, V, VT;
         
+        // 행렬 곱셈
+        function matrixMultiply(A, B) {
+            if (Array.isArray(B[0])) {
+                // 행렬 x 행렬
+                return numeric.dot(A, B);
+            } else {
+                // 행렬 x 벡터
+                return numeric.dot(A, B);
+            }
+        }
+        
+        // 행렬 전치
+        function transpose(A) {
+            return numeric.transpose(A);
+        }
+        
+        // 단위 행렬
+        function identity(n) {
+            return numeric.identity(n);
+        }
+        
         // 초기화
         function init() {
             // 단위원 생성 (100개의 점)
@@ -317,8 +338,8 @@
             }
             
             // 초기 캔버스 그리기
-            drawCanvas('canvas-original', math.identity(2));
-            drawCanvas('canvas-steps', math.identity(2));
+            drawCanvas('canvas-original', identity(2));
+            drawCanvas('canvas-steps', identity(2));
             
             // 이벤트 리스너 등록
             document.getElementById('btn-shear').addEventListener('click', () => {
@@ -403,8 +424,8 @@
             ctx.stroke();
             
             // 변환된 기저 벡터 그리기
-            const e1 = math.multiply(transformMatrix, [1, 0]);
-            const e2 = math.multiply(transformMatrix, [0, 1]);
+            const e1 = matrixMultiply(transformMatrix, [1, 0]);
+            const e2 = matrixMultiply(transformMatrix, [0, 1]);
             
             // x축 기저 벡터 (빨강)
             drawArrow(ctx, centerX, centerY, 
@@ -424,7 +445,7 @@
             ctx.beginPath();
             
             for (let i = 0; i < originalPoints.length; i++) {
-                const transformed = math.multiply(transformMatrix, originalPoints[i]);
+                const transformed = matrixMultiply(transformMatrix, originalPoints[i]);
                 const x = centerX + transformed[0] * scale;
                 const y = centerY - transformed[1] * scale;
                 
@@ -444,7 +465,7 @@
             // 점들 표시
             ctx.fillStyle = '#667eea';
             for (let i = 0; i < originalPoints.length; i += 5) {
-                const transformed = math.multiply(transformMatrix, originalPoints[i]);
+                const transformed = matrixMultiply(transformMatrix, originalPoints[i]);
                 const x = centerX + transformed[0] * scale;
                 const y = centerY - transformed[1] * scale;
                 
@@ -491,17 +512,21 @@
             const A = [[a11, a12], [a21, a22]];
             
             try {
-                // SVD 계산
-                const svd = math.svd(A);
+                // SVD 계산 (numeric.js 사용)
+                const svd = numeric.svd(A);
                 U = svd.U;
-                const S = svd.s; // 특이값 배열
+                const S = svd.S; // 특이값 대각 행렬
                 V = svd.V;
                 
-                // D 행렬 생성 (대각 행렬)
-                D = [[S[0], 0], [0, S[1]]];
+                // S가 배열로 오는 경우 대각 행렬로 변환
+                if (Array.isArray(S) && !Array.isArray(S[0])) {
+                    D = [[S[0], 0], [0, S[1]]];
+                } else {
+                    D = S;
+                }
                 
                 // V 전치
-                VT = math.transpose(V);
+                VT = transpose(V);
                 
                 // 행렬 표시
                 displayMatrix('matrix-u', U);
@@ -516,6 +541,7 @@
                 
             } catch (error) {
                 alert('행렬 계산 오류: ' + error.message);
+                console.error(error);
             }
         }
         
@@ -546,7 +572,7 @@
             
             // Step 0: 초기 상태
             setTimeout(() => {
-                drawCanvas('canvas-steps', math.identity(2));
+                drawCanvas('canvas-steps', identity(2));
                 stepDesc.textContent = '초기 상태: 단위원과 표준 기저';
                 stepDesc.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
             }, 0);
@@ -560,7 +586,7 @@
             
             // Step 2: D 적용 (신축)
             setTimeout(() => {
-                const DVT = math.multiply(D, VT);
+                const DVT = matrixMultiply(D, VT);
                 drawCanvas('canvas-steps', DVT);
                 stepDesc.textContent = '2단계: D 적용 - 축 방향 신축 (스케일링)';
                 stepDesc.style.background = 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)';
@@ -568,7 +594,7 @@
             
             // Step 3: U 적용 (두 번째 회전)
             setTimeout(() => {
-                const UDVT = math.multiply(math.multiply(U, D), VT);
+                const UDVT = matrixMultiply(matrixMultiply(U, D), VT);
                 drawCanvas('canvas-steps', UDVT);
                 stepDesc.textContent = '3단계: U 적용 - 두 번째 회전 → 변환 완료! ✨';
                 stepDesc.style.background = 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)';
