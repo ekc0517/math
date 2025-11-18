@@ -113,6 +113,24 @@
             border-color: #3b82f6;
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
+
+        .input-field-small {
+            background-color: #1e293b;
+            border: 2px solid #334155;
+            color: #e2e8f0;
+            padding: 0.4rem 0.6rem;
+            border-radius: 0.375rem;
+            transition: all 0.3s;
+            width: 100px;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .input-field-small:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
         
         .btn-primary {
             background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
@@ -223,12 +241,17 @@
                         </p>
                         
                         <div class="bg-slate-800 p-4 rounded-lg mb-4">
-                            <label class="block text-sm font-semibold mb-2">
-                                매개변수 p: <span id="feynman-p-value" class="text-blue-400">1.0</span>
-                            </label>
+                            <div class="flex items-center justify-between mb-3">
+                                <label class="block text-sm font-semibold">
+                                    매개변수 p:
+                                </label>
+                                <input type="number" id="feynman-p-input" class="input-field-small" 
+                                       value="1.0" step="0.1" min="0" max="5"
+                                       onchange="updateFeynmanFromInput(this.value)">
+                            </div>
                             <input type="range" id="feynman-slider" class="slider-custom" 
                                    min="0" max="5" step="0.1" value="1" 
-                                   oninput="updateFeynman(this.value)">
+                                   oninput="updateFeynmanFromSlider(this.value)">
                             <div class="flex justify-between text-xs text-slate-400 mt-1">
                                 <span>0</span>
                                 <span>5</span>
@@ -311,12 +334,17 @@
                         </p>
                         
                         <div class="bg-slate-800 p-4 rounded-lg mb-4">
-                            <label class="block text-sm font-semibold mb-2">
-                                지수 n: <span id="symmetry-n-value" class="text-purple-400">2</span>
-                            </label>
+                            <div class="flex items-center justify-between mb-3">
+                                <label class="block text-sm font-semibold">
+                                    지수 n:
+                                </label>
+                                <input type="number" id="symmetry-n-input" class="input-field-small" 
+                                       value="2" step="1" min="1" max="10"
+                                       onchange="updateSymmetryFromInput(this.value)">
+                            </div>
                             <input type="range" id="symmetry-slider" class="slider-custom" 
                                    min="1" max="10" step="1" value="2" 
-                                   oninput="updateSymmetry(this.value)">
+                                   oninput="updateSymmetryFromSlider(this.value)">
                             <div class="flex justify-between text-xs text-slate-400 mt-1">
                                 <span>1</span>
                                 <span>10</span>
@@ -355,12 +383,17 @@
                         </p>
                         
                         <div class="bg-slate-800 p-4 rounded-lg mb-4">
-                            <label class="block text-sm font-semibold mb-2">
-                                매개변수 t: <span id="hyperbolic-t-value" class="text-yellow-400">1.0</span>
-                            </label>
+                            <div class="flex items-center justify-between mb-3">
+                                <label class="block text-sm font-semibold">
+                                    매개변수 t:
+                                </label>
+                                <input type="number" id="hyperbolic-t-input" class="input-field-small" 
+                                       value="1.0" step="0.1" min="0" max="3"
+                                       onchange="updateHyperbolicFromInput(this.value)">
+                            </div>
                             <input type="range" id="hyperbolic-slider" class="slider-custom" 
                                    min="0" max="3" step="0.1" value="1" 
-                                   oninput="updateHyperbolic(this.value)">
+                                   oninput="updateHyperbolicFromSlider(this.value)">
                             <div class="flex justify-between text-xs text-slate-400 mt-1">
                                 <span>0</span>
                                 <span>3</span>
@@ -440,9 +473,25 @@
         // ===== MODULE 1: FEYNMAN SOLVER =====
         // Based on Feynman's technique of differentiation under the integral sign
         // Reference: "Surely You're Joking, Mr. Feynman!" - Parametric Integration technique
+        
+        function updateFeynmanFromSlider(value) {
+            document.getElementById('feynman-p-input').value = parseFloat(value).toFixed(1);
+            updateFeynman(value);
+        }
+
+        function updateFeynmanFromInput(value) {
+            const p = parseFloat(value);
+            if (isNaN(p) || p < 0 || p > 5) {
+                alert('p 값은 0에서 5 사이여야 합니다.');
+                document.getElementById('feynman-p-input').value = 1;
+                return;
+            }
+            document.getElementById('feynman-slider').value = p;
+            updateFeynman(p);
+        }
+
         function updateFeynman(p) {
             p = parseFloat(p);
-            document.getElementById('feynman-p-value').textContent = p.toFixed(1);
 
             // Generate data for f(x) = exp(-px) * sin(x) / x
             const xValues = [];
@@ -635,9 +684,25 @@
         // ===== MODULE 3: SYMMETRY CANCELER =====
         // Based on King's Property for definite integrals
         // Reference: F. L. King - "A remarkable property of definite integrals"
+        
+        function updateSymmetryFromSlider(value) {
+            document.getElementById('symmetry-n-input').value = value;
+            updateSymmetry(value);
+        }
+
+        function updateSymmetryFromInput(value) {
+            const n = parseInt(value);
+            if (isNaN(n) || n < 1 || n > 10) {
+                alert('n 값은 1에서 10 사이의 정수여야 합니다.');
+                document.getElementById('symmetry-n-input').value = 2;
+                return;
+            }
+            document.getElementById('symmetry-slider').value = n;
+            updateSymmetry(n);
+        }
+
         function updateSymmetry(n) {
             n = parseInt(n);
-            document.getElementById('symmetry-n-value').textContent = n;
 
             // Generate data
             const xValues = [];
@@ -757,9 +822,25 @@
         // ===== MODULE 4: HYPERBOLIC GEOMETRIC SOLVER =====
         // Based on geometric interpretation of inverse hyperbolic functions
         // Reference: Area parametrization of hyperbola (Euler, Riccati)
+        
+        function updateHyperbolicFromSlider(value) {
+            document.getElementById('hyperbolic-t-input').value = parseFloat(value).toFixed(1);
+            updateHyperbolic(value);
+        }
+
+        function updateHyperbolicFromInput(value) {
+            const t = parseFloat(value);
+            if (isNaN(t) || t < 0 || t > 3) {
+                alert('t 값은 0에서 3 사이여야 합니다.');
+                document.getElementById('hyperbolic-t-input').value = 1;
+                return;
+            }
+            document.getElementById('hyperbolic-slider').value = t;
+            updateHyperbolic(t);
+        }
+
         function updateHyperbolic(t) {
             t = parseFloat(t);
-            document.getElementById('hyperbolic-t-value').textContent = t.toFixed(2);
 
             // Point P coordinates
             const px = Math.cosh(t);
