@@ -507,11 +507,11 @@
         let canvas;
         let animating = false;
         let paused = false;
-        let animationMode = null; // 'direct' or 'svd'
+        let animationMode = null;
         let progress = 0;
-        let currentStage = 0; // SVD: 0=VT, 1=Sigma, 2=U
+        let currentStage = 0;
         let speed = 1.0;
-        let animationComplete = false; // 애니메이션 완료 여부
+        let animationComplete = false;
 
         // 행렬들
         let A, U, Sigma, VT;
@@ -521,13 +521,13 @@
         let originalCircle = [];
         let originalGrid = [];
 
-        // 변환된 도형 저장 (애니메이션 완료 후 표시용)
+        // 변환된 도형 저장
         let displayGrid = null;
         let displayCircle = null;
 
         // SVD 중간 단계 저장
-        let stage1Grid, stage1Circle; // VT 적용 후
-        let stage2Grid, stage2Circle; // Sigma * VT 적용 후
+        let stage1Grid, stage1Circle;
+        let stage2Grid, stage2Circle;
 
         // 캔버스 설정
         const CANVAS_SIZE = 800;
@@ -585,20 +585,16 @@
         function draw() {
             background(26, 26, 46);
             
-            // 좌표계 변환
             push();
             translate(width / 2, height / 2);
             scale(1, -1);
 
-            // 축 그리기
             drawAxes();
 
-            // 애니메이션 업데이트
             if (animating && !paused) {
                 updateAnimation();
             }
 
-            // 도형 그리기
             drawShapes();
 
             pop();
@@ -624,13 +620,8 @@
                 updateInfoOverlay();
                 
                 console.log('SVD 계산 완료');
-                console.log('U:', U.toArray());
-                console.log('Sigma:', Sigma.toArray());
-                console.log('VT:', VT.toArray());
             } catch (e) {
                 console.error('SVD 계산 오류:', e);
-                document.getElementById('svdDisplay').innerHTML = 
-                    `<span style="color: #ff3366;">오류: ${e.message}</span>`;
             }
         }
 
@@ -673,6 +664,53 @@
             document.getElementById('progressBar').style.width = (p * 100) + '%';
         }
 
+        // ============ 변환 함수 (안전하게 재작성) ============
+        function applyMatrix(point, matrixArray) {
+            const x = point.x * matrixArray[0][0] + point.y * matrixArray[0][1];
+            const y = point.x * matrixArray[1][0] + point.y * matrixArray[1][1];
+            return createVector(x, y);
+        }
+
+        function transformGrid(grid, matrixArray) {
+            const result = [];
+            for (let i = 0; i < grid.length; i++) {
+                const line = [];
+                for (let j = 0; j < grid[i].length; j++) {
+                    line.push(applyMatrix(grid[i][j], matrixArray));
+                }
+                result.push(line);
+            }
+            return result;
+        }
+
+        function transformCircle(circle, matrixArray) {
+            const result = [];
+            for (let i = 0; i < circle.length; i++) {
+                result.push(applyMatrix(circle[i], matrixArray));
+            }
+            return result;
+        }
+
+        function lerpGrid(startGrid, endGrid, t) {
+            const result = [];
+            for (let i = 0; i < startGrid.length; i++) {
+                const line = [];
+                for (let j = 0; j < startGrid[i].length; j++) {
+                    line.push(p5.Vector.lerp(startGrid[i][j], endGrid[i][j], t));
+                }
+                result.push(line);
+            }
+            return result;
+        }
+
+        function lerpCircle(startCircle, endCircle, t) {
+            const result = [];
+            for (let i = 0; i < startCircle.length; i++) {
+                result.push(p5.Vector.lerp(startCircle[i], endCircle[i], t));
+            }
+            return result;
+        }
+
         // ============ 애니메이션 제어 ============
         function startDirect() {
             computeSVD();
@@ -690,31 +728,43 @@
         }
 
         function startSVD() {
-            computeSVD();
-            
-            // SVD 중간 단계 미리 계산
-            stage1Grid = transformPoints(originalGrid, VT);
-            stage1Circle = transformPoints(originalCircle, VT);
-            
-            const SigmaVT = math.multiply(Sigma, VT);
-            stage2Grid = transformPoints(originalGrid, SigmaVT);
-            stage2Circle = transformPoints(originalCircle, SigmaVT);
-            
-            console.log('SVD 중간 단계 계산 완료');
-            console.log('Stage 1 (VT) 첫 점:', stage1Circle[0]);
-            console.log('Stage 2 (Sigma*VT) 첫 점:', stage2Circle[0]);
-            
-            animating = true;
-            paused = false;
-            animationMode = 'svd';
-            animationComplete = false;
-            progress = 0;
-            currentStage = 0;
-            displayGrid = null;
-            displayCircle = null;
-            updateStatus('1/3 단계: Vᵀ 회전 적용 중...');
-            setButtonStates(true);
-            console.log('SVD 단계별 변환 시작');
+            try {
+                computeSVD();
+                
+                console.log('SVD 시작 - 중간 단계 계산');
+                
+                // 행렬을 배열로 변환
+                const vtArray = VT.toArray();
+                const sigmaArray = Sigma.toArray();
+                const aArray = A.toArray();
+                
+                // Stage 1: VT 적용
+                stage1Grid = transformGrid(originalGrid, vtArray);
+                stage1Circle = transformCircle(originalCircle, vtArray);
+                console.log('Stage 1 계산 완료');
+                
+                // Stage 2: Sigma * VT 적용
+                const sigmaVT = math.multiply(Sigma, VT);
+                const sigmaVTArray = sigmaVT.toArray();
+                stage2Grid = transformGrid(originalGrid, sigmaVTArray);
+                stage2Circle = transformCircle(originalCircle, sigmaVTArray);
+                console.log('Stage 2 계산 완료');
+                
+                animating = true;
+                paused = false;
+                animationMode = 'svd';
+                animationComplete = false;
+                progress = 0;
+                currentStage = 0;
+                displayGrid = null;
+                displayCircle = null;
+                updateStatus('1/3 단계: Vᵀ 회전 적용 중...');
+                setButtonStates(true);
+                console.log('SVD 애니메이션 시작');
+            } catch (e) {
+                console.error('SVD 시작 오류:', e);
+                alert('SVD 변환 시작 중 오류가 발생했습니다: ' + e.message);
+            }
         }
 
         function reset() {
@@ -765,16 +815,16 @@
                         '3/3 단계: U 회전 적용 중...'
                     ];
                     updateStatus(stages[currentStage]);
-                    console.log('SVD 다음 단계로:', currentStage + 1);
+                    console.log('다음 단계:', currentStage + 1);
                 } else {
-                    // 애니메이션 완료
                     progress = 1;
                     animating = false;
                     animationComplete = true;
                     
                     // 최종 변환 결과 저장
-                    displayGrid = transformPoints(originalGrid, A);
-                    displayCircle = transformPoints(originalCircle, A);
+                    const aArray = A.toArray();
+                    displayGrid = transformGrid(originalGrid, aArray);
+                    displayCircle = transformCircle(originalCircle, aArray);
                     
                     updateStatus('변환 완료! (리셋 버튼을 눌러 초기화)');
                     setButtonStates(false);
@@ -786,32 +836,6 @@
                 (currentStage + progress) / 3 : progress);
         }
 
-        // ============ 변환 함수 ============
-        function transform(point, matrix) {
-            const arr = matrix.toArray();
-            const x = point.x * arr[0][0] + point.y * arr[0][1];
-            const y = point.x * arr[1][0] + point.y * arr[1][1];
-            return createVector(x, y);
-        }
-
-        function transformPoints(points, matrix) {
-            return points.map(p => {
-                if (Array.isArray(p)) {
-                    return p.map(pt => transform(pt, matrix));
-                }
-                return transform(p, matrix);
-            });
-        }
-
-        function lerpPoints(start, end, t) {
-            return start.map((p, i) => {
-                if (Array.isArray(p)) {
-                    return p.map((pt, j) => p5.Vector.lerp(pt, end[i][j], t));
-                }
-                return p5.Vector.lerp(p, end[i], t);
-            });
-        }
-
         // ============ 그리기 ============
         function drawAxes() {
             stroke(50, 70, 100);
@@ -819,7 +843,6 @@
             line(-width, 0, width, 0);
             line(0, -height, 0, height);
 
-            // 눈금
             fill(100, 120, 150);
             noStroke();
             textAlign(CENTER, CENTER);
@@ -838,46 +861,48 @@
         function drawShapes() {
             let currentGrid, currentCircle;
 
-            // 애니메이션 완료 후에는 최종 결과를 계속 표시
             if (animationComplete && displayGrid && displayCircle) {
+                // 애니메이션 완료 후 - 최종 결과 표시
                 currentGrid = displayGrid;
                 currentCircle = displayCircle;
-            }
-            // 애니메이션 중이 아니고 완료도 안됨 = 초기 상태
-            else if (!animating && !animationComplete) {
+            } else if (!animating && !animationComplete) {
+                // 초기 상태
                 currentGrid = originalGrid;
                 currentCircle = originalCircle;
-            }
-            // 애니메이션 진행 중
-            else if (animating) {
-                if (animationMode === 'direct') {
-                    // 직접 변환: 원본 -> A
-                    const endGrid = transformPoints(originalGrid, A);
-                    const endCircle = transformPoints(originalCircle, A);
-                    
-                    currentGrid = lerpPoints(originalGrid, endGrid, progress);
-                    currentCircle = lerpPoints(originalCircle, endCircle, progress);
-                    
-                } else if (animationMode === 'svd') {
-                    // SVD 3단계 변환
-                    if (currentStage === 0) {
-                        // 1단계: 원본 -> VT
-                        currentGrid = lerpPoints(originalGrid, stage1Grid, progress);
-                        currentCircle = lerpPoints(originalCircle, stage1Circle, progress);
+            } else if (animating) {
+                // 애니메이션 진행 중
+                try {
+                    if (animationMode === 'direct') {
+                        const aArray = A.toArray();
+                        const endGrid = transformGrid(originalGrid, aArray);
+                        const endCircle = transformCircle(originalCircle, aArray);
                         
-                    } else if (currentStage === 1) {
-                        // 2단계: VT -> Sigma*VT
-                        currentGrid = lerpPoints(stage1Grid, stage2Grid, progress);
-                        currentCircle = lerpPoints(stage1Circle, stage2Circle, progress);
+                        currentGrid = lerpGrid(originalGrid, endGrid, progress);
+                        currentCircle = lerpCircle(originalCircle, endCircle, progress);
                         
-                    } else if (currentStage === 2) {
-                        // 3단계: Sigma*VT -> U*Sigma*VT (= A)
-                        const finalGrid = transformPoints(originalGrid, A);
-                        const finalCircle = transformPoints(originalCircle, A);
-                        
-                        currentGrid = lerpPoints(stage2Grid, finalGrid, progress);
-                        currentCircle = lerpPoints(stage2Circle, finalCircle, progress);
+                    } else if (animationMode === 'svd') {
+                        if (currentStage === 0) {
+                            // Stage 0: 원본 -> VT
+                            currentGrid = lerpGrid(originalGrid, stage1Grid, progress);
+                            currentCircle = lerpCircle(originalCircle, stage1Circle, progress);
+                            
+                        } else if (currentStage === 1) {
+                            // Stage 1: VT -> Sigma*VT
+                            currentGrid = lerpGrid(stage1Grid, stage2Grid, progress);
+                            currentCircle = lerpCircle(stage1Circle, stage2Circle, progress);
+                            
+                        } else if (currentStage === 2) {
+                            // Stage 2: Sigma*VT -> A
+                            const aArray = A.toArray();
+                            const finalGrid = transformGrid(originalGrid, aArray);
+                            const finalCircle = transformCircle(originalCircle, aArray);
+                            
+                            currentGrid = lerpGrid(stage2Grid, finalGrid, progress);
+                            currentCircle = lerpCircle(stage2Circle, finalCircle, progress);
+                        }
                     }
+                } catch (e) {
+                    console.error('그리기 오류:', e);
                 }
             }
 
@@ -885,11 +910,13 @@
             if (currentGrid) {
                 stroke(100, 200, 255, 80);
                 strokeWeight(1);
-                currentGrid.forEach(line => {
+                for (let i = 0; i < currentGrid.length; i++) {
                     beginShape();
-                    line.forEach(p => vertex(p.x * SCALE, p.y * SCALE));
+                    for (let j = 0; j < currentGrid[i].length; j++) {
+                        vertex(currentGrid[i][j].x * SCALE, currentGrid[i][j].y * SCALE);
+                    }
                     endShape();
-                });
+                }
             }
 
             // 단위 원 그리기
@@ -898,11 +925,13 @@
                 strokeWeight(3);
                 noFill();
                 beginShape();
-                currentCircle.forEach(p => vertex(p.x * SCALE, p.y * SCALE));
+                for (let i = 0; i < currentCircle.length; i++) {
+                    vertex(currentCircle[i].x * SCALE, currentCircle[i].y * SCALE);
+                }
                 endShape(CLOSE);
             }
 
-            // 특이벡터 표시 (SVD 변환 중이거나 완료 후)
+            // 특이벡터 표시
             if ((animating && animationMode === 'svd' && currentStage >= 1) || 
                 (animationComplete && animationMode === 'svd')) {
                 drawSingularVectors();
@@ -915,24 +944,21 @@
         }
 
         function drawSingularVectors() {
-            // U의 열벡터 (좌측 특이벡터)
-            const u1 = U.toArray().map(row => row[0]);
-            const u2 = U.toArray().map(row => row[1]);
+            const uArray = U.toArray();
+            const u1 = [uArray[0][0], uArray[1][0]];
+            const u2 = [uArray[0][1], uArray[1][1]];
 
             stroke(255, 51, 102);
             strokeWeight(3);
             
-            // σ₁ * u₁
             const v1x = u1[0] * singularValues[0] * SCALE;
             const v1y = u1[1] * singularValues[0] * SCALE;
             line(0, 0, v1x, v1y);
             
-            // σ₂ * u₂
             const v2x = u2[0] * singularValues[1] * SCALE;
             const v2y = u2[1] * singularValues[1] * SCALE;
             line(0, 0, v2x, v2y);
 
-            // 화살표
             drawArrow(v1x, v1y);
             drawArrow(v2x, v2y);
         }
