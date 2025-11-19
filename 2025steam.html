@@ -47,6 +47,42 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
 
+        /* 각도 표시선 */
+        .angle-indicator {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 2px;
+            background: rgba(239, 68, 68, 0.5);
+            transform-origin: bottom left;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .angle-arc {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            border: 2px solid rgba(239, 68, 68, 0.4);
+            border-radius: 50%;
+            border-right-color: transparent;
+            border-top-color: transparent;
+            transform: rotate(-90deg);
+            transition: all 0.3s ease;
+        }
+
+        .angle-label {
+            position: absolute;
+            background: rgba(239, 68, 68, 0.9);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 101;
+            transition: all 0.3s ease;
+        }
+
         /* 커스텀 슬라이더 */
         input[type="range"] {
             -webkit-appearance: none;
@@ -475,6 +511,10 @@
                                 <span class="text-gray-600">높이/보폭 비율:</span>
                                 <span id="ratio-result" class="font-bold text-gray-800">0.00</span>
                             </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">실제 계산 각도:</span>
+                                <span id="actual-angle-result" class="font-bold text-gray-800">0°</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -498,7 +538,8 @@
                             <i class="fas fa-lightbulb mr-2"></i>시각화 안내
                         </p>
                         <p class="text-xs text-blue-700">
-                            파란색 계단은 밟는 계단, 회색은 건너뛰는 계단입니다.
+                            • 파란색: 밟는 계단 | 회색: 건너뛰는 계단<br>
+                            • 빨간 선: 계단 각도 표시
                         </p>
                     </div>
                 </div>
@@ -675,15 +716,12 @@
                 const risk_angle = MU_S * Math.tan(theta_rad);
                 
                 // 2. 높이 기반 위험도 (18cm 이상일 때 증가)
-                // 높이가 높을수록 넘어졌을 때 위험
                 const risk_height = Math.max(0, (height_cm - 18) / 50);
                 
                 // 3. 보폭 기반 위험도 (26cm 미만일 때 증가)
-                // 너무 좁으면 발이 미끄러지기 쉬움
                 const risk_tread = Math.max(0, (26 - tread_cm) / 100);
                 
                 // 4. 높이/보폭 비율 위험도 (가파름의 정도)
-                // 이상적인 비율은 0.55 정도 (예: 17cm/31cm)
                 const ratio = height_cm / tread_cm;
                 const risk_ratio = Math.max(0, (ratio - 0.55) * 2);
                 
@@ -715,7 +753,8 @@
                         D_step_cm: 0, 
                         E_kinetic: NaN, 
                         E_total: NaN,
-                        H_T_Ratio: NaN
+                        H_T_Ratio: NaN,
+                        Actual_Angle: NaN
                     };
                 }
 
@@ -727,11 +766,14 @@
                 const E_2_sim = 0.5 * M * Math.pow(V_avg, 2) * N_steps * 0.1;
                 const E_total = E_1 + E_2_sim;
                 
-                // 개선된 위험도 계산 (모드에 따라 실제 높이와 보폭 사용)
+                // 개선된 위험도 계산
                 const risk = calculateRiskIndex(angle_deg, height_cm, tread_cm);
                 
                 // 높이/보폭 비율
                 const h_t_ratio = height_cm / tread_cm;
+                
+                // 실제 계산되는 각도 (높이와 보폭으로부터)
+                const actual_angle = Math.atan(height_cm / tread_cm) * (180 / Math.PI);
                 
                 return {
                     T_approx: T_approx,
@@ -742,12 +784,13 @@
                     D_step_cm: D_step_cm,
                     E_kinetic: E_2_sim,
                     E_total: E_total,
-                    H_T_Ratio: h_t_ratio
+                    H_T_Ratio: h_t_ratio,
+                    Actual_Angle: actual_angle
                 };
             }
 
-            // 시각화 함수
-            function updateStairVisualization(h_step, d_step, mode) {
+            // 개선된 시각화 함수 - 각도 반영
+            function updateStairVisualization(angle_deg, h_step, d_step, mode) {
                 const visContainer = document.getElementById('stair-visualization');
                 visContainer.innerHTML = '';
                 
@@ -757,27 +800,34 @@
                 const containerWidth = visContainer.clientWidth;
                 const containerHeight = visContainer.clientHeight;
                 
-                const margin = 20;
+                const margin = 40;
                 const usableWidth = containerWidth - margin * 2;
                 const usableHeight = containerHeight - margin * 2;
                 
-                let stepsToDrawH = Math.floor(usableHeight / (actualHeight * 2)) + 2;
-                let stepsToDrawW = Math.floor(usableWidth / (actualTread * 2)) + 2;
-                const STEPS_TO_DRAW = Math.min(stepsToDrawH, stepsToDrawW, 12);
+                // 각도에 따른 수평 압축 계산 (15도=1.0, 45도=0.5)
+                const angle_normalized = (angle_deg - 15) / 30; // 0~1
+                const horizontal_factor = 1 - (angle_normalized * 0.5); // 1.0~0.5
                 
+                // 계단 수 결정
+                let stepsToDrawH = Math.floor(usableHeight / (actualHeight * 2)) + 2;
+                let stepsToDrawW = Math.floor(usableWidth / (actualTread * horizontal_factor * 2)) + 2;
+                const STEPS_TO_DRAW = Math.min(stepsToDrawH, stepsToDrawW, 10);
+                
+                // 스케일 계산
                 const totalActualHeight = actualHeight * STEPS_TO_DRAW;
-                const totalActualWidth = actualTread * STEPS_TO_DRAW;
+                const totalActualWidth = actualTread * STEPS_TO_DRAW * horizontal_factor;
                 
                 const scaleH = usableHeight / totalActualHeight;
                 const scaleW = usableWidth / totalActualWidth;
-                const scale = Math.min(scaleH, scaleW) * 0.9;
+                const scale = Math.min(scaleH, scaleW) * 0.85;
                 
                 const vis_h = actualHeight * scale;
-                const vis_d = actualTread * scale;
+                const vis_d = actualTread * scale * horizontal_factor;
 
                 let total_height = margin;
                 let total_width = margin;
                 
+                // 계단 그리기
                 for (let i = 0; i < STEPS_TO_DRAW; i++) {
                     const step = document.createElement('div');
                     step.className = 'stair-step';
@@ -786,6 +836,10 @@
                     step.style.height = `${vis_h}px`;
                     step.style.bottom = `${total_height}px`;
                     step.style.left = `${total_width}px`;
+                    
+                    // 각도에 따른 기울기 효과 (약간)
+                    const skew = (angle_deg - 25) * 0.3;
+                    step.style.transform = `skewY(${-skew}deg)`;
                     
                     total_height += vis_h;
                     total_width += vis_d;
@@ -804,6 +858,33 @@
                     
                     visContainer.appendChild(step);
                 }
+                
+                // 각도 표시선 추가
+                const angleIndicator = document.createElement('div');
+                angleIndicator.className = 'angle-indicator';
+                const lineLength = Math.min(total_width - margin, 150);
+                angleIndicator.style.height = `${lineLength}px`;
+                angleIndicator.style.transform = `rotate(${angle_deg}deg)`;
+                visContainer.appendChild(angleIndicator);
+                
+                // 각도 호 추가
+                const angleArc = document.createElement('div');
+                angleArc.className = 'angle-arc';
+                const arcSize = Math.min(lineLength * 0.4, 60);
+                angleArc.style.width = `${arcSize}px`;
+                angleArc.style.height = `${arcSize}px`;
+                angleArc.style.transform = `rotate(${-90 + angle_deg}deg)`;
+                visContainer.appendChild(angleArc);
+                
+                // 각도 레이블 추가
+                const angleLabel = document.createElement('div');
+                angleLabel.className = 'angle-label';
+                angleLabel.textContent = `${angle_deg}°`;
+                const labelX = margin + (arcSize * 0.7) * Math.cos(angle_deg * Math.PI / 180);
+                const labelY = containerHeight - margin - (arcSize * 0.7) * Math.sin(angle_deg * Math.PI / 180);
+                angleLabel.style.left = `${labelX}px`;
+                angleLabel.style.bottom = `${labelY - 10}px`;
+                visContainer.appendChild(angleLabel);
             }
 
             // 결과 업데이트
@@ -839,6 +920,7 @@
                 document.getElementById('h-step-result').textContent = `${metrics.D_step_cm}cm`;
                 document.getElementById('steps-result').textContent = metrics.N_steps.toFixed(1);
                 document.getElementById('ratio-result').textContent = metrics.H_T_Ratio.toFixed(3);
+                document.getElementById('actual-angle-result').textContent = `${metrics.Actual_Angle.toFixed(1)}°`;
 
                 // 점수 계산
                 const efficiencyScore = Math.max(0, Math.min(100, 100 - (metrics.T_approx - 5) * 5)).toFixed(0);
@@ -871,7 +953,7 @@
                     timeProgress.style.background = 'linear-gradient(90deg, #f59e0b, #d97706)';
                 }
 
-                // 위험도 카드 스타일링 (개선된 기준)
+                // 위험도 카드 스타일링
                 const riskCard = document.getElementById('risk-result-card');
                 const riskBadge = document.getElementById('risk-badge');
                 const riskProgress = document.getElementById('risk-progress');
@@ -926,7 +1008,7 @@
                     energyProgress.style.background = 'linear-gradient(90deg, #f59e0b, #d97706)';
                 }
 
-                updateStairVisualization(metrics.H_step_cm, metrics.D_step_cm, currentMode);
+                updateStairVisualization(angle, metrics.H_step_cm, metrics.D_step_cm, currentMode);
             }
 
             // 모드 변경
