@@ -234,6 +234,24 @@
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
+
+        /* 위험도 분해 표시 */
+        .risk-breakdown {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 8px;
+        }
+
+        .risk-component {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .risk-component:last-child {
+            border-bottom: none;
+        }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -312,20 +330,23 @@
                     </div>
                 </div>
 
-                <!-- 위험도 계산 -->
+                <!-- 위험도 계산 (개선됨) -->
                 <div class="bg-white rounded-xl p-4 shadow-md">
                     <h3 class="font-bold text-red-700 mb-3 flex items-center">
-                        <i class="fas fa-exclamation-triangle mr-2"></i>미끄러짐 위험도 (Safety)
+                        <i class="fas fa-exclamation-triangle mr-2"></i>미끄러짐 위험도 (Safety) ⭐NEW
                     </h3>
-                    <div class="formula mb-2">
+                    <div class="formula mb-2" style="font-size: 12px;">
                         <span class="formula-variable">Risk</span> <span class="formula-operator">=</span> 
-                        <span class="formula-variable">μₛ</span> <span class="formula-operator">×</span> 
-                        <span class="formula-operator">tan(</span><span class="formula-variable">θ</span><span class="formula-operator">)</span>
+                        <span class="formula-variable">R_angle</span> <span class="formula-operator">+</span>
+                        <span class="formula-variable">R_height</span> <span class="formula-operator">+</span>
+                        <span class="formula-variable">R_tread</span> <span class="formula-operator">+</span>
+                        <span class="formula-variable">R_ratio</span>
                     </div>
                     <div class="text-xs text-gray-600 mt-2">
-                        • μₛ: 마찰 계수 = 0.6<br>
-                        • θ: 계단 각도 (라디안)<br>
-                        • 값이 낮을수록 안전함
+                        • R_angle = μₛ × tan(θ) (각도 위험)<br>
+                        • R_height = max(0, (H-18)/50) (높이 패널티)<br>
+                        • R_tread = max(0, (26-T)/100) (좁은 보폭 패널티)<br>
+                        • R_ratio = max(0, (H/T-0.55)×2) (가파름 비율)
                     </div>
                 </div>
 
@@ -450,6 +471,10 @@
                                 <span class="text-gray-600">총 걸음 수:</span>
                                 <span id="steps-result" class="font-bold text-gray-800">0회</span>
                             </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">높이/보폭 비율:</span>
+                                <span id="ratio-result" class="font-bold text-gray-800">0.00</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -522,6 +547,26 @@
                             </div>
                             <div class="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
                                 <div id="risk-progress" class="h-full bg-gradient-to-r from-green-400 to-emerald-500 transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                            <!-- 위험도 구성 요소 분해 -->
+                            <div class="risk-breakdown mt-3 p-2 bg-gray-50 rounded">
+                                <div class="font-semibold text-xs mb-2 text-gray-700">위험 구성 요소:</div>
+                                <div class="risk-component">
+                                    <span>각도 위험 (R_angle):</span>
+                                    <span id="risk-angle" class="font-semibold">0.000</span>
+                                </div>
+                                <div class="risk-component">
+                                    <span>높이 패널티 (R_height):</span>
+                                    <span id="risk-height" class="font-semibold">0.000</span>
+                                </div>
+                                <div class="risk-component">
+                                    <span>보폭 패널티 (R_tread):</span>
+                                    <span id="risk-tread" class="font-semibold">0.000</span>
+                                </div>
+                                <div class="risk-component">
+                                    <span>비율 패널티 (R_ratio):</span>
+                                    <span id="risk-ratio" class="font-semibold">0.000</span>
+                                </div>
                             </div>
                         </div>
 
@@ -622,6 +667,38 @@
                 section.classList.toggle('active');
             }
 
+            // 개선된 위험도 계산 함수
+            function calculateRiskIndex(angle_deg, height_cm, tread_cm) {
+                const theta_rad = angle_deg * (Math.PI / 180);
+                
+                // 1. 각도 기반 위험도 (기본)
+                const risk_angle = MU_S * Math.tan(theta_rad);
+                
+                // 2. 높이 기반 위험도 (18cm 이상일 때 증가)
+                // 높이가 높을수록 넘어졌을 때 위험
+                const risk_height = Math.max(0, (height_cm - 18) / 50);
+                
+                // 3. 보폭 기반 위험도 (26cm 미만일 때 증가)
+                // 너무 좁으면 발이 미끄러지기 쉬움
+                const risk_tread = Math.max(0, (26 - tread_cm) / 100);
+                
+                // 4. 높이/보폭 비율 위험도 (가파름의 정도)
+                // 이상적인 비율은 0.55 정도 (예: 17cm/31cm)
+                const ratio = height_cm / tread_cm;
+                const risk_ratio = Math.max(0, (ratio - 0.55) * 2);
+                
+                // 총 위험도
+                const total_risk = risk_angle + risk_height + risk_tread + risk_ratio;
+                
+                return {
+                    total: total_risk,
+                    angle: risk_angle,
+                    height: risk_height,
+                    tread: risk_tread,
+                    ratio: risk_ratio
+                };
+            }
+
             // 계산 함수
             function calculateMetrics(angle_deg, height_cm, tread_cm, mode) {
                 const H_step_cm = height_cm * mode;
@@ -629,7 +706,17 @@
                 const N_steps = H_TOTAL / H_step_cm;
                 
                 if (N_steps <= 0 || !isFinite(N_steps)) {
-                    return { T_approx: NaN, Risk_Index: NaN, N_steps: 0, H_step_cm: 0, D_step_cm: 0, E_kinetic: NaN, E_total: NaN };
+                    return { 
+                        T_approx: NaN, 
+                        Risk_Index: NaN, 
+                        Risk_Components: {total: NaN, angle: NaN, height: NaN, tread: NaN, ratio: NaN},
+                        N_steps: 0, 
+                        H_step_cm: 0, 
+                        D_step_cm: 0, 
+                        E_kinetic: NaN, 
+                        E_total: NaN,
+                        H_T_Ratio: NaN
+                    };
                 }
 
                 const H_TOTAL_M = H_TOTAL / 100.0;
@@ -639,21 +726,27 @@
                 const E_1 = M * G * H_TOTAL_M;
                 const E_2_sim = 0.5 * M * Math.pow(V_avg, 2) * N_steps * 0.1;
                 const E_total = E_1 + E_2_sim;
-                const theta_rad = angle_deg * (Math.PI / 180);
-                const risk_index = MU_S * Math.tan(theta_rad);
+                
+                // 개선된 위험도 계산 (모드에 따라 실제 높이와 보폭 사용)
+                const risk = calculateRiskIndex(angle_deg, height_cm, tread_cm);
+                
+                // 높이/보폭 비율
+                const h_t_ratio = height_cm / tread_cm;
                 
                 return {
                     T_approx: T_approx,
-                    Risk_Index: risk_index,
+                    Risk_Index: risk.total,
+                    Risk_Components: risk,
                     N_steps: N_steps,
                     H_step_cm: H_step_cm,
                     D_step_cm: D_step_cm,
                     E_kinetic: E_2_sim,
                     E_total: E_total,
+                    H_T_Ratio: h_t_ratio
                 };
             }
 
-            // 개선된 시각화 함수 - 화면 끝까지 채우기
+            // 시각화 함수
             function updateStairVisualization(h_step, d_step, mode) {
                 const visContainer = document.getElementById('stair-visualization');
                 visContainer.innerHTML = '';
@@ -661,28 +754,23 @@
                 const actualHeight = h_step / mode;
                 const actualTread = d_step / mode;
                 
-                // 컨테이너 크기
                 const containerWidth = visContainer.clientWidth;
                 const containerHeight = visContainer.clientHeight;
                 
-                // 여백 설정
                 const margin = 20;
                 const usableWidth = containerWidth - margin * 2;
                 const usableHeight = containerHeight - margin * 2;
                 
-                // 그릴 계단 수 계산 (화면에 맞게)
                 let stepsToDrawH = Math.floor(usableHeight / (actualHeight * 2)) + 2;
                 let stepsToDrawW = Math.floor(usableWidth / (actualTread * 2)) + 2;
                 const STEPS_TO_DRAW = Math.min(stepsToDrawH, stepsToDrawW, 12);
                 
-                // 전체 계단의 실제 크기 계산
                 const totalActualHeight = actualHeight * STEPS_TO_DRAW;
                 const totalActualWidth = actualTread * STEPS_TO_DRAW;
                 
-                // 스케일 팩터: 컨테이너에 맞춰 최대한 크게
                 const scaleH = usableHeight / totalActualHeight;
                 const scaleW = usableWidth / totalActualWidth;
-                const scale = Math.min(scaleH, scaleW) * 0.9; // 90%로 여유 공간 확보
+                const scale = Math.min(scaleH, scaleW) * 0.9;
                 
                 const vis_h = actualHeight * scale;
                 const vis_d = actualTread * scale;
@@ -740,14 +828,21 @@
                 document.getElementById('kinetic-energy-result').textContent = metrics.E_kinetic.toFixed(0);
                 document.getElementById('total-energy-result').textContent = metrics.E_total.toFixed(0);
                 
+                // 위험도 구성 요소 표시
+                document.getElementById('risk-angle').textContent = metrics.Risk_Components.angle.toFixed(4);
+                document.getElementById('risk-height').textContent = metrics.Risk_Components.height.toFixed(4);
+                document.getElementById('risk-tread').textContent = metrics.Risk_Components.tread.toFixed(4);
+                document.getElementById('risk-ratio').textContent = metrics.Risk_Components.ratio.toFixed(4);
+                
                 // 상세 정보
                 document.getElementById('v-step-result').textContent = `${metrics.H_step_cm}cm`;
                 document.getElementById('h-step-result').textContent = `${metrics.D_step_cm}cm`;
                 document.getElementById('steps-result').textContent = metrics.N_steps.toFixed(1);
+                document.getElementById('ratio-result').textContent = metrics.H_T_Ratio.toFixed(3);
 
                 // 점수 계산
                 const efficiencyScore = Math.max(0, Math.min(100, 100 - (metrics.T_approx - 5) * 5)).toFixed(0);
-                const safetyScore = Math.max(0, Math.min(100, 100 - (metrics.Risk_Index * 100))).toFixed(0);
+                const safetyScore = Math.max(0, Math.min(100, 100 - (metrics.Risk_Index * 80))).toFixed(0);
                 document.getElementById('efficiency-score').textContent = efficiencyScore;
                 document.getElementById('safety-score').textContent = safetyScore;
 
@@ -776,18 +871,19 @@
                     timeProgress.style.background = 'linear-gradient(90deg, #f59e0b, #d97706)';
                 }
 
-                // 위험도 카드 스타일링
+                // 위험도 카드 스타일링 (개선된 기준)
                 const riskCard = document.getElementById('risk-result-card');
                 const riskBadge = document.getElementById('risk-badge');
                 const riskProgress = document.getElementById('risk-progress');
                 
-                if (metrics.Risk_Index < 0.5) {
+                if (metrics.Risk_Index < 0.4) {
                     riskCard.style.borderColor = '#10b981';
                     riskBadge.className = 'badge badge-good';
                     riskBadge.textContent = '안전';
-                    riskProgress.style.width = '20%';
+                    const progressPercent = (metrics.Risk_Index / 0.4) * 30;
+                    riskProgress.style.width = `${progressPercent}%`;
                     riskProgress.style.background = 'linear-gradient(90deg, #10b981, #059669)';
-                } else if (metrics.Risk_Index > 0.9) {
+                } else if (metrics.Risk_Index > 1.0) {
                     riskCard.style.borderColor = '#ef4444';
                     riskBadge.className = 'badge badge-danger';
                     riskBadge.textContent = '위험';
@@ -797,7 +893,8 @@
                     riskCard.style.borderColor = '#f59e0b';
                     riskBadge.className = 'badge badge-warning';
                     riskBadge.textContent = '주의';
-                    riskProgress.style.width = '50%';
+                    const progressPercent = 30 + ((metrics.Risk_Index - 0.4) / 0.6) * 40;
+                    riskProgress.style.width = `${progressPercent}%`;
                     riskProgress.style.background = 'linear-gradient(90deg, #f59e0b, #d97706)';
                 }
 
