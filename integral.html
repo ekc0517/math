@@ -298,7 +298,7 @@
                                            value="x" placeholder="x">
                                 </div>
                                 <div>
-                                    <label class="block text-xs text-slate-400 mb-1">그래프 범위</label>
+                                    <label class="block text-xs text-slate-400 mb-1">그래프 범위 (초기)</label>
                                     <div class="flex gap-2">
                                         <input type="number" id="calc-range-min" class="input-field w-full" 
                                                value="-5" placeholder="최소">
@@ -347,7 +347,7 @@
 
                     <div class="card mb-6">
                         <h3 class="text-lg font-semibold mb-3 text-slate-200">
-                            <i class="fas fa-chart-line mr-2"></i>함수 시각화
+                            <i class="fas fa-chart-line mr-2"></i>함수 시각화 <span class="text-xs text-slate-400">(무한 줌/팬 가능)</span>
                         </h3>
                         <div id="calculator-graph" class="graph-container"></div>
                     </div>
@@ -440,7 +440,7 @@
 
                     <div class="card mb-6">
                         <h3 class="text-lg font-semibold mb-3 text-slate-200">
-                            <i class="fas fa-chart-line mr-2"></i>함수 시각화
+                            <i class="fas fa-chart-line mr-2"></i>함수 시각화 <span class="text-xs text-slate-400">(무한 줌/팬 가능)</span>
                         </h3>
                         <div id="feynman-graph" class="graph-container"></div>
                     </div>
@@ -489,7 +489,7 @@
 
                     <div class="card mb-6">
                         <h3 class="text-lg font-semibold mb-3 text-slate-200">
-                            <i class="fas fa-chart-line mr-2"></i>곡선 시각화
+                            <i class="fas fa-chart-line mr-2"></i>곡선 시각화 <span class="text-xs text-slate-400">(무한 줌/팬 가능)</span>
                         </h3>
                         <div id="bernoulli-graph" class="graph-container"></div>
                     </div>
@@ -538,7 +538,7 @@
 
                     <div class="card mb-6">
                         <h3 class="text-lg font-semibold mb-3 text-slate-200">
-                            <i class="fas fa-chart-line mr-2"></i>대칭성 시각화
+                            <i class="fas fa-chart-line mr-2"></i>대칭성 시각화 <span class="text-xs text-slate-400">(무한 줌/팬 가능)</span>
                         </h3>
                         <div id="symmetry-graph" class="graph-container"></div>
                     </div>
@@ -593,7 +593,7 @@
 
                     <div class="card mb-6">
                         <h3 class="text-lg font-semibold mb-3 text-slate-200">
-                            <i class="fas fa-chart-line mr-2"></i>쌍곡선 부채꼴
+                            <i class="fas fa-chart-line mr-2"></i>쌍곡선 부채꼴 <span class="text-xs text-slate-400">(무한 줌/팬 가능)</span>
                         </h3>
                         <div id="hyperbolic-graph" class="graph-container"></div>
                     </div>
@@ -613,11 +613,20 @@
     <footer class="bg-slate-900 border-t border-slate-700 mt-12 py-6">
         <div class="container mx-auto px-6 text-center text-slate-400 text-sm">
             <p>Meta-Integrator © 2024 | 고급 적분 기술의 시각적 탐구</p>
-            <p class="mt-2">Based on classical papers in Calculus and Analysis</p>
+            <p class="mt-2">Based on classical papers in Calculus and Analysis | 무한 줌/팬 지원</p>
         </div>
     </footer>
 
     <script>
+        // Global state for dynamic plotting
+        let currentPlotState = {
+            calculator: { funcStr: null, variable: 'x', mode: null },
+            feynman: { p: 1 },
+            bernoulli: { q: 1.5, a: 2 },
+            symmetry: { n: 2 },
+            hyperbolic: { t: 1 }
+        };
+
         // Module switching
         function switchModule(moduleName) {
             document.querySelectorAll('.nav-tab').forEach(tab => {
@@ -646,16 +655,48 @@
             updateHyperbolic(1);
         }
 
+        // Dynamic data generation helper
+        function generateDataForRange(func, minX, maxX, numPoints = 1000) {
+            const xValues = [];
+            const yValues = [];
+            
+            for (let i = 0; i <= numPoints; i++) {
+                const x = minX + (i / numPoints) * (maxX - minX);
+                try {
+                    const y = func(x);
+                    if (isFinite(y)) {
+                        xValues.push(x);
+                        yValues.push(y);
+                    }
+                } catch (e) {
+                    // Skip undefined points
+                }
+            }
+            
+            return { x: xValues, y: yValues };
+        }
+
+        // Setup relayout listener for infinite zoom
+        function setupInfiniteZoom(graphId, updateFunc) {
+            const graphDiv = document.getElementById(graphId);
+            
+            graphDiv.on('plotly_relayout', function(eventData) {
+                if (eventData['xaxis.range[0]'] !== undefined && eventData['xaxis.range[1]'] !== undefined) {
+                    const newXMin = eventData['xaxis.range[0]'];
+                    const newXMax = eventData['xaxis.range[1]'];
+                    
+                    // Regenerate data for new range
+                    updateFunc(newXMin, newXMax);
+                }
+            });
+        }
+
         // ===== MODULE 0: UNIVERSAL CALCULATOR =====
-        // Symbolic Integration Engine
         
         function symbolicIntegrate(funcStr, variable) {
-            // Clean up the function string
             funcStr = funcStr.trim();
             
-            // Pattern matching for common integrals
             const patterns = [
-                // Polynomials: x^n
                 {
                     regex: new RegExp(`^${variable}\\^(\\d+)$`),
                     integrate: (match) => {
@@ -664,12 +705,10 @@
                         return `\\frac{${variable}^{${n+1}}}{${n+1}}`;
                     }
                 },
-                // Simple x
                 {
                     regex: new RegExp(`^${variable}$`),
                     integrate: () => `\\frac{${variable}^2}{2}`
                 },
-                // Constant * x^n
                 {
                     regex: new RegExp(`^([\\d.]+)\\s*\\*?\\s*${variable}\\^(\\d+)$`),
                     integrate: (match) => {
@@ -679,7 +718,6 @@
                         return `\\frac{${coef}${variable}^{${n+1}}}{${n+1}}`;
                     }
                 },
-                // Constant * x
                 {
                     regex: new RegExp(`^([\\d.]+)\\s*\\*?\\s*${variable}$`),
                     integrate: (match) => {
@@ -687,7 +725,6 @@
                         return `\\frac{${coef}${variable}^2}{2}`;
                     }
                 },
-                // Constant
                 {
                     regex: /^([\d.]+)$/,
                     integrate: (match) => {
@@ -695,49 +732,40 @@
                         return `${c}${variable}`;
                     }
                 },
-                // sin(x)
                 {
                     regex: new RegExp(`^sin\\(${variable}\\)$`),
                     integrate: () => `-\\cos(${variable})`
                 },
-                // cos(x)
                 {
                     regex: new RegExp(`^cos\\(${variable}\\)$`),
                     integrate: () => `\\sin(${variable})`
                 },
-                // tan(x)
                 {
                     regex: new RegExp(`^tan\\(${variable}\\)$`),
                     integrate: () => `-\\ln|\\cos(${variable})|`
                 },
-                // exp(x)
                 {
                     regex: new RegExp(`^exp\\(${variable}\\)$`),
                     integrate: () => `e^{${variable}}`
                 },
-                // e^x (alternative)
                 {
                     regex: new RegExp(`^e\\^${variable}$`),
                     integrate: () => `e^{${variable}}`
                 },
-                // 1/x
                 {
                     regex: new RegExp(`^1\\s*\\/\\s*${variable}$`),
                     integrate: () => `\\ln|${variable}|`
                 },
-                // sqrt(x)
                 {
                     regex: new RegExp(`^sqrt\\(${variable}\\)$`),
                     integrate: () => `\\frac{2${variable}^{3/2}}{3}`
                 },
-                // log(x) or ln(x)
                 {
                     regex: new RegExp(`^(log|ln)\\(${variable}\\)$`),
                     integrate: () => `${variable}\\ln(${variable}) - ${variable}`
                 }
             ];
 
-            // Try to match patterns
             for (let pattern of patterns) {
                 const match = funcStr.match(pattern.regex);
                 if (match) {
@@ -748,7 +776,6 @@
                 }
             }
 
-            // Handle sums: f(x) + g(x)
             if (funcStr.includes('+') && !funcStr.includes('(')) {
                 const terms = funcStr.split('+').map(t => t.trim());
                 let results = [];
@@ -766,7 +793,6 @@
                 };
             }
 
-            // Handle differences: f(x) - g(x)
             if (funcStr.includes('-') && !funcStr.includes('(') && funcStr.indexOf('-') > 0) {
                 const parts = funcStr.split('-');
                 if (parts.length === 2) {
@@ -812,6 +838,13 @@
                 document.getElementById('calc-result-content').innerHTML = resultContent;
                 document.getElementById('calc-result').classList.remove('hidden');
                 
+                currentPlotState.calculator = { 
+                    funcStr, 
+                    variable, 
+                    mode: 'derivative',
+                    derivativeStr: derivativeSimplified.toString()
+                };
+                
                 plotDerivativeComparison(funcStr, derivativeSimplified.toString(), variable);
                 
                 if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
@@ -830,7 +863,6 @@
                 const expr = math.parse(funcStr);
                 const originalLatex = expr.toTex();
                 
-                // Try symbolic integration
                 const symbolicResult = symbolicIntegrate(funcStr, variable);
                 
                 let resultContent = `
@@ -873,7 +905,13 @@
                 document.getElementById('calc-result-content').innerHTML = resultContent;
                 document.getElementById('calc-result').classList.remove('hidden');
                 
-                // Plot the original function and its integral if possible
+                currentPlotState.calculator = { 
+                    funcStr, 
+                    variable, 
+                    mode: 'integral',
+                    integralLatex: symbolicResult.success ? symbolicResult.result : null
+                };
+                
                 if (symbolicResult.success) {
                     plotIntegralComparison(funcStr, symbolicResult.result, variable);
                 }
@@ -905,7 +943,6 @@
                 const expr = math.parse(funcStr);
                 const originalLatex = expr.toTex();
                 
-                // Numerical integration using Simpson's rule
                 const n = 1000;
                 const h = (b - a) / n;
                 let sum = 0;
@@ -925,7 +962,6 @@
                 }
                 const integralValue = (h / 3) * sum;
                 
-                // Try symbolic integration for display
                 const symbolicResult = symbolicIntegrate(funcStr, variable);
                 let integralExpression = '';
                 
@@ -967,6 +1003,13 @@
                 document.getElementById('calc-result-content').innerHTML = resultContent;
                 document.getElementById('calc-result').classList.remove('hidden');
                 
+                currentPlotState.calculator = { 
+                    funcStr, 
+                    variable, 
+                    mode: 'definite',
+                    a, b
+                };
+                
                 plotDefiniteIntegral(funcStr, variable, a, b);
                 
                 if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
@@ -977,35 +1020,28 @@
             }
         }
 
-        function plotFunction() {
+        function plotFunction(minX, maxX) {
             try {
-                const funcStr = document.getElementById('calc-function').value;
-                const variable = document.getElementById('calc-variable').value || 'x';
-                const minRange = parseFloat(document.getElementById('calc-range-min').value);
-                const maxRange = parseFloat(document.getElementById('calc-range-max').value);
+                const funcStr = currentPlotState.calculator.funcStr || document.getElementById('calc-function').value;
+                const variable = currentPlotState.calculator.variable || document.getElementById('calc-variable').value || 'x';
+                
+                if (!minX || !maxX) {
+                    minX = parseFloat(document.getElementById('calc-range-min').value);
+                    maxX = parseFloat(document.getElementById('calc-range-max').value);
+                }
                 
                 const expr = math.parse(funcStr);
                 
-                const xValues = [];
-                const yValues = [];
-                const numPoints = 500;
-                
-                const scope = {};
-                for (let i = 0; i <= numPoints; i++) {
-                    const x = minRange + (i / numPoints) * (maxRange - minRange);
-                    scope[variable] = x;
-                    try {
-                        const y = expr.evaluate(scope);
-                        xValues.push(x);
-                        yValues.push(y);
-                    } catch (e) {
-                        // Skip points where function is undefined
-                    }
-                }
+                const data = generateDataForRange(
+                    (x) => expr.evaluate({ [variable]: x }),
+                    minX,
+                    maxX,
+                    1000
+                );
                 
                 const trace = {
-                    x: xValues,
-                    y: yValues,
+                    x: data.x,
+                    y: data.y,
                     type: 'scatter',
                     mode: 'lines',
                     name: 'f(' + variable + ')',
@@ -1019,7 +1055,8 @@
                     xaxis: { 
                         title: variable,
                         gridcolor: '#334155',
-                        zerolinecolor: '#475569'
+                        zerolinecolor: '#475569',
+                        range: [minX, maxX]
                     },
                     yaxis: { 
                         title: 'f(' + variable + ')',
@@ -1035,42 +1072,44 @@
                 };
                 
                 Plotly.newPlot('calculator-graph', [trace], layout, config);
+                
+                currentPlotState.calculator = { funcStr, variable, mode: 'simple' };
+                
+                setupInfiniteZoom('calculator-graph', (newMin, newMax) => {
+                    plotFunction(newMin, newMax);
+                });
             } catch (error) {
                 alert('오류: ' + error.message + '\n함수 입력을 확인해주세요.');
             }
         }
 
-        function plotDerivativeComparison(funcStr, derivativeStr, variable) {
+        function plotDerivativeComparison(funcStr, derivativeStr, variable, minX, maxX) {
             try {
-                const minRange = parseFloat(document.getElementById('calc-range-min').value);
-                const maxRange = parseFloat(document.getElementById('calc-range-max').value);
+                if (!minX || !maxX) {
+                    minX = parseFloat(document.getElementById('calc-range-min').value);
+                    maxX = parseFloat(document.getElementById('calc-range-max').value);
+                }
                 
                 const expr = math.parse(funcStr);
                 const derivExpr = math.parse(derivativeStr);
                 
-                const xValues = [];
-                const yOriginal = [];
-                const yDerivative = [];
-                const numPoints = 500;
+                const data1 = generateDataForRange(
+                    (x) => expr.evaluate({ [variable]: x }),
+                    minX,
+                    maxX,
+                    1000
+                );
                 
-                const scope = {};
-                for (let i = 0; i <= numPoints; i++) {
-                    const x = minRange + (i / numPoints) * (maxRange - minRange);
-                    scope[variable] = x;
-                    try {
-                        const y1 = expr.evaluate(scope);
-                        const y2 = derivExpr.evaluate(scope);
-                        xValues.push(x);
-                        yOriginal.push(y1);
-                        yDerivative.push(y2);
-                    } catch (e) {
-                        // Skip undefined points
-                    }
-                }
+                const data2 = generateDataForRange(
+                    (x) => derivExpr.evaluate({ [variable]: x }),
+                    minX,
+                    maxX,
+                    1000
+                );
                 
                 const trace1 = {
-                    x: xValues,
-                    y: yOriginal,
+                    x: data1.x,
+                    y: data1.y,
                     type: 'scatter',
                     mode: 'lines',
                     name: 'f(' + variable + ')',
@@ -1078,8 +1117,8 @@
                 };
                 
                 const trace2 = {
-                    x: xValues,
-                    y: yDerivative,
+                    x: data2.x,
+                    y: data2.y,
                     type: 'scatter',
                     mode: 'lines',
                     name: "f'(" + variable + ')',
@@ -1093,7 +1132,8 @@
                     xaxis: { 
                         title: variable,
                         gridcolor: '#334155',
-                        zerolinecolor: '#475569'
+                        zerolinecolor: '#475569',
+                        range: [minX, maxX]
                     },
                     yaxis: { 
                         title: 'y',
@@ -1109,19 +1149,25 @@
                 };
                 
                 Plotly.newPlot('calculator-graph', [trace1, trace2], layout, config);
+                
+                setupInfiniteZoom('calculator-graph', (newMin, newMax) => {
+                    const state = currentPlotState.calculator;
+                    plotDerivativeComparison(state.funcStr, state.derivativeStr, state.variable, newMin, newMax);
+                });
             } catch (error) {
                 console.error('Plot error:', error);
             }
         }
 
-        function plotIntegralComparison(funcStr, integralLatex, variable) {
+        function plotIntegralComparison(funcStr, integralLatex, variable, minX, maxX) {
             try {
-                const minRange = parseFloat(document.getElementById('calc-range-min').value);
-                const maxRange = parseFloat(document.getElementById('calc-range-max').value);
+                if (!minX || !maxX) {
+                    minX = parseFloat(document.getElementById('calc-range-min').value);
+                    maxX = parseFloat(document.getElementById('calc-range-max').value);
+                }
                 
                 const expr = math.parse(funcStr);
                 
-                // Convert LaTeX to evaluable expression (simplified)
                 let integralStr = integralLatex
                     .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '($1)/($2)')
                     .replace(/\\ln/g, 'log')
@@ -1137,29 +1183,23 @@
                     return;
                 }
                 
-                const xValues = [];
-                const yOriginal = [];
-                const yIntegral = [];
-                const numPoints = 500;
+                const data1 = generateDataForRange(
+                    (x) => expr.evaluate({ [variable]: x }),
+                    minX,
+                    maxX,
+                    1000
+                );
                 
-                const scope = {};
-                for (let i = 0; i <= numPoints; i++) {
-                    const x = minRange + (i / numPoints) * (maxRange - minRange);
-                    scope[variable] = x;
-                    try {
-                        const y1 = expr.evaluate(scope);
-                        const y2 = integralExpr.evaluate(scope);
-                        xValues.push(x);
-                        yOriginal.push(y1);
-                        yIntegral.push(y2);
-                    } catch (e) {
-                        // Skip undefined points
-                    }
-                }
+                const data2 = generateDataForRange(
+                    (x) => integralExpr.evaluate({ [variable]: x }),
+                    minX,
+                    maxX,
+                    1000
+                );
                 
                 const trace1 = {
-                    x: xValues,
-                    y: yOriginal,
+                    x: data1.x,
+                    y: data1.y,
                     type: 'scatter',
                     mode: 'lines',
                     name: 'f(' + variable + ')',
@@ -1167,8 +1207,8 @@
                 };
                 
                 const trace2 = {
-                    x: xValues,
-                    y: yIntegral,
+                    x: data2.x,
+                    y: data2.y,
                     type: 'scatter',
                     mode: 'lines',
                     name: '∫f(' + variable + ')d' + variable,
@@ -1182,7 +1222,8 @@
                     xaxis: { 
                         title: variable,
                         gridcolor: '#334155',
-                        zerolinecolor: '#475569'
+                        zerolinecolor: '#475569',
+                        range: [minX, maxX]
                     },
                     yaxis: { 
                         title: 'y',
@@ -1198,50 +1239,42 @@
                 };
                 
                 Plotly.newPlot('calculator-graph', [trace1, trace2], layout, config);
+                
+                setupInfiniteZoom('calculator-graph', (newMin, newMax) => {
+                    const state = currentPlotState.calculator;
+                    plotIntegralComparison(state.funcStr, state.integralLatex, state.variable, newMin, newMax);
+                });
             } catch (error) {
                 console.error('Plot error:', error);
             }
         }
 
-        function plotDefiniteIntegral(funcStr, variable, a, b) {
+        function plotDefiniteIntegral(funcStr, variable, a, b, minX, maxX) {
             try {
-                const minRange = Math.min(a, parseFloat(document.getElementById('calc-range-min').value));
-                const maxRange = Math.max(b, parseFloat(document.getElementById('calc-range-max').value));
+                if (!minX || !maxX) {
+                    minX = Math.min(a - 1, parseFloat(document.getElementById('calc-range-min').value));
+                    maxX = Math.max(b + 1, parseFloat(document.getElementById('calc-range-max').value));
+                }
                 
                 const expr = math.parse(funcStr);
                 
-                // Full function plot
-                const xFull = [];
-                const yFull = [];
-                const numPoints = 500;
+                const dataFull = generateDataForRange(
+                    (x) => expr.evaluate({ [variable]: x }),
+                    minX,
+                    maxX,
+                    1000
+                );
                 
-                const scope = {};
-                for (let i = 0; i <= numPoints; i++) {
-                    const x = minRange + (i / numPoints) * (maxRange - minRange);
-                    scope[variable] = x;
-                    try {
-                        const y = expr.evaluate(scope);
-                        xFull.push(x);
-                        yFull.push(y);
-                    } catch (e) {}
-                }
-                
-                // Shaded area
-                const xShaded = [];
-                const yShaded = [];
-                for (let i = 0; i <= 100; i++) {
-                    const x = a + (i / 100) * (b - a);
-                    scope[variable] = x;
-                    try {
-                        const y = expr.evaluate(scope);
-                        xShaded.push(x);
-                        yShaded.push(y);
-                    } catch (e) {}
-                }
+                const dataShaded = generateDataForRange(
+                    (x) => expr.evaluate({ [variable]: x }),
+                    a,
+                    b,
+                    100
+                );
                 
                 const traceFull = {
-                    x: xFull,
-                    y: yFull,
+                    x: dataFull.x,
+                    y: dataFull.y,
                     type: 'scatter',
                     mode: 'lines',
                     name: 'f(' + variable + ')',
@@ -1249,8 +1282,8 @@
                 };
                 
                 const traceShaded = {
-                    x: [...xShaded, ...xShaded.slice().reverse()],
-                    y: [...yShaded, ...new Array(yShaded.length).fill(0)],
+                    x: [...dataShaded.x, ...dataShaded.x.slice().reverse()],
+                    y: [...dataShaded.y, ...new Array(dataShaded.y.length).fill(0)],
                     fill: 'toself',
                     fillcolor: 'rgba(6, 182, 212, 0.3)',
                     line: { color: 'transparent' },
@@ -1265,7 +1298,8 @@
                     xaxis: { 
                         title: variable,
                         gridcolor: '#334155',
-                        zerolinecolor: '#475569'
+                        zerolinecolor: '#475569',
+                        range: [minX, maxX]
                     },
                     yaxis: { 
                         title: 'f(' + variable + ')',
@@ -1281,6 +1315,11 @@
                 };
                 
                 Plotly.newPlot('calculator-graph', [traceShaded, traceFull], layout, config);
+                
+                setupInfiniteZoom('calculator-graph', (newMin, newMax) => {
+                    const state = currentPlotState.calculator;
+                    plotDefiniteIntegral(state.funcStr, state.variable, state.a, state.b, newMin, newMax);
+                });
             } catch (error) {
                 console.error('Plot error:', error);
             }
@@ -1304,26 +1343,30 @@
             updateFeynman(p);
         }
 
-        function updateFeynman(p) {
+        function updateFeynman(p, minX, maxX) {
             p = parseFloat(p);
+            currentPlotState.feynman.p = p;
 
-            const xValues = [];
-            const yValues = [];
-            const numPoints = 1000;
-            const maxX = 50;
-            
-            for (let i = 1; i <= numPoints; i++) {
-                const x = (i / numPoints) * maxX;
-                if (x > 0) {
-                    const y = Math.exp(-p * x) * Math.sin(x) / x;
-                    xValues.push(x);
-                    yValues.push(y);
-                }
+            if (!minX || !maxX) {
+                minX = 0;
+                maxX = 20;
             }
 
+            const data = generateDataForRange(
+                (x) => {
+                    if (x > 0) {
+                        return Math.exp(-p * x) * Math.sin(x) / x;
+                    }
+                    return NaN;
+                },
+                Math.max(0.01, minX),
+                maxX,
+                1000
+            );
+
             const trace = {
-                x: xValues,
-                y: yValues,
+                x: data.x,
+                y: data.y,
                 type: 'scatter',
                 mode: 'lines',
                 name: 'f(x)',
@@ -1338,7 +1381,7 @@
                     title: 'x',
                     gridcolor: '#334155',
                     zerolinecolor: '#475569',
-                    range: [0, 20]
+                    range: [minX, maxX]
                 },
                 yaxis: { 
                     title: 'f(x)',
@@ -1354,6 +1397,10 @@
             };
 
             Plotly.newPlot('feynman-graph', [trace], layout, config);
+
+            setupInfiniteZoom('feynman-graph', (newMin, newMax) => {
+                updateFeynman(currentPlotState.feynman.p, newMin, newMax);
+            });
 
             const integralValue = (Math.PI/2 - Math.atan(p)).toFixed(4);
             const steps = `
@@ -1421,7 +1468,7 @@
             }
         }
 
-        function calculateBernoulli() {
+        function calculateBernoulli(minX, maxX) {
             const q = parseFloat(document.getElementById('bernoulli-q').value);
             const a = parseFloat(document.getElementById('bernoulli-a').value);
 
@@ -1430,17 +1477,21 @@
                 return;
             }
 
-            const extendedA = a * 2;
-            const xValues = [];
-            const yValues = [];
-            const numPoints = 500;
-            
-            for (let i = 0; i <= numPoints; i++) {
-                const x = (i / numPoints) * extendedA;
-                const y = Math.pow(x, q);
-                xValues.push(x);
-                yValues.push(y);
+            currentPlotState.bernoulli = { q, a };
+
+            if (!minX || !maxX) {
+                minX = -0.1;
+                maxX = a * 1.2;
             }
+
+            const extendedMax = Math.max(maxX, a * 2);
+
+            const data = generateDataForRange(
+                (x) => Math.pow(x, q),
+                0,
+                extendedMax,
+                1000
+            );
 
             let length = 0;
             const n = 1000;
@@ -1462,8 +1513,8 @@
             length *= h / 3;
 
             const trace = {
-                x: xValues,
-                y: yValues,
+                x: data.x,
+                y: data.y,
                 type: 'scatter',
                 mode: 'lines',
                 name: `y = x^${q.toFixed(1)}`,
@@ -1487,13 +1538,12 @@
                     title: 'x',
                     gridcolor: '#334155',
                     zerolinecolor: '#475569',
-                    range: [-0.1, a * 1.2]
+                    range: [minX, maxX]
                 },
                 yaxis: { 
                     title: 'y',
                     gridcolor: '#334155',
-                    zerolinecolor: '#475569',
-                    range: [-0.1, Math.pow(a, q) * 1.2]
+                    zerolinecolor: '#475569'
                 },
                 margin: { t: 20, r: 20, b: 50, l: 50 }
             };
@@ -1504,6 +1554,10 @@
             };
 
             Plotly.newPlot('bernoulli-graph', [trace, traceMarkers], layout, config);
+
+            setupInfiniteZoom('bernoulli-graph', (newMin, newMax) => {
+                calculateBernoulli(newMin, newMax);
+            });
 
             document.getElementById('bernoulli-result').classList.remove('hidden');
             document.getElementById('bernoulli-length').innerHTML = `L ≈ ${length.toFixed(6)}`;
@@ -1527,43 +1581,61 @@
             updateSymmetry(n);
         }
 
-        function updateSymmetry(n) {
+        function updateSymmetry(n, minX, maxX) {
             n = parseInt(n);
+            currentPlotState.symmetry.n = n;
 
-            const xValues = [];
-            const y1Values = [];
-            const y2Values = [];
-            const ySumValues = [];
-            const numPoints = 500;
-            
-            const start = -0.2;
-            const end = Math.PI / 2 + 0.2;
-            const range = end - start;
-            
-            for (let i = 0; i <= numPoints; i++) {
-                const x = start + (i / numPoints) * range;
-                
-                if (x >= 0 && x <= Math.PI / 2) {
-                    const sinN = Math.pow(Math.sin(x), n);
-                    const cosN = Math.pow(Math.cos(x), n);
-                    const y1 = sinN / (sinN + cosN);
-                    const y2 = cosN / (sinN + cosN);
-                    
-                    xValues.push(x);
-                    y1Values.push(y1);
-                    y2Values.push(y2);
-                    ySumValues.push(y1 + y2);
-                } else {
-                    xValues.push(x);
-                    y1Values.push(NaN);
-                    y2Values.push(NaN);
-                    ySumValues.push(NaN);
-                }
+            if (!minX || !maxX) {
+                minX = 0;
+                maxX = Math.PI / 2;
             }
 
+            const extendedMin = Math.min(minX, -0.2);
+            const extendedMax = Math.max(maxX, Math.PI / 2 + 0.2);
+
+            const data1 = generateDataForRange(
+                (x) => {
+                    if (x >= 0 && x <= Math.PI / 2) {
+                        const sinN = Math.pow(Math.sin(x), n);
+                        const cosN = Math.pow(Math.cos(x), n);
+                        return sinN / (sinN + cosN);
+                    }
+                    return NaN;
+                },
+                extendedMin,
+                extendedMax,
+                1000
+            );
+
+            const data2 = generateDataForRange(
+                (x) => {
+                    if (x >= 0 && x <= Math.PI / 2) {
+                        const sinN = Math.pow(Math.sin(x), n);
+                        const cosN = Math.pow(Math.cos(x), n);
+                        return cosN / (sinN + cosN);
+                    }
+                    return NaN;
+                },
+                extendedMin,
+                extendedMax,
+                1000
+            );
+
+            const dataSum = generateDataForRange(
+                (x) => {
+                    if (x >= 0 && x <= Math.PI / 2) {
+                        return 1;
+                    }
+                    return NaN;
+                },
+                extendedMin,
+                extendedMax,
+                1000
+            );
+
             const trace1 = {
-                x: xValues,
-                y: y1Values,
+                x: data1.x,
+                y: data1.y,
                 type: 'scatter',
                 mode: 'lines',
                 name: 'f(x)',
@@ -1571,8 +1643,8 @@
             };
 
             const trace2 = {
-                x: xValues,
-                y: y2Values,
+                x: data2.x,
+                y: data2.y,
                 type: 'scatter',
                 mode: 'lines',
                 name: 'f(π/2 - x)',
@@ -1580,20 +1652,17 @@
             };
 
             const trace3 = {
-                x: xValues,
-                y: ySumValues,
+                x: dataSum.x,
+                y: dataSum.y,
                 type: 'scatter',
                 mode: 'lines',
                 name: 'f(x) + f(π/2 - x) = 1',
                 line: { color: '#fbbf24', width: 3, dash: 'dash' }
             };
 
-            const validX = xValues.filter(x => x >= 0 && x <= Math.PI/2);
-            const validY1 = y1Values.filter((y, i) => !isNaN(y));
-            
             const traceFill = {
-                x: [...validX, ...validX.slice().reverse()],
-                y: [...validY1, ...new Array(validY1.length).fill(0)],
+                x: [...data1.x, ...data1.x.slice().reverse()],
+                y: [...data1.y, ...new Array(data1.y.length).fill(0)],
                 fill: 'toself',
                 fillcolor: 'rgba(168, 85, 247, 0.2)',
                 line: { color: 'transparent' },
@@ -1609,7 +1678,7 @@
                     title: 'x',
                     gridcolor: '#334155',
                     zerolinecolor: '#475569',
-                    range: [0, Math.PI / 2]
+                    range: [minX, maxX]
                 },
                 yaxis: { 
                     title: 'y',
@@ -1626,6 +1695,10 @@
             };
 
             Plotly.newPlot('symmetry-graph', [traceFill, trace1, trace2, trace3], layout, config);
+
+            setupInfiniteZoom('symmetry-graph', (newMin, newMax) => {
+                updateSymmetry(currentPlotState.symmetry.n, newMin, newMax);
+            });
 
             const steps = `
                 <div class="text-slate-200 space-y-4">
@@ -1679,8 +1752,9 @@
             updateHyperbolic(t);
         }
 
-        function updateHyperbolic(t) {
+        function updateHyperbolic(t, minX, maxX, minY, maxY) {
             t = parseFloat(t);
+            currentPlotState.hyperbolic.t = t;
 
             const px = Math.cosh(t);
             const py = Math.sinh(t);
@@ -1690,24 +1764,30 @@
             document.getElementById('hyperbolic-area').innerHTML = 
                 `A = t/2 = ${(t/2).toFixed(3)}`;
 
-            const hyperbolaXPos = [];
-            const hyperbolaYPos = [];
-            const hyperbolaXNeg = [];
-            const hyperbolaYNeg = [];
-            const numPoints = 500;
-            const maxT = 4;
-            
-            for (let i = 0; i <= numPoints; i++) {
-                const tParam = (i / numPoints) * maxT;
-                hyperbolaXPos.push(Math.cosh(tParam));
-                hyperbolaYPos.push(Math.sinh(tParam));
+            if (!minX || !maxX) {
+                minX = -1;
+                maxX = 5;
+                minY = -4;
+                maxY = 5;
             }
-            
-            for (let i = 0; i <= numPoints; i++) {
-                const tParam = (i / numPoints) * maxT;
-                hyperbolaXNeg.push(Math.cosh(tParam));
-                hyperbolaYNeg.push(-Math.sinh(tParam));
-            }
+
+            const maxT = Math.max(4, Math.acosh(Math.max(maxX, 5)));
+
+            const hyperbolaDataPos = generateDataForRange(
+                (tParam) => Math.sinh(tParam),
+                0,
+                maxT,
+                1000
+            );
+            const hyperbolaXPos = hyperbolaDataPos.x.map(tParam => Math.cosh(tParam));
+
+            const hyperbolaDataNeg = generateDataForRange(
+                (tParam) => -Math.sinh(tParam),
+                0,
+                maxT,
+                1000
+            );
+            const hyperbolaXNeg = hyperbolaDataNeg.x.map(tParam => Math.cosh(tParam));
 
             const sectorX = [1];
             const sectorY = [0];
@@ -1722,7 +1802,7 @@
 
             const traceHyperbolaPos = {
                 x: hyperbolaXPos,
-                y: hyperbolaYPos,
+                y: hyperbolaDataPos.y,
                 type: 'scatter',
                 mode: 'lines',
                 name: 'x² - y² = 1 (upper)',
@@ -1732,7 +1812,7 @@
 
             const traceHyperbolaNeg = {
                 x: hyperbolaXNeg,
-                y: hyperbolaYNeg,
+                y: hyperbolaDataNeg.y,
                 type: 'scatter',
                 mode: 'lines',
                 name: 'x² - y² = 1 (lower)',
@@ -1768,13 +1848,10 @@
                 line: { color: '#ef4444', width: 2, dash: 'dot' }
             };
 
-            const asymptoteX = [0, Math.cosh(maxT)];
-            const asymptoteYPos = [0, Math.cosh(maxT)];
-            const asymptoteYNeg = [0, -Math.cosh(maxT)];
-
+            const asymptoteMaxX = Math.max(maxX, Math.cosh(maxT));
             const traceAsymptotePos = {
-                x: asymptoteX,
-                y: asymptoteYPos,
+                x: [0, asymptoteMaxX],
+                y: [0, asymptoteMaxX],
                 type: 'scatter',
                 mode: 'lines',
                 name: 'Asymptotes',
@@ -1783,8 +1860,8 @@
             };
 
             const traceAsymptoteNeg = {
-                x: asymptoteX,
-                y: asymptoteYNeg,
+                x: [0, asymptoteMaxX],
+                y: [0, -asymptoteMaxX],
                 type: 'scatter',
                 mode: 'lines',
                 line: { color: '#64748b', width: 1, dash: 'dot' },
@@ -1799,13 +1876,13 @@
                     title: 'x',
                     gridcolor: '#334155',
                     zerolinecolor: '#475569',
-                    range: [-1, 5]
+                    range: [minX, maxX]
                 },
                 yaxis: { 
                     title: 'y',
                     gridcolor: '#334155',
                     zerolinecolor: '#475569',
-                    range: [-4, 5],
+                    range: [minY, maxY],
                     scaleanchor: 'x',
                     scaleratio: 1
                 },
@@ -1822,6 +1899,12 @@
                 [traceAsymptotePos, traceAsymptoteNeg, traceHyperbolaPos, traceHyperbolaNeg, 
                  traceSector, traceOrigin, tracePoint], 
                 layout, config);
+
+            setupInfiniteZoom('hyperbolic-graph', (newXMin, newXMax) => {
+                const yRange = (newXMax - newXMin) * 0.9;
+                const yCenter = (minY + maxY) / 2;
+                updateHyperbolic(currentPlotState.hyperbolic.t, newXMin, newXMax, yCenter - yRange/2, yCenter + yRange/2);
+            });
 
             const steps = `
                 <div class="text-slate-200 space-y-4">
