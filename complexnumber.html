@@ -230,6 +230,55 @@
             margin-bottom: 15px;
             color: #1e3c72;
         }
+        
+        /* Tab D specific styles */
+        .dual-view {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        
+        .view-panel {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .view-panel h4 {
+            margin-bottom: 15px;
+            color: #1e3c72;
+            font-size: 1.1em;
+        }
+        
+        .play-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+        }
+        
+        .play-button {
+            background: #2a5298;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .play-button:hover {
+            background: #1e3c72;
+        }
+        
+        .play-button.playing {
+            background: #dc3545;
+        }
     </style>
 </head>
 <body>
@@ -248,6 +297,9 @@
             </button>
             <button class="tab-button" onclick="switchTab(2)">
                 탭 C: 살코프스키 곡선 & 구면 에피사이클로이드
+            </button>
+            <button class="tab-button" onclick="switchTab(3)">
+                탭 D: 평면→구면 매개화 확장
             </button>
         </div>
         
@@ -450,6 +502,118 @@
                 </p>
             </div>
         </div>
+        
+        <!-- TAB D -->
+        <div id="tab-3" class="tab-content">
+            <div class="workspace">
+                <div class="controls">
+                    <h3>매개변수</h3>
+                    
+                    <div class="control-group">
+                        <label>반지름 비율 q: <span id="valueQ" class="value-display">3.00</span></label>
+                        <input type="range" id="sliderQ" min="1.5" max="6" step="0.1" value="3">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>각도 ω (deg): <span id="valueOmega" class="value-display">45</span></label>
+                        <input type="range" id="sliderOmega" min="0" max="90" step="5" value="45">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>초기 위상 t₀: <span id="valueT0" class="value-display">0.00</span></label>
+                        <input type="range" id="sliderT0" min="0" max="6.28" step="0.1" value="0">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>구 반지름 a: <span id="valueA" class="value-display">1.00</span></label>
+                        <input type="range" id="sliderA" min="0.5" max="2" step="0.1" value="1">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>애니메이션 t: <span id="valueTanim" class="value-display">0.00</span></label>
+                        <input type="range" id="sliderTanim" min="0" max="12.56" step="0.01" value="0">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label>애니메이션 속도: <span id="valueSpeed" class="value-display">1.0x</span></label>
+                        <input type="range" id="sliderSpeed" min="0.1" max="3" step="0.1" value="1">
+                    </div>
+                    
+                    <div class="play-controls">
+                        <button id="playButton" class="play-button">▶ 재생</button>
+                    </div>
+                    
+                    <div class="info-panel" style="margin-top: 15px;">
+                        <strong>시각화:</strong><br>
+                        • 왼쪽: 평면 에피사이클로이드<br>
+                        • 오른쪽: 구면 에피사이클로이드<br>
+                        • 파란색 원: 고정원<br>
+                        • 빨간색 원: 회전원<br>
+                        • 초록색: 생성되는 궤적
+                    </div>
+                    
+                    <div class="info-panel" style="margin-top: 10px; font-size: 0.85em;">
+                        <strong>사용법:</strong><br>
+                        • q: 큰 원/작은 원의 반지름 비<br>
+                        • ω: 구면에서의 접촉 각도<br>
+                        • 재생 버튼으로 애니메이션 시작
+                    </div>
+                </div>
+                
+                <div class="visualization">
+                    <div class="dual-view">
+                        <div class="view-panel">
+                            <h4>평면 에피사이클로이드</h4>
+                            <canvas id="canvasD2D" width="500" height="500"></canvas>
+                        </div>
+                        <div class="view-panel">
+                            <h4>구면 에피사이클로이드</h4>
+                            <div id="container3DD" style="width: 500px; height: 500px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="math-section">
+                <h3>📐 수학적 정식화: 평면에서 구면으로의 확장</h3>
+                
+                <p><strong>1. 평면 에피사이클로이드 (고전):</strong></p>
+                <p>반지름 \(R\)인 고정원 위를 반지름 \(r\)인 원이 구를 때:</p>
+                <p>\[
+                \begin{aligned}
+                x(t) &= (R+r)\cos t - r\cos\left(\frac{R+r}{r}t\right)\\
+                y(t) &= (R+r)\sin t - r\sin\left(\frac{R+r}{r}t\right)
+                \end{aligned}
+                \]</p>
+                <p>여기서 \(q = \frac{R+r}{r}\)은 반지름 비율입니다.</p>
+                
+                <p style="margin-top: 20px;"><strong>2. 구면 에피사이클로이드 (Monterde 2024):</strong></p>
+                <p>반지름 \(a\)인 구 위에서 정의된 확장:</p>
+                <p>\[
+                \begin{aligned}
+                x(t) &= a\left[(q-\cos\omega)\cos t + \cos\omega\cos(qt+t_0) + \sin t\sin(qt+t_0)\right]\\
+                y(t) &= a\left[(q-\cos\omega)\sin t + \cos\omega\sin(qt+t_0) - \cos t\sin(qt+t_0)\right]\\
+                z(t) &= a\sin\omega(1 - \cos(qt))
+                \end{aligned}
+                \]</p>
+                
+                <p style="margin-top: 15px;"><strong>매개변수:</strong></p>
+                <ul style="margin-left: 25px; margin-top: 10px;">
+                    <li>\(q\): 반지름 비율 (평면의 경우와 동일)</li>
+                    <li>\(\omega\): 두 원 사이의 각도 (구면 고유의 매개변수)</li>
+                    <li>\(t_0\): 초기 위상각</li>
+                    <li>\(a\): 구의 반지름</li>
+                </ul>
+                
+                <p style="margin-top: 15px;"><strong>주요 성질:</strong></p>
+                <ul style="margin-left: 25px; margin-top: 10px;">
+                    <li>\(\omega = 0\)일 때, 평면 에피사이클로이드로 퇴화 (\(z \equiv 0\))</li>
+                    <li>곡선은 항상 반지름 \(a\)인 구 위에 존재</li>
+                    <li>Hopf fibration과 자연스럽게 연결됨</li>
+                    <li>특정 조건에서 Salkowski 곡선과 관계</li>
+                </ul>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -524,6 +688,11 @@
             if (index === 2) {
                 setTimeout(() => {
                     updateTabC();
+                }, 100);
+            }
+            if (index === 3) {
+                setTimeout(() => {
+                    updateTabD();
                 }, 100);
             }
         }
@@ -1322,6 +1491,386 @@
         }
         
         // ========================================
+        // 탭 D: 평면→구면 매개화 확장
+        // ========================================
+        
+        let tabD = {
+            canvas2D: null,
+            ctx2D: null,
+            scene: null,
+            camera: null,
+            renderer: null,
+            q: 3.0,
+            omega: Math.PI / 4,
+            t0: 0,
+            a: 1.0,
+            tAnim: 0,
+            speed: 1.0,
+            isPlaying: false,
+            mouseDown: false,
+            mouseX: 0,
+            mouseY: 0,
+            initialized: false,
+            animationId: null
+        };
+        
+        function initTabD() {
+            // 2D 캔버스 설정
+            tabD.canvas2D = document.getElementById('canvasD2D');
+            tabD.ctx2D = tabD.canvas2D.getContext('2d');
+            
+            // 3D 설정
+            const container = document.getElementById('container3DD');
+            if (!container) return;
+            
+            const width = 500;
+            const height = 500;
+            
+            tabD.scene = new THREE.Scene();
+            tabD.scene.background = new THREE.Color(0xf5f5f5);
+            
+            tabD.camera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
+            tabD.camera.position.set(3, 2, 3);
+            tabD.camera.lookAt(0, 0, 0);
+            
+            tabD.renderer = new THREE.WebGLRenderer({antialias: true});
+            tabD.renderer.setSize(width, height);
+            container.innerHTML = '';
+            container.appendChild(tabD.renderer.domElement);
+            
+            // 조명
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            tabD.scene.add(ambientLight);
+            
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 5, 5);
+            tabD.scene.add(dirLight);
+            
+            // 컨트롤
+            document.getElementById('sliderQ').oninput = (e) => {
+                tabD.q = parseFloat(e.target.value);
+                document.getElementById('valueQ').textContent = tabD.q.toFixed(2);
+                updateTabD();
+            };
+            
+            document.getElementById('sliderOmega').oninput = (e) => {
+                const deg = parseFloat(e.target.value);
+                tabD.omega = deg * Math.PI / 180;
+                document.getElementById('valueOmega').textContent = deg;
+                updateTabD();
+            };
+            
+            document.getElementById('sliderT0').oninput = (e) => {
+                tabD.t0 = parseFloat(e.target.value);
+                document.getElementById('valueT0').textContent = tabD.t0.toFixed(2);
+                updateTabD();
+            };
+            
+            document.getElementById('sliderA').oninput = (e) => {
+                tabD.a = parseFloat(e.target.value);
+                document.getElementById('valueA').textContent = tabD.a.toFixed(2);
+                updateTabD();
+            };
+            
+            document.getElementById('sliderTanim').oninput = (e) => {
+                tabD.tAnim = parseFloat(e.target.value);
+                document.getElementById('valueTanim').textContent = tabD.tAnim.toFixed(2);
+                updateTabD();
+            };
+            
+            document.getElementById('sliderSpeed').oninput = (e) => {
+                tabD.speed = parseFloat(e.target.value);
+                document.getElementById('valueSpeed').textContent = tabD.speed.toFixed(1) + 'x';
+            };
+            
+            // 재생 버튼
+            document.getElementById('playButton').onclick = () => {
+                tabD.isPlaying = !tabD.isPlaying;
+                const btn = document.getElementById('playButton');
+                if (tabD.isPlaying) {
+                    btn.textContent = '⏸ 정지';
+                    btn.classList.add('playing');
+                } else {
+                    btn.textContent = '▶ 재생';
+                    btn.classList.remove('playing');
+                }
+            };
+            
+            // 마우스 인터랙션 (3D)
+            tabD.renderer.domElement.addEventListener('mousedown', (e) => {
+                tabD.mouseDown = true;
+                tabD.mouseX = e.clientX;
+                tabD.mouseY = e.clientY;
+            });
+            
+            window.addEventListener('mouseup', () => {
+                tabD.mouseDown = false;
+            });
+            
+            window.addEventListener('mousemove', (e) => {
+                if (tabD.mouseDown && currentTab === 3) {
+                    const dx = e.clientX - tabD.mouseX;
+                    const dy = e.clientY - tabD.mouseY;
+                    
+                    const angle = Math.sqrt(dx*dx + dy*dy) * 0.01;
+                    const axis = new THREE.Vector3(-dy, dx, 0).normalize();
+                    
+                    tabD.camera.position.applyAxisAngle(axis, angle);
+                    tabD.camera.lookAt(0, 0, 0);
+                    
+                    tabD.mouseX = e.clientX;
+                    tabD.mouseY = e.clientY;
+                    
+                    tabD.renderer.render(tabD.scene, tabD.camera);
+                }
+            });
+            
+            tabD.renderer.domElement.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const factor = e.deltaY > 0 ? 1.1 : 0.9;
+                tabD.camera.position.multiplyScalar(factor);
+                tabD.renderer.render(tabD.scene, tabD.camera);
+            });
+            
+            tabD.initialized = true;
+            updateTabD();
+            animateTabD();
+        }
+        
+        // 평면 에피사이클로이드
+        function planarEpicycloidD(t, q) {
+            // q = (R+r)/r
+            // x = (R+r)cos(t) - r*cos((R+r)/r * t)
+            // y = (R+r)sin(t) - r*sin((R+r)/r * t)
+            // 정규화: R+r = 1로 두면 r = 1/(q)
+            const R_plus_r = 1;
+            const r = R_plus_r / q;
+            const R = R_plus_r - r;
+            
+            const x = R_plus_r * Math.cos(t) - r * Math.cos(q * t);
+            const y = R_plus_r * Math.sin(t) - r * Math.sin(q * t);
+            
+            return [x, y];
+        }
+        
+        // 구면 에피사이클로이드 (Monterde 2024)
+        function sphericalEpicycloidD(t, q, omega, t0, a) {
+            const x = a * ((q - Math.cos(omega)) * Math.cos(t) + 
+                          Math.cos(omega) * Math.cos(q*t + t0) + 
+                          Math.sin(t) * Math.sin(q*t + t0));
+            
+            const y = a * ((q - Math.cos(omega)) * Math.sin(t) + 
+                          Math.cos(omega) * Math.sin(q*t + t0) - 
+                          Math.cos(t) * Math.sin(q*t + t0));
+            
+            const z = a * Math.sin(omega) * (1 - Math.cos(q*t));
+            
+            return [x, y, z];
+        }
+        
+        function updateTabD() {
+            if (!tabD.initialized) return;
+            
+            draw2DEpicycloid();
+            draw3DEpicycloid();
+        }
+        
+        function draw2DEpicycloid() {
+            const {ctx2D, canvas2D, q, tAnim} = tabD;
+            const size = canvas2D.width;
+            const cx = size / 2, cy = size / 2;
+            const scale = size / 3;
+            
+            ctx2D.clearRect(0, 0, size, size);
+            
+            // 배경
+            ctx2D.fillStyle = '#fafafa';
+            ctx2D.fillRect(0, 0, size, size);
+            
+            // 축
+            ctx2D.strokeStyle = '#ddd';
+            ctx2D.lineWidth = 1;
+            ctx2D.beginPath();
+            ctx2D.moveTo(0, cy);
+            ctx2D.lineTo(size, cy);
+            ctx2D.moveTo(cx, 0);
+            ctx2D.lineTo(cx, size);
+            ctx2D.stroke();
+            
+            // 고정원 (R)
+            const R_plus_r = 1;
+            const r = R_plus_r / q;
+            const R = R_plus_r - r;
+            
+            ctx2D.strokeStyle = '#0066cc';
+            ctx2D.lineWidth = 2;
+            ctx2D.beginPath();
+            ctx2D.arc(cx, cy, R * scale, 0, 2*Math.PI);
+            ctx2D.stroke();
+            
+            // 회전원의 중심
+            const angle = tAnim;
+            const centerX = cx + R_plus_r * Math.cos(angle) * scale;
+            const centerY = cy - R_plus_r * Math.sin(angle) * scale;
+            
+            // 회전원 (r)
+            ctx2D.strokeStyle = '#cc0000';
+            ctx2D.lineWidth = 2;
+            ctx2D.beginPath();
+            ctx2D.arc(centerX, centerY, r * scale, 0, 2*Math.PI);
+            ctx2D.stroke();
+            
+            // 전체 궤적
+            ctx2D.strokeStyle = '#00cc66';
+            ctx2D.lineWidth = 2.5;
+            ctx2D.beginPath();
+            for (let i = 0; i <= 500; i++) {
+                const t = 2 * Math.PI * i / 500;
+                const [x, y] = planarEpicycloidD(t, q);
+                const px = cx + x * scale;
+                const py = cy - y * scale;
+                if (i === 0) ctx2D.moveTo(px, py);
+                else ctx2D.lineTo(px, py);
+            }
+            ctx2D.stroke();
+            
+            // 현재 점
+            const [currX, currY] = planarEpicycloidD(tAnim, q);
+            ctx2D.fillStyle = '#ff6600';
+            ctx2D.beginPath();
+            ctx2D.arc(cx + currX * scale, cy - currY * scale, 5, 0, 2*Math.PI);
+            ctx2D.fill();
+            
+            // 연결선
+            ctx2D.strokeStyle = '#999';
+            ctx2D.lineWidth = 1;
+            ctx2D.setLineDash([5, 5]);
+            ctx2D.beginPath();
+            ctx2D.moveTo(centerX, centerY);
+            ctx2D.lineTo(cx + currX * scale, cy - currY * scale);
+            ctx2D.stroke();
+            ctx2D.setLineDash([]);
+        }
+        
+        function draw3DEpicycloid() {
+            if (!tabD.scene) return;
+            
+            const {scene, q, omega, t0, a, tAnim} = tabD;
+            
+            // 씬 초기화
+            const objectsToRemove = [];
+            scene.children.forEach(child => {
+                if (child.type !== 'AmbientLight' && child.type !== 'DirectionalLight') {
+                    objectsToRemove.push(child);
+                }
+            });
+            objectsToRemove.forEach(obj => scene.remove(obj));
+            
+            // 축
+            const axesHelper = new THREE.AxesHelper(2);
+            scene.add(axesHelper);
+            
+            // 구 (와이어프레임)
+            const sphereGeom = new THREE.SphereGeometry(a, 32, 32);
+            const sphereMat = new THREE.MeshBasicMaterial({
+                color: 0xcccccc,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.3
+            });
+            const sphere = new THREE.Mesh(sphereGeom, sphereMat);
+            scene.add(sphere);
+            
+            // 고정 원 (구면 위의 큰 원)
+            // 위도 omega에 해당하는 원
+            const fixedCirclePoints = [];
+            const fixedRadius = a * Math.sin(omega);
+            const fixedZ = a * (1 - Math.cos(omega));
+            
+            for (let i = 0; i <= 100; i++) {
+                const angle = 2 * Math.PI * i / 100;
+                fixedCirclePoints.push(new THREE.Vector3(
+                    fixedRadius * Math.cos(angle),
+                    fixedRadius * Math.sin(angle),
+                    fixedZ
+                ));
+            }
+            const fixedCircleGeom = new THREE.BufferGeometry().setFromPoints(fixedCirclePoints);
+            const fixedCircleLine = new THREE.Line(
+                fixedCircleGeom,
+                new THREE.LineBasicMaterial({color: 0x0066cc, linewidth: 2})
+            );
+            scene.add(fixedCircleLine);
+            
+            // 전체 궤적
+            const trajectoryPoints = [];
+            for (let i = 0; i <= 500; i++) {
+                const t = 2 * Math.PI * i / 500;
+                const [x, y, z] = sphericalEpicycloidD(t, q, omega, t0, a);
+                trajectoryPoints.push(new THREE.Vector3(x, y, z));
+            }
+            const trajectoryGeom = new THREE.BufferGeometry().setFromPoints(trajectoryPoints);
+            const trajectoryLine = new THREE.Line(
+                trajectoryGeom,
+                new THREE.LineBasicMaterial({color: 0x00cc66, linewidth: 3})
+            );
+            scene.add(trajectoryLine);
+            
+            // 현재 점
+            const [currX, currY, currZ] = sphericalEpicycloidD(tAnim, q, omega, t0, a);
+            const pointGeom = new THREE.SphereGeometry(0.05, 16, 16);
+            const pointMat = new THREE.MeshBasicMaterial({color: 0xff6600});
+            const point = new THREE.Mesh(pointGeom, pointMat);
+            point.position.set(currX, currY, currZ);
+            scene.add(point);
+            
+            // 회전원 (근사적으로 표시)
+            // 현재 위치에서 접평면 상의 원
+            const rollingCirclePoints = [];
+            const rollingRadius = 0.2; // 시각화를 위한 근사값
+            
+            for (let i = 0; i <= 50; i++) {
+                const angle = 2 * Math.PI * i / 50;
+                // 간단한 근사: 현재점 주변에 원 그리기
+                const dx = rollingRadius * Math.cos(angle);
+                const dy = rollingRadius * Math.sin(angle);
+                rollingCirclePoints.push(new THREE.Vector3(
+                    currX + dx,
+                    currY + dy,
+                    currZ
+                ));
+            }
+            const rollingCircleGeom = new THREE.BufferGeometry().setFromPoints(rollingCirclePoints);
+            const rollingCircleLine = new THREE.Line(
+                rollingCircleGeom,
+                new THREE.LineBasicMaterial({color: 0xcc0000, linewidth: 2})
+            );
+            scene.add(rollingCircleLine);
+            
+            tabD.renderer.render(scene, tabD.camera);
+        }
+        
+        function animateTabD() {
+            requestAnimationFrame(animateTabD);
+            
+            if (currentTab === 3 && tabD.initialized) {
+                if (tabD.isPlaying) {
+                    tabD.tAnim += 0.01 * tabD.speed;
+                    if (tabD.tAnim > 4 * Math.PI) {
+                        tabD.tAnim = 0;
+                    }
+                    
+                    document.getElementById('sliderTanim').value = tabD.tAnim;
+                    document.getElementById('valueTanim').textContent = tabD.tAnim.toFixed(2);
+                    
+                    updateTabD();
+                }
+                
+                tabD.renderer.render(tabD.scene, tabD.camera);
+            }
+        }
+        
+        // ========================================
         // 초기화
         // ========================================
         
@@ -1332,6 +1881,7 @@
             setTimeout(() => {
                 initTabB();
                 initTabC();
+                initTabD();
             }, 200);
         };
     </script>
