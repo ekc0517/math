@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Epicycloids & Differential Geometry Visualization</title>
+    <title>에피사이클로이드 & 미분기하 시각화</title>
     
     <!-- MathJax for equation rendering -->
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
@@ -64,7 +64,7 @@
             background: #e0e0e0;
             border: none;
             cursor: pointer;
-            font-size: 1em;
+            font-size: 0.95em;
             font-weight: 600;
             transition: all 0.3s;
             border-right: 1px solid #ccc;
@@ -145,6 +145,7 @@
             justify-content: center;
             min-height: 600px;
             position: relative;
+            overflow: hidden;
         }
         
         canvas {
@@ -192,24 +193,61 @@
         .hyperbolic { background: #f8d7da; color: #721c24; }
         .ellipsoid-region { background: #cfe2ff; color: #084298; }
         .hyperboloid-region { background: #f8d7da; color: #842029; }
+        
+        /* Tab C specific styles */
+        .workspace-c {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+        
+        .top-section {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 30px;
+        }
+        
+        .viz-3d {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            height: 500px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .viz-2d {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .viz-2d h4 {
+            margin-bottom: 15px;
+            color: #1e3c72;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🌀 Epicycloids & Differential Geometry</h1>
-            <p class="subtitle">Interactive Visualization of Three Research Papers</p>
+            <h1>🌀 에피사이클로이드 & 미분기하</h1>
+            <p class="subtitle">세 편의 연구 논문에 대한 인터랙티브 시각화</p>
         </header>
         
         <div class="tabs">
             <button class="tab-button active" onclick="switchTab(0)">
-                Tab A: Epicycloids & Blaschke Products
+                탭 A: 에피사이클로이드 & 블라슈케 곱
             </button>
             <button class="tab-button" onclick="switchTab(1)">
-                Tab B: Hamiltonian Minimal Hopf Tubes
+                탭 B: 해밀턴 극소 호프 튜브
             </button>
             <button class="tab-button" onclick="switchTab(2)">
-                Tab C: Salkowski Curves & Spherical Epicycloids
+                탭 C: 살코프스키 곡선 & 구면 에피사이클로이드
             </button>
         </div>
         
@@ -217,44 +255,44 @@
         <div id="tab-0" class="tab-content active">
             <div class="workspace">
                 <div class="controls">
-                    <h3>Parameters</h3>
+                    <h3>매개변수</h3>
                     
                     <div class="control-group">
-                        <label>Degree d: <span id="valueD" class="value-display">3</span></label>
+                        <label>차수 d: <span id="valueD" class="value-display">3</span></label>
                         <input type="range" id="sliderD" min="2" max="8" step="1" value="3">
                     </div>
                     
                     <div class="control-group">
-                        <label>w radius r: <span id="valueR" class="value-display">0.40</span></label>
+                        <label>w 반지름 r: <span id="valueR" class="value-display">0.40</span></label>
                         <input type="range" id="sliderR" min="0" max="0.99" step="0.01" value="0.4">
                     </div>
                     
                     <div class="control-group">
-                        <label>w angle φ: <span id="valuePhi" class="value-display">0.79</span></label>
+                        <label>w 각도 φ: <span id="valuePhi" class="value-display">0.79</span></label>
                         <input type="range" id="sliderPhi" min="0" max="6.28" step="0.01" value="0.785">
                     </div>
                     
                     <div class="control-group">
-                        <label>Phase t: <span id="valueT" class="value-display">0.00</span></label>
+                        <label>위상 t: <span id="valueT" class="value-display">0.00</span></label>
                         <input type="range" id="sliderT" min="0" max="6.28" step="0.01" value="0">
                     </div>
                     
                     <div class="control-group checkbox-group">
                         <input type="checkbox" id="checkOrbit">
-                        <label for="checkOrbit">Show Orbit Iteration</label>
+                        <label for="checkOrbit">궤도 반복 표시</label>
                     </div>
                     
                     <div class="info-panel">
-                        <strong>Classification:</strong><br>
+                        <strong>분류:</strong><br>
                         <span id="classification"></span>
                     </div>
                     
                     <div class="info-panel" style="margin-top: 10px; font-size: 0.85em;">
-                        <strong>Instructions:</strong><br>
-                        • Adjust d to change epicycloid shape<br>
-                        • Move w inside/on/outside epicycloid<br>
-                        • Enable orbit to see dynamics<br>
-                        • Click canvas to set initial point
+                        <strong>사용법:</strong><br>
+                        • d를 조절하여 에피사이클로이드 모양 변경<br>
+                        • w를 에피사이클로이드 안/위/밖으로 이동<br>
+                        • 궤도 표시를 활성화하여 역학 확인<br>
+                        • 캔버스 클릭으로 초기점 설정
                     </div>
                 </div>
                 
@@ -264,21 +302,21 @@
             </div>
             
             <div class="math-section">
-                <h3>📐 Mathematical Formulation</h3>
-                <p><strong>Epicycloid boundary (Cao, Fletcher, Ye):</strong></p>
+                <h3>📐 수학적 정식화</h3>
+                <p><strong>에피사이클로이드 경계 (Cao, Fletcher, Ye):</strong></p>
                 <p>\[
                 z(\theta) = \frac{e^{id\theta} - d e^{i\theta}}{d+1}, \quad \theta \in [0, 2\pi]
                 \]</p>
                 
-                <p style="margin-top: 15px;"><strong>Blaschke product with single critical point:</strong></p>
+                <p style="margin-top: 15px;"><strong>단일 임계점을 갖는 블라슈케 곱:</strong></p>
                 <p>\[
                 B_{d,w}(z) = e^{it} \left(\frac{z - w}{1 - \bar{w}z}\right)^d
                 \]</p>
                 
                 <p style="margin-top: 15px;">
-                Classification: If \(w\) is <strong>inside</strong> \(\gamma_d\): <em>elliptic</em>; 
-                on \(\gamma_d\): <em>parabolic</em>; 
-                outside (but in \(\mathbb{D}\)): <em>hyperbolic</em>.
+                <strong>분류:</strong> \(w\)가 \(\gamma_d\) <strong>내부</strong>에 있으면: <em>타원형(elliptic)</em>; 
+                \(\gamma_d\) <strong>위</strong>에 있으면: <em>포물형(parabolic)</em>; 
+                <strong>외부</strong>(\(\mathbb{D}\) 내)에 있으면: <em>쌍곡형(hyperbolic)</em>.
                 </p>
             </div>
         </div>
@@ -287,114 +325,117 @@
         <div id="tab-1" class="tab-content">
             <div class="workspace">
                 <div class="controls">
-                    <h3>Parameters</h3>
+                    <h3>매개변수</h3>
                     
                     <div class="control-group">
-                        <label>Radius ratio k: <span id="valueK" class="value-display">3</span></label>
+                        <label>반지름 비 k: <span id="valueK" class="value-display">3</span></label>
                         <input type="range" id="sliderK" min="2" max="6" step="1" value="3">
                     </div>
                     
                     <div class="control-group">
-                        <label>Lancret slope: <span id="valueSlope" class="value-display">1.00</span></label>
+                        <label>랑크레 기울기: <span id="valueSlope" class="value-display">1.00</span></label>
                         <input type="range" id="sliderSlope" min="0.1" max="3" step="0.1" value="1">
                     </div>
                     
                     <div class="control-group">
-                        <label>Tube radius: <span id="valueTubeR" class="value-display">0.30</span></label>
+                        <label>튜브 반지름: <span id="valueTubeR" class="value-display">0.30</span></label>
                         <input type="range" id="sliderTubeR" min="0.1" max="0.8" step="0.05" value="0.3">
                     </div>
                     
                     <div class="control-group">
-                        <label>Sample points: <span id="valueNB" class="value-display">200</span></label>
+                        <label>샘플 점 개수: <span id="valueNB" class="value-display">200</span></label>
                         <input type="range" id="sliderNB" min="50" max="500" step="50" value="200">
                     </div>
                     
                     <div class="info-panel">
-                        <strong>Rendering:</strong><br>
-                        • Blue: Planar epicycloid<br>
-                        • Red: Lancret curve<br>
-                        • Green: Hopf tube surface
+                        <strong>렌더링:</strong><br>
+                        • 파란색: 평면 에피사이클로이드<br>
+                        • 빨간색: 랑크레 곡선<br>
+                        • 초록색: 호프 튜브 곡면
                     </div>
                 </div>
                 
                 <div class="visualization">
-                    <div id="container3DB" style="width: 100%; height: 600px;"></div>
+                    <div id="container3DB" style="width: 100%; height: 100%;"></div>
                 </div>
             </div>
             
             <div class="math-section">
-                <h3>📐 Mathematical Formulation</h3>
-                <p><strong>Planar epicycloid (Barros, Ferrández):</strong></p>
+                <h3>📐 수학적 정식화</h3>
+                <p><strong>평면 에피사이클로이드 (Barros, Ferrández):</strong></p>
                 <p>\[
                 \beta_k(\theta) = \left((k+1)\cos\theta - \cos((k+1)\theta),\; (k+1)\sin\theta - \sin((k+1)\theta)\right)
                 \]</p>
                 
-                <p style="margin-top: 15px;"><strong>Lancret curve (constant slope helix):</strong></p>
+                <p style="margin-top: 15px;"><strong>랑크레 곡선 (일정 기울기 나선):</strong></p>
                 <p>\[
-                \gamma(t) = \text{3D lift with } \tau/\kappa = \text{const}
+                \gamma(t) = \text{3차원 확장, } \tau/\kappa = \text{상수}
                 \]</p>
                 
-                <p style="margin-top: 15px;"><strong>Hopf tube parametrization:</strong></p>
+                <p style="margin-top: 15px;"><strong>호프 튜브 매개변수화:</strong></p>
                 <p>\[
                 X(t, u) = \gamma(t) + \rho\left(\cos u\, \mathbf{n}(t) + \sin u\, \mathbf{b}(t)\right)
                 \]</p>
                 
                 <p style="margin-top: 15px;">
-                The Hamiltonian energy is \(C(\gamma) = \int \sqrt{\kappa^2 + 4}\, ds\).
-                Critical curves generate minimal Hopf tubes in the complex quadric.
+                해밀턴 에너지는 \(C(\gamma) = \int \sqrt{\kappa^2 + 4}\, ds\)입니다.
+                임계 곡선은 복소 이차곡면에서 극소 호프 튜브를 생성합니다.
                 </p>
             </div>
         </div>
         
         <!-- TAB C -->
         <div id="tab-2" class="tab-content">
-            <div class="workspace">
-                <div class="controls">
-                    <h3>Parameters</h3>
-                    
-                    <div class="control-group">
-                        <label>Parameter m: <span id="valueM" class="value-display">0.80</span></label>
-                        <input type="range" id="sliderM" min="-2" max="2" step="0.05" value="0.8">
+            <div class="workspace-c">
+                <div class="top-section">
+                    <div class="controls">
+                        <h3>매개변수</h3>
+                        
+                        <div class="control-group">
+                            <label>파라미터 m: <span id="valueM" class="value-display">0.80</span></label>
+                            <input type="range" id="sliderM" min="-2" max="2" step="0.05" value="0.8">
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>t 범위: <span id="valueTmax" class="value-display">12.57</span></label>
+                            <input type="range" id="sliderTmax" min="3.14" max="25.13" step="0.1" value="12.57">
+                        </div>
+                        
+                        <div class="control-group">
+                            <label>샘플 점 개수: <span id="valueNC" class="value-display">400</span></label>
+                            <input type="range" id="sliderNC" min="100" max="800" step="100" value="400">
+                        </div>
+                        
+                        <div class="info-panel">
+                            <strong>곡면 유형:</strong><br>
+                            <span id="surfaceType"></span>
+                        </div>
+                        
+                        <div class="info-panel" style="margin-top: 10px;">
+                            <strong>곡선:</strong><br>
+                            • 빨간색: 살코프스키 곡선<br>
+                            • 초록색: 구면 에피사이클로이드 (전단)
+                        </div>
                     </div>
                     
-                    <div class="control-group">
-                        <label>t range: <span id="valueTmax" class="value-display">12.57</span></label>
-                        <input type="range" id="sliderTmax" min="3.14" max="25.13" step="0.1" value="12.57">
-                    </div>
-                    
-                    <div class="control-group">
-                        <label>Sample points: <span id="valueNC" class="value-display">400</span></label>
-                        <input type="range" id="sliderNC" min="100" max="800" step="100" value="400">
-                    </div>
-                    
-                    <div class="info-panel">
-                        <strong>Surface type:</strong><br>
-                        <span id="surfaceType"></span>
-                    </div>
-                    
-                    <div class="info-panel" style="margin-top: 10px;">
-                        <strong>Curves:</strong><br>
-                        • Red: Salkowski curve<br>
-                        • Green: Spherical epicycloid (sheared)
+                    <div class="viz-3d">
+                        <div id="container3DC" style="width: 100%; height: 100%;"></div>
                     </div>
                 </div>
                 
-                <div class="visualization" style="display: block;">
-                    <div id="container3DC" style="width: 100%; height: 400px;"></div>
-                    <div style="margin-top: 20px; text-align: center;">
-                        <strong>XY-Projection Comparison</strong>
-                        <canvas id="canvasC" width="600" height="600"></canvas>
-                    </div>
+                <div class="viz-2d">
+                    <h4>XY-평면 사영 비교</h4>
+                    <canvas id="canvasC" width="800" height="800"></canvas>
                 </div>
             </div>
             
             <div class="math-section">
-                <h3>📐 Mathematical Formulation</h3>
-                <p><strong>Salkowski curve (Monterde):</strong></p>
-                <p>Constant curvature \(\kappa \equiv 1\), non-constant torsion \(\tau(t)\).</p>
-                <p>Lives on a surface of revolution: ellipsoid if \(|m| > 1/\sqrt{3}\), hyperboloid if \(|m| < 1/\sqrt{3}\).</p>
+                <h3>📐 수학적 정식화</h3>
+                <p><strong>살코프스키 곡선 (Monterde):</strong></p>
+                <p>일정한 곡률 \(\kappa \equiv 1\), 비상수 비틀림 \(\tau(t)\).</p>
+                <p>회전 곡면 위에 존재: \(|m| > 1/\sqrt{3}\)이면 타원체, \(|m| < 1/\sqrt{3}\)이면 쌍곡면.</p>
                 
-                <p style="margin-top: 15px;"><strong>Spherical epicycloid:</strong></p>
+                <p style="margin-top: 15px;"><strong>구면 에피사이클로이드:</strong></p>
                 <p>\[
                 \begin{aligned}
                 x(t) &= a\big((q-\cos\omega)\cos t + \cos\omega\cos(qt+t_0) + \sin t\sin(qt+t_0)\big)\\
@@ -404,8 +445,8 @@
                 \]</p>
                 
                 <p style="margin-top: 15px;">
-                Under a shear map \((x,y,z) \mapsto (x, y, cz+d)\), the spherical (or complex spherical) 
-                epicycloid maps to a Salkowski curve. Their \(xy\)-projections coincide.
+                전단 변환 \((x,y,z) \mapsto (x, y, cz+d)\) 하에서, 구면(또는 복소 구면) 
+                에피사이클로이드는 살코프스키 곡선으로 매핑됩니다. 두 곡선의 \(xy\)-사영은 일치합니다.
                 </p>
             </div>
         </div>
@@ -413,10 +454,10 @@
 
     <script>
         // ========================================
-        // GLOBAL UTILITIES
+        // 전역 유틸리티
         // ========================================
         
-        // Complex number helpers
+        // 복소수 헬퍼 함수
         const C = {
             add: (a, b) => ({re: a.re + b.re, im: a.im + b.im}),
             sub: (a, b) => ({re: a.re - b.re, im: a.im - b.im}),
@@ -434,7 +475,6 @@
             },
             polar: (r, theta) => ({re: r*Math.cos(theta), im: r*Math.sin(theta)}),
             pow: (a, n) => {
-                // a^n for integer n
                 if (n === 0) return {re: 1, im: 0};
                 let result = a;
                 for (let i = 1; i < n; i++) {
@@ -445,7 +485,7 @@
             scale: (a, s) => ({re: a.re*s, im: a.im*s})
         };
         
-        // 3D vector helpers
+        // 3D 벡터 헬퍼 함수
         const V3 = {
             add: (a, b) => [a[0]+b[0], a[1]+b[1], a[2]+b[2]],
             sub: (a, b) => [a[0]-b[0], a[1]-b[1], a[2]-b[2]],
@@ -463,7 +503,7 @@
             }
         };
         
-        // Tab switching
+        // 탭 전환
         let currentTab = 0;
         function switchTab(index) {
             document.querySelectorAll('.tab-button').forEach((btn, i) => {
@@ -474,14 +514,22 @@
             });
             currentTab = index;
             
-            // Re-render the active tab
+            // 활성 탭 재렌더링
             if (index === 0) updateTabA();
-            if (index === 1) updateTabB();
-            if (index === 2) updateTabC();
+            if (index === 1) {
+                setTimeout(() => {
+                    updateTabB();
+                }, 100);
+            }
+            if (index === 2) {
+                setTimeout(() => {
+                    updateTabC();
+                }, 100);
+            }
         }
         
         // ========================================
-        // TAB A: EPICYCLOIDS & BLASCHKE PRODUCTS
+        // 탭 A: 에피사이클로이드 & 블라슈케 곱
         // ========================================
         
         let tabA = {
@@ -562,7 +610,7 @@
         }
         
         function isInsideEpicycloid(z, d, samples=500) {
-            // Use winding number
+            // 회전수(winding number) 사용
             let angle = 0;
             let prev = epicycloidA(0, d);
             for (let i = 1; i <= samples; i++) {
@@ -599,20 +647,20 @@
             
             ctx.clearRect(0, 0, size, size);
             
-            // Coordinate transform
+            // 좌표 변환
             const toCanvas = (z) => ({
                 x: cx + z.re * scale,
                 y: cy - z.im * scale
             });
             
-            // Draw unit circle
+            // 단위원 그리기
             ctx.strokeStyle = '#ccc';
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.arc(cx, cy, scale, 0, 2*Math.PI);
             ctx.stroke();
             
-            // Draw epicycloid
+            // 에피사이클로이드 그리기
             ctx.strokeStyle = '#2a5298';
             ctx.lineWidth = 3;
             ctx.beginPath();
@@ -626,20 +674,20 @@
             ctx.closePath();
             ctx.stroke();
             
-            // Draw w point
+            // w 점 그리기
             const w = C.polar(r, phi);
             const wp = toCanvas(w);
             
-            // Classify
+            // 분류
             let classification = '';
             if (isOnEpicycloid(w, d)) {
-                classification = '<span class="status-indicator parabolic">PARABOLIC</span>';
+                classification = '<span class="status-indicator parabolic">포물형</span>';
                 ctx.fillStyle = '#ffc107';
             } else if (isInsideEpicycloid(w, d)) {
-                classification = '<span class="status-indicator elliptic">ELLIPTIC</span>';
+                classification = '<span class="status-indicator elliptic">타원형</span>';
                 ctx.fillStyle = '#28a745';
             } else {
-                classification = '<span class="status-indicator hyperbolic">HYPERBOLIC</span>';
+                classification = '<span class="status-indicator hyperbolic">쌍곡형</span>';
                 ctx.fillStyle = '#dc3545';
             }
             
@@ -649,12 +697,12 @@
             ctx.arc(wp.x, wp.y, 8, 0, 2*Math.PI);
             ctx.fill();
             
-            // Label w
+            // w 레이블
             ctx.fillStyle = '#000';
             ctx.font = '14px sans-serif';
             ctx.fillText('w', wp.x + 12, wp.y - 12);
             
-            // Draw orbit if enabled
+            // 궤도 그리기 (활성화된 경우)
             if (showOrbit && clickPoint) {
                 let z = clickPoint;
                 ctx.fillStyle = 'rgba(255, 100, 100, 0.6)';
@@ -670,7 +718,7 @@
                 }
             }
             
-            // Draw axes
+            // 축 그리기
             ctx.strokeStyle = '#e0e0e0';
             ctx.lineWidth = 1;
             ctx.beginPath();
@@ -682,32 +730,39 @@
         }
         
         // ========================================
-        // TAB B: HAMILTONIAN MINIMAL HOPF TUBES
+        // 탭 B: 해밀턴 극소 호프 튜브
         // ========================================
         
         let tabB = {
             scene: null,
             camera: null,
             renderer: null,
+            controls: null,
             k: 3,
             slope: 1.0,
             tubeRadius: 0.3,
             numPoints: 200,
             mouseDown: false,
             mouseX: 0,
-            mouseY: 0
+            mouseY: 0,
+            initialized: false
         };
         
         function initTabB() {
             const container = document.getElementById('container3DB');
+            if (!container) return;
             
-            // Three.js setup
+            // 컨테이너 크기 확인
+            const width = container.clientWidth || 800;
+            const height = container.clientHeight || 600;
+            
+            // Three.js 설정
             tabB.scene = new THREE.Scene();
             tabB.scene.background = new THREE.Color(0xf5f5f5);
             
             tabB.camera = new THREE.PerspectiveCamera(
                 50,
-                container.clientWidth / container.clientHeight,
+                width / height,
                 0.1,
                 1000
             );
@@ -715,10 +770,11 @@
             tabB.camera.lookAt(0, 0, 0);
             
             tabB.renderer = new THREE.WebGLRenderer({antialias: true});
-            tabB.renderer.setSize(container.clientWidth, container.clientHeight);
+            tabB.renderer.setSize(width, height);
+            container.innerHTML = '';
             container.appendChild(tabB.renderer.domElement);
             
-            // Lights
+            // 조명
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
             tabB.scene.add(ambientLight);
             
@@ -726,7 +782,11 @@
             dirLight.position.set(10, 10, 10);
             tabB.scene.add(dirLight);
             
-            // Controls
+            const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
+            dirLight2.position.set(-10, -10, -10);
+            tabB.scene.add(dirLight2);
+            
+            // 컨트롤
             document.getElementById('sliderK').oninput = (e) => {
                 tabB.k = parseInt(e.target.value);
                 document.getElementById('valueK').textContent = tabB.k;
@@ -751,18 +811,18 @@
                 updateTabB();
             };
             
-            // Mouse interaction
+            // 마우스 인터랙션
             tabB.renderer.domElement.addEventListener('mousedown', (e) => {
                 tabB.mouseDown = true;
                 tabB.mouseX = e.clientX;
                 tabB.mouseY = e.clientY;
             });
             
-            tabB.renderer.domElement.addEventListener('mouseup', () => {
+            window.addEventListener('mouseup', () => {
                 tabB.mouseDown = false;
             });
             
-            tabB.renderer.domElement.addEventListener('mousemove', (e) => {
+            window.addEventListener('mousemove', (e) => {
                 if (tabB.mouseDown) {
                     const dx = e.clientX - tabB.mouseX;
                     const dy = e.clientY - tabB.mouseY;
@@ -789,6 +849,7 @@
                 tabB.renderer.render(tabB.scene, tabB.camera);
             });
             
+            tabB.initialized = true;
             updateTabB();
             animateTabB();
         }
@@ -801,8 +862,7 @@
         }
         
         function lancretCurve(t, slope, k) {
-            // Create a 3D curve with constant slope (Lancret curve)
-            // Using epicycloid as base and adding z-component
+            // 일정 기울기를 가진 3D 곡선 생성 (랑크레 곡선)
             const [x, y] = planarEpicycloid(t, k);
             const scale = 1.5;
             const z = slope * t;
@@ -810,7 +870,7 @@
         }
         
         function frenetFrame(gamma, t, dt=0.01) {
-            // Numerical Frenet frame
+            // 수치적 프레네 프레임
             const p = gamma(t);
             const p1 = gamma(t + dt);
             const p2 = gamma(t - dt);
@@ -823,7 +883,12 @@
             const T_prev = V3.normalize(V3.sub(p, p_prev));
             
             const dT = V3.sub(T_next, T_prev);
-            const N = V3.normalize(dT);
+            let N = V3.normalize(dT);
+            
+            // N이 0벡터면 기본값 사용
+            if (V3.norm(N) < 0.001) {
+                N = [0, 0, 1];
+            }
             
             const B = V3.normalize(V3.cross(T, N));
             
@@ -831,18 +896,24 @@
         }
         
         function updateTabB() {
+            if (!tabB.initialized || !tabB.scene) return;
+            
             const {scene, k, slope, tubeRadius, numPoints} = tabB;
             
-            // Clear previous objects
-            while(scene.children.length > 2) {
-                scene.remove(scene.children[2]);
-            }
+            // 이전 객체 제거 (조명 제외)
+            const objectsToRemove = [];
+            scene.children.forEach(child => {
+                if (child.type !== 'AmbientLight' && child.type !== 'DirectionalLight') {
+                    objectsToRemove.push(child);
+                }
+            });
+            objectsToRemove.forEach(obj => scene.remove(obj));
             
-            // Add axes
+            // 축 추가
             const axesHelper = new THREE.AxesHelper(10);
             scene.add(axesHelper);
             
-            // 1. Planar epicycloid
+            // 1. 평면 에피사이클로이드
             const epicycloidPoints = [];
             for (let i = 0; i <= numPoints; i++) {
                 const theta = 2 * Math.PI * i / numPoints;
@@ -856,7 +927,7 @@
             );
             scene.add(epicycloidLine);
             
-            // 2. Lancret curve
+            // 2. 랑크레 곡선
             const lancretPoints = [];
             const tMax = 2 * Math.PI;
             for (let i = 0; i <= numPoints; i++) {
@@ -871,7 +942,7 @@
             );
             scene.add(lancretLine);
             
-            // 3. Hopf tube
+            // 3. 호프 튜브
             const gamma = (t) => lancretCurve(t, slope, k);
             
             const tubeSegments = Math.floor(numPoints / 2);
@@ -919,7 +990,8 @@
                     color: 0x00cc66,
                     side: THREE.DoubleSide,
                     transparent: true,
-                    opacity: 0.7
+                    opacity: 0.7,
+                    shininess: 30
                 })
             );
             scene.add(tubeMesh);
@@ -929,13 +1001,13 @@
         
         function animateTabB() {
             requestAnimationFrame(animateTabB);
-            if (currentTab === 1) {
+            if (currentTab === 1 && tabB.initialized) {
                 tabB.renderer.render(tabB.scene, tabB.camera);
             }
         }
         
         // ========================================
-        // TAB C: SALKOWSKI & SPHERICAL EPICYCLOIDS
+        // 탭 C: 살코프스키 & 구면 에피사이클로이드
         // ========================================
         
         let tabC = {
@@ -949,19 +1021,25 @@
             numPoints: 400,
             mouseDown: false,
             mouseX: 0,
-            mouseY: 0
+            mouseY: 0,
+            initialized: false
         };
         
         function initTabC() {
             const container = document.getElementById('container3DC');
+            if (!container) return;
             
-            // Three.js setup
+            // 컨테이너 크기 확인
+            const width = container.clientWidth || 800;
+            const height = container.clientHeight || 500;
+            
+            // Three.js 설정
             tabC.scene = new THREE.Scene();
             tabC.scene.background = new THREE.Color(0xf5f5f5);
             
             tabC.camera = new THREE.PerspectiveCamera(
                 50,
-                container.clientWidth / container.clientHeight,
+                width / height,
                 0.1,
                 1000
             );
@@ -969,10 +1047,11 @@
             tabC.camera.lookAt(0, 0, 0);
             
             tabC.renderer = new THREE.WebGLRenderer({antialias: true});
-            tabC.renderer.setSize(container.clientWidth, container.clientHeight);
+            tabC.renderer.setSize(width, height);
+            container.innerHTML = '';
             container.appendChild(tabC.renderer.domElement);
             
-            // Lights
+            // 조명
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
             tabC.scene.add(ambientLight);
             
@@ -980,11 +1059,15 @@
             dirLight.position.set(10, 10, 10);
             tabC.scene.add(dirLight);
             
-            // Canvas setup
+            const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
+            dirLight2.position.set(-10, -10, -10);
+            tabC.scene.add(dirLight2);
+            
+            // 캔버스 설정
             tabC.canvas = document.getElementById('canvasC');
             tabC.ctx = tabC.canvas.getContext('2d');
             
-            // Controls
+            // 컨트롤
             document.getElementById('sliderM').oninput = (e) => {
                 tabC.m = parseFloat(e.target.value);
                 if (Math.abs(tabC.m) < 0.05) tabC.m = 0.05 * Math.sign(tabC.m);
@@ -1004,19 +1087,19 @@
                 updateTabC();
             };
             
-            // Mouse interaction
+            // 마우스 인터랙션
             tabC.renderer.domElement.addEventListener('mousedown', (e) => {
                 tabC.mouseDown = true;
                 tabC.mouseX = e.clientX;
                 tabC.mouseY = e.clientY;
             });
             
-            tabC.renderer.domElement.addEventListener('mouseup', () => {
+            window.addEventListener('mouseup', () => {
                 tabC.mouseDown = false;
             });
             
-            tabC.renderer.domElement.addEventListener('mousemove', (e) => {
-                if (tabC.mouseDown) {
+            window.addEventListener('mousemove', (e) => {
+                if (tabC.mouseDown && currentTab === 2) {
                     const dx = e.clientX - tabC.mouseX;
                     const dy = e.clientY - tabC.mouseY;
                     
@@ -1035,26 +1118,23 @@
                 }
             });
             
+            tabC.renderer.domElement.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const factor = e.deltaY > 0 ? 1.1 : 0.9;
+                tabC.camera.position.multiplyScalar(factor);
+                tabC.renderer.render(tabC.scene, tabC.camera);
+            });
+            
+            tabC.initialized = true;
             updateTabC();
             animateTabC();
         }
         
         function salkowskiCurve(t, m) {
-            // Salkowski curve with constant curvature κ=1
-            // Using a standard parametrization
-            const a = Math.sqrt(1 - 9*m*m);
-            if (isNaN(a)) {
-                // Fallback for |m| > 1/3
-                const s = Math.sinh(t);
-                const c = Math.cosh(t);
-                return [
-                    2*m*t + Math.sin(t),
-                    2*m*(1 - Math.cos(t)),
-                    t - 2*m*Math.sin(t)
-                ];
-            }
+            // 일정 곡률 κ=1을 가진 살코프스키 곡선
+            const a = Math.sqrt(Math.abs(1 - 9*m*m));
             
-            // Standard form for |m| < 1/√3
+            // 표준 형식
             const x = t + m * Math.sin(t) * Math.cos(t);
             const y = m * Math.sin(t) * Math.sin(t);
             const z = Math.cos(t);
@@ -1063,16 +1143,13 @@
         }
         
         function sphericalEpicycloid(t, m) {
-            // Compute parameters based on m
-            // This is a simplified mapping; the exact formulas from Monterde
-            // involve solving for a, q, ω, t0 as functions of m
-            
+            // m에 기반한 파라미터 계산
             const threshold = 1 / Math.sqrt(3);
             
             let a, q, omega, t0, c, d;
             
             if (Math.abs(m) > threshold) {
-                // Ellipsoid case
+                // 타원체 경우
                 a = 1.5;
                 q = 2 + Math.abs(m);
                 omega = Math.PI / 4 + m * 0.3;
@@ -1080,17 +1157,16 @@
                 c = 1.2;
                 d = 0;
             } else {
-                // Hyperboloid case (complex ω)
+                // 쌍곡면 경우 (복소 ω)
                 a = 1.5;
                 q = 2 + Math.abs(m) * 2;
-                // For complex case, we use real part approximation
                 omega = Math.PI / 6 + m * 0.5;
                 t0 = 0;
                 c = 0.8;
                 d = 0;
             }
             
-            // Spherical epicycloid formulas
+            // 구면 에피사이클로이드 공식
             const x = a * ((q - Math.cos(omega)) * Math.cos(t) + 
                           Math.cos(omega) * Math.cos(q*t + t0) + 
                           Math.sin(t) * Math.sin(q*t + t0));
@@ -1101,33 +1177,39 @@
             
             const z = a * Math.sin(omega) * (1 - Math.cos(q*t));
             
-            // Apply shear transformation
+            // 전단 변환 적용
             return [x, y, c * z + d];
         }
         
         function updateTabC() {
+            if (!tabC.initialized || !tabC.scene) return;
+            
             const {scene, ctx, canvas, m, tMax, numPoints} = tabC;
             
-            // Update surface type indicator
+            // 곡면 유형 표시 업데이트
             const threshold = 1 / Math.sqrt(3);
             let surfaceType = '';
             if (Math.abs(m) > threshold) {
-                surfaceType = '<span class="status-indicator ellipsoid-region">Ellipsoid (|m| > 1/√3)</span>';
+                surfaceType = '<span class="status-indicator ellipsoid-region">타원체 (|m| > 1/√3)</span>';
             } else {
-                surfaceType = '<span class="status-indicator hyperboloid-region">Hyperboloid (|m| < 1/√3)</span>';
+                surfaceType = '<span class="status-indicator hyperboloid-region">쌍곡면 (|m| < 1/√3)</span>';
             }
             document.getElementById('surfaceType').innerHTML = surfaceType;
             
-            // Clear 3D scene
-            while(scene.children.length > 2) {
-                scene.remove(scene.children[2]);
-            }
+            // 3D 씬 초기화
+            const objectsToRemove = [];
+            scene.children.forEach(child => {
+                if (child.type !== 'AmbientLight' && child.type !== 'DirectionalLight') {
+                    objectsToRemove.push(child);
+                }
+            });
+            objectsToRemove.forEach(obj => scene.remove(obj));
             
-            // Add axes
+            // 축 추가
             const axesHelper = new THREE.AxesHelper(5);
             scene.add(axesHelper);
             
-            // Salkowski curve
+            // 살코프스키 곡선
             const salkowskiPoints = [];
             const salkowskiProjection = [];
             
@@ -1145,7 +1227,7 @@
             );
             scene.add(salkowskiLine);
             
-            // Spherical epicycloid
+            // 구면 에피사이클로이드
             const epicycloidPoints = [];
             const epicycloidProjection = [];
             
@@ -1163,7 +1245,7 @@
             );
             scene.add(epicycloidLine);
             
-            // XY plane reference
+            // XY 평면 참조
             const planeGeom = new THREE.PlaneGeometry(15, 15);
             const planeMat = new THREE.MeshBasicMaterial({
                 color: 0xe0e0e0,
@@ -1177,18 +1259,18 @@
             
             tabC.renderer.render(scene, tabC.camera);
             
-            // Draw 2D projection
+            // 2D 사영 그리기
             const size = canvas.width;
             const cx = size / 2, cy = size / 2;
-            const scale = size / 16;
+            const scale = size / 18;
             
             ctx.clearRect(0, 0, size, size);
             
-            // Background
+            // 배경
             ctx.fillStyle = '#f9f9f9';
             ctx.fillRect(0, 0, size, size);
             
-            // Axes
+            // 축
             ctx.strokeStyle = '#ccc';
             ctx.lineWidth = 1;
             ctx.beginPath();
@@ -1198,9 +1280,9 @@
             ctx.lineTo(cx, size);
             ctx.stroke();
             
-            // Salkowski projection
+            // 살코프스키 사영
             ctx.strokeStyle = '#cc0000';
-            ctx.lineWidth = 2.5;
+            ctx.lineWidth = 3;
             ctx.beginPath();
             for (let i = 0; i < salkowskiProjection.length; i++) {
                 const x = cx + salkowskiProjection[i][0] * scale;
@@ -1210,9 +1292,9 @@
             }
             ctx.stroke();
             
-            // Epicycloid projection (should overlap)
+            // 에피사이클로이드 사영 (겹침)
             ctx.strokeStyle = '#00cc66';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 2.5;
             ctx.globalAlpha = 0.6;
             ctx.beginPath();
             for (let i = 0; i < epicycloidProjection.length; i++) {
@@ -1224,33 +1306,33 @@
             ctx.stroke();
             ctx.globalAlpha = 1.0;
             
-            // Legend
-            ctx.font = '14px sans-serif';
+            // 범례
+            ctx.font = 'bold 16px sans-serif';
             ctx.fillStyle = '#cc0000';
-            ctx.fillText('● Salkowski', 20, 30);
+            ctx.fillText('● 살코프스키 곡선', 30, 40);
             ctx.fillStyle = '#00cc66';
-            ctx.fillText('● Spherical Epicycloid', 20, 50);
+            ctx.fillText('● 구면 에피사이클로이드', 30, 70);
         }
         
         function animateTabC() {
             requestAnimationFrame(animateTabC);
-            if (currentTab === 2) {
+            if (currentTab === 2 && tabC.initialized) {
                 tabC.renderer.render(tabC.scene, tabC.camera);
             }
         }
         
         // ========================================
-        // INITIALIZATION
+        // 초기화
         // ========================================
         
         window.onload = () => {
             initTabA();
             
-            // Delay 3D initialization slightly for proper rendering
+            // 3D 초기화는 약간 지연
             setTimeout(() => {
                 initTabB();
                 initTabC();
-            }, 100);
+            }, 200);
         };
     </script>
 </body>
