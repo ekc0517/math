@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Graph Surface Embeddings Simulator</title>
+<title>그래프 표면 임베딩 시뮬레이터</title>
 <style>
 * {
   margin: 0;
@@ -103,6 +103,11 @@ button:disabled {
   border-radius: 8px;
   background: white;
   display: block;
+  cursor: crosshair;
+}
+
+#mainCanvas.edit-mode {
+  background: #fffef5;
 }
 
 .tabs {
@@ -118,7 +123,7 @@ button:disabled {
   border: none;
   border-radius: 4px 4px 0 0;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: bold;
 }
 
@@ -245,23 +250,31 @@ ul {
 ul li {
   margin: 5px 0;
 }
+
+.edit-mode-active {
+  background: #fff3cd;
+  border-left: 4px solid #ffc107;
+  padding: 8px;
+  margin: 5px 0;
+  font-size: 11px;
+}
 </style>
 </head>
 <body>
 
 <div id="app">
-  <!-- Left Panel: Graph Input -->
+  <!-- 좌측 패널: 그래프 입력 -->
   <div class="panel">
     <h2>1. 그래프 선택/편집</h2>
     
     <h3>예제 그래프</h3>
     <select id="exampleGraphs">
-      <option value="">-- 선택하세요 --</option>
-      <option value="cube">Cube (8 vertices)</option>
-      <option value="tetrahedron">Truncated Tetrahedron (12v)</option>
-      <option value="octahedron">Octahedron (6v)</option>
-      <option value="prism">Triangular Prism (6v)</option>
-      <option value="k4">K4 (4v)</option>
+      <option value="">-- 그래프를 선택하세요 --</option>
+      <option value="cube">정육면체 (8개 정점)</option>
+      <option value="tetrahedron">절단 사면체 (12개 정점)</option>
+      <option value="octahedron">정팔면체 (6개 정점)</option>
+      <option value="prism">삼각 기둥 (6개 정점)</option>
+      <option value="k4">K₄ (4개 정점)</option>
     </select>
     <button id="loadExample">예제 불러오기</button>
     
@@ -273,13 +286,17 @@ ul li {
       </label>
     </div>
     <div class="help-text">
-      편집 모드: 클릭으로 정점 추가, 드래그로 이동, Shift+클릭으로 간선 추가
+      • 클릭: 정점 추가<br>
+      • 드래그: 정점 이동<br>
+      • 정점 클릭 후 다른 정점 클릭: 간선 추가/삭제<br>
+      • Delete 키: 선택된 정점 삭제
     </div>
+    <div id="editModeStatus"></div>
     
     <div class="info-box">
       <strong>현재 그래프:</strong><br>
-      정점: <span id="vertexCount">0</span><br>
-      간선: <span id="edgeCount">0</span><br>
+      정점 수: <span id="vertexCount">0</span><br>
+      간선 수: <span id="edgeCount">0</span><br>
       <span id="graphProperties"></span>
     </div>
     
@@ -291,28 +308,28 @@ ul li {
     <button id="clearGraph">그래프 초기화</button>
   </div>
   
-  <!-- Center Panel: Embedding Visualization -->
+  <!-- 중앙 패널: 임베딩 시각화 -->
   <div class="panel">
     <h2>2. 표면 위 임베딩 시뮬레이션</h2>
     
     <div class="surface-tabs">
-      <button class="surface-tab active" data-surface="sphere">Sphere</button>
-      <button class="surface-tab" data-surface="projective">Projective Plane</button>
-      <button class="surface-tab" data-surface="torus">Torus</button>
-      <button class="surface-tab" data-surface="klein">Klein Bottle</button>
+      <button class="surface-tab active" data-surface="sphere">구면</button>
+      <button class="surface-tab" data-surface="projective">사영평면</button>
+      <button class="surface-tab" data-surface="torus">토러스</button>
+      <button class="surface-tab" data-surface="klein">클라인 병</button>
     </div>
     
     <div class="checkbox-group">
       <label>
         <input type="checkbox" id="showFaces">
-        Face 경계 표시
+        면(Face) 경계 표시
       </label>
       <label>
         <input type="checkbox" id="showDual">
-        Dual Graph 표시
+        쌍대 그래프 표시
       </label>
       <label>
-        <input type="checkbox" id="showLabels">
+        <input type="checkbox" id="showLabels" checked>
         레이블 표시
       </label>
     </div>
@@ -321,49 +338,50 @@ ul li {
     
     <div class="info-box">
       <strong>현재 임베딩 정보</strong><br>
-      표면: <span id="currentSurface">Sphere</span><br>
-      Twisted edges: <span id="twistedCount">0</span><br>
-      <div id="rotationInfo" style="font-size:10px; max-height:100px; overflow-y:auto;"></div>
+      표면: <span id="currentSurface">구면</span><br>
+      꼬인 간선 수: <span id="twistedCount">0</span><br>
+      <small>간선을 클릭하면 꼬임(twist) 상태를 전환할 수 있습니다</small>
+      <div id="rotationInfo" style="font-size:10px; max-height:100px; overflow-y:auto; margin-top:5px;"></div>
     </div>
   </div>
   
-  <!-- Right Panel: Theory & Results -->
+  <!-- 우측 패널: 이론 & 결과 -->
   <div class="panel">
-    <h2>3. 이론 & 결과</h2>
+    <h2>3. 이론 및 분석 결과</h2>
     
     <div class="tabs">
       <button class="tab active" data-tab="enami">Enami</button>
-      <button class="tab" data-tab="weiss">W-N</button>
-      <button class="tab" data-tab="juvan">J-M</button>
+      <button class="tab" data-tab="weiss">Weiß-N</button>
+      <button class="tab" data-tab="juvan">Juvan-M</button>
       <button class="tab" data-tab="hubard">Hubard</button>
     </div>
     
-    <!-- Enami Tab -->
+    <!-- Enami 탭 -->
     <div class="tab-content active" id="enami-content">
-      <h3>Enami (2019) - Re-embeddings</h3>
+      <h3>Enami (2019) - 재임베딩</h3>
       <div class="help-text">
-        3-connected 3-regular planar graphs의 non-negative Euler characteristic 표면 re-embedding
+        3-연결 3-정규 평면 그래프의 비음 오일러 특성 표면 재임베딩
       </div>
       
-      <button id="computeDual">Dual Graph 계산</button>
+      <button id="computeDual">쌍대 그래프 계산</button>
       <div id="dualInfo" class="info-box"></div>
       
-      <h3>Twisted Subgraph H<sub>T</sub></h3>
+      <h3>꼬인 부분그래프 H<sub>T</sub></h3>
       <div id="htInfo" class="info-box"></div>
       
-      <h3>Admissible Sets</h3>
-      <button id="enumerateEmbeddings">모든 Re-embedding 열거</button>
+      <h3>허용 가능한 집합들</h3>
+      <button id="enumerateEmbeddings">모든 재임베딩 열거</button>
       <div id="embeddingsList" class="edge-list"></div>
     </div>
     
-    <!-- Weiß-Niemeyer Tab -->
+    <!-- Weiß-Niemeyer 탭 -->
     <div class="tab-content" id="weiss-content">
-      <h3>Weiß-Niemeyer (2024) - Strong Embeddings</h3>
+      <h3>Weiß-Niemeyer (2024) - 강한 임베딩</h3>
       <div class="help-text">
-        Strong embedding: 모든 face가 cycle인 2-cell embedding
+        강한 임베딩: 모든 면이 사이클인 2-cell 임베딩
       </div>
       
-      <button id="checkStrong">Strong Embedding 판정</button>
+      <button id="checkStrong">강한 임베딩 판정</button>
       
       <div id="strongResult"></div>
       
@@ -371,9 +389,9 @@ ul li {
       </div>
     </div>
     
-    <!-- Juvan-Mohar Tab -->
+    <!-- Juvan-Mohar 탭 -->
     <div class="tab-content" id="juvan-content">
-      <h3>Juvan-Mohar (1997) - Torus Embedding</h3>
+      <h3>Juvan-Mohar (1997) - 토러스 임베딩</h3>
       <div class="help-text">
         토러스 임베딩 가능성 판정 알고리즘
       </div>
@@ -385,36 +403,37 @@ ul li {
       <h3>알고리즘 개요</h3>
       <ul style="font-size:11px;">
         <li>3-연결 분해</li>
-        <li>Projective planar 판정</li>
-        <li>Face-width 검사</li>
-        <li>Rotation system 구성</li>
+        <li>사영 평면 판정</li>
+        <li>면-너비(face-width) 검사</li>
+        <li>회전 체계 구성</li>
       </ul>
     </div>
     
-    <!-- Hubard et al. Tab -->
+    <!-- Hubard et al. 탭 -->
     <div class="tab-content" id="hubard-content">
-      <h3>Hubard et al. (2016) - Shortest Path</h3>
+      <h3>Hubard et al. (2016) - 최단 경로</h3>
       <div class="help-text">
-        표면 위 그래프의 shortest path embedding
+        표면 위 그래프의 최단 경로 임베딩
       </div>
       
       <div class="checkbox-group">
         <label>
           <input type="checkbox" id="shortestPathMode">
-          Shortest Path 모드
+          최단 경로 모드
         </label>
       </div>
       
-      <button id="checkShortestPath">Shortest Path 판정</button>
+      <button id="checkShortestPath">최단 경로 판정</button>
       
       <div id="shortestPathResult" class="info-box"></div>
       
-      <h3>Minimal Triangulations</h3>
-      <button id="loadMinimalTorus">Torus Minimal (7v)</button>
-      <button id="loadMinimalKlein">Klein Minimal Kc1</button>
+      <h3>최소 삼각분할</h3>
+      <button id="loadMinimalTorus">토러스 최소 (7개 정점)</button>
+      <button id="loadMinimalKlein">클라인 최소 Kc1</button>
       
       <div class="info-box" style="font-size:10px;">
-        <strong>Theorem 2:</strong> Klein bottle의 unit square flat metric에서는 universal shortest path metric이 존재하지 않음
+        <strong>정리 2:</strong> 클라인 병의 단위 정사각형 평탄 메트릭에서는 
+        보편적인 최단 경로 메트릭이 존재하지 않음
       </div>
     </div>
   </div>
@@ -424,7 +443,7 @@ ul li {
 'use strict';
 
 // ============================================================================
-// Graph Class - Basic graph data structure
+// Graph 클래스 - 기본 그래프 자료구조
 // ============================================================================
 class Graph {
   constructor() {
@@ -441,9 +460,9 @@ class Graph {
   }
   
   addEdge(u, v) {
-    // Check if edge already exists
+    // 이미 간선이 있는지 확인
     if (this.hasEdge(u, v)) return null;
-    // No self-loops
+    // 자기 루프 방지
     if (u === v) return null;
     
     const e = {id: this.nextEdgeId++, u, v};
@@ -464,6 +483,19 @@ class Graph {
   
   removeEdge(id) {
     this.edges = this.edges.filter(e => e.id !== id);
+  }
+  
+  toggleEdge(u, v) {
+    const existing = this.edges.find(e => 
+      (e.u === u && e.v === v) || (e.u === v && e.v === u)
+    );
+    if (existing) {
+      this.removeEdge(existing.id);
+      return false; // 삭제됨
+    } else {
+      this.addEdge(u, v);
+      return true; // 추가됨
+    }
   }
   
   getVertex(id) {
@@ -487,12 +519,13 @@ class Graph {
     return this.getNeighbors(vid).length;
   }
   
-  // Check if graph is 3-regular
+  // 3-정규 그래프 확인
   is3Regular() {
+    if (this.vertices.length === 0) return false;
     return this.vertices.every(v => this.getDegree(v.id) === 3);
   }
   
-  // Simple connectivity check using DFS
+  // DFS를 이용한 연결성 확인
   isConnected() {
     if (this.vertices.length === 0) return true;
     const visited = new Set();
@@ -511,20 +544,19 @@ class Graph {
     return visited.size === this.vertices.length;
   }
   
-  // Check 3-connectivity (simplified - uses vertex connectivity)
-  // For educational purposes only - not exact for all cases
+  // 3-연결성 확인 (간소화 버전 - 교육용)
   is3Connected() {
     if (this.vertices.length < 4) return false;
     if (!this.isConnected()) return false;
     
-    // Check if removing any single vertex keeps graph connected
+    // 정점 1개 제거 후 연결성 확인
     for (const v of this.vertices) {
       const tempGraph = this.clone();
       tempGraph.removeVertex(v.id);
       if (!tempGraph.isConnected()) return false;
     }
     
-    // Check if removing any pair of vertices keeps graph connected
+    // 정점 2개 제거 후 연결성 확인
     for (let i = 0; i < this.vertices.length; i++) {
       for (let j = i + 1; j < this.vertices.length; j++) {
         const tempGraph = this.clone();
@@ -564,26 +596,26 @@ class Graph {
 }
 
 // ============================================================================
-// Embedding Class - Represents a graph embedding on a surface
+// Embedding 클래스 - 표면 위 그래프 임베딩 표현
 // Enami (2019), Weiß-Niemeyer (2024)
 // ============================================================================
 class Embedding {
   constructor(graph) {
     this.graph = graph;
-    this.rotation = new Map(); // vertex id -> ordered array of neighbor ids
-    this.twistedEdges = new Set(); // edge ids
+    this.rotation = new Map(); // 정점 id -> 인접 정점 순서 배열
+    this.twistedEdges = new Set(); // 꼬인 간선 id들
     this.surface = 'sphere'; // sphere, projective, torus, klein
-    this.faces = []; // computed facial cycles
+    this.faces = []; // 계산된 면 사이클들
   }
   
-  // Compute rotation system from vertex positions (planar case)
+  // 정점 위치로부터 평면 회전 체계 계산
   computePlanarRotation() {
     this.rotation.clear();
     
     for (const v of this.graph.vertices) {
       const neighbors = this.graph.getNeighbors(v.id);
       
-      // Sort neighbors by angle
+      // 각도로 이웃 정렬
       const angles = neighbors.map(nid => {
         const n = this.graph.getVertex(nid);
         return {
@@ -605,16 +637,16 @@ class Embedding {
     }
   }
   
-  // Compute faces using rotation system
-  // Reference: Enami (2019) - face computation for re-embedding
+  // 회전 체계를 이용한 면 계산
+  // 참고: Enami (2019) - 재임베딩을 위한 면 계산
   computeFaces() {
     this.faces = [];
-    const usedDarts = new Set(); // dart = (v, w) directed edge
+    const usedDarts = new Set(); // dart = (v, w) 방향 간선
     
     const dartKey = (v, w) => `${v}->${w}`;
     
     for (const e of this.graph.edges) {
-      // Try both directions
+      // 양방향 시도
       for (const [start, next] of [[e.u, e.v], [e.v, e.u]]) {
         const dk = dartKey(start, next);
         if (usedDarts.has(dk)) continue;
@@ -623,7 +655,7 @@ class Embedding {
         let current = start;
         let prev = next;
         
-        // Walk around face
+        // 면 주위를 순회
         do {
           face.push(current);
           usedDarts.add(dartKey(current, prev));
@@ -632,14 +664,14 @@ class Embedding {
           const idx = rotation.indexOf(current);
           if (idx === -1) break;
           
-          // Next vertex in rotation (counterclockwise)
+          // 회전 순서상 다음 정점 (반시계방향)
           const nextIdx = (idx + 1) % rotation.length;
           const nextVertex = rotation[nextIdx];
           
           current = prev;
           prev = nextVertex;
           
-          if (face.length > this.graph.vertices.length * 2) break; // Safety
+          if (face.length > this.graph.vertices.length * 2) break; // 안전장치
         } while (current !== start || prev !== next);
         
         if (face.length >= 3) {
@@ -651,7 +683,7 @@ class Embedding {
     return this.faces;
   }
   
-  // Get rotation info as string
+  // 회전 정보를 문자열로
   getRotationString() {
     let str = '';
     for (const [vid, neighbors] of this.rotation.entries()) {
@@ -662,13 +694,13 @@ class Embedding {
 }
 
 // ============================================================================
-// Dual Graph Computation
-// Enami (2019) - Theorem 1, 2, 3 use dual graph patterns
+// 쌍대 그래프 계산
+// Enami (2019) - 정리 1, 2, 3에서 쌍대 그래프 패턴 사용
 // ============================================================================
 class DualGraph {
   constructor(embedding) {
     this.embedding = embedding;
-    this.dualVertices = []; // one per face
+    this.dualVertices = []; // 각 면마다 하나씩
     this.dualEdges = [];
   }
   
@@ -678,14 +710,13 @@ class DualGraph {
     
     const faces = this.embedding.computeFaces();
     
-    // Create dual vertex for each face
+    // 각 면마다 쌍대 정점 생성
     for (let i = 0; i < faces.length; i++) {
       this.dualVertices.push({id: i, face: faces[i]});
     }
     
-    // Create dual edges for adjacent faces
-    // Two faces are adjacent if they share an edge
-    const edgeFaceMap = new Map(); // edge -> [face indices]
+    // 인접한 면들 사이에 쌍대 간선 생성
+    const edgeFaceMap = new Map(); // 간선 -> [면 인덱스들]
     
     for (let i = 0; i < faces.length; i++) {
       const face = faces[i];
@@ -701,7 +732,7 @@ class DualGraph {
       }
     }
     
-    // Create dual edges
+    // 쌍대 간선 생성
     const addedPairs = new Set();
     for (const [edgeKey, faceIndices] of edgeFaceMap.entries()) {
       if (faceIndices.length === 2) {
@@ -710,7 +741,7 @@ class DualGraph {
         if (!addedPairs.has(pairKey)) {
           addedPairs.add(pairKey);
           
-          // Find original edge id
+          // 원본 간선 id 찾기
           const [u, v] = edgeKey.split('-').map(Number);
           const originalEdge = this.embedding.graph.edges.find(e =>
             (e.u === u && e.v === v) || (e.u === v && e.v === u)
@@ -728,14 +759,14 @@ class DualGraph {
     return this;
   }
   
-  // Get subgraph induced by twisted edges
-  // Enami (2019) - H_T is the subgraph of dual graph induced by twisted edges
+  // 꼬인 간선들로 유도된 부분그래프
+  // Enami (2019) - H_T는 꼬인 간선들로 유도된 쌍대 그래프의 부분그래프
   getTwistedSubgraph() {
     const twistedDualEdges = this.dualEdges.filter(de =>
       this.embedding.twistedEdges.has(de.originalEdgeId)
     );
     
-    // Get vertices involved
+    // 관련 정점들 수집
     const vertexSet = new Set();
     for (const e of twistedDualEdges) {
       vertexSet.add(e.u);
@@ -748,24 +779,21 @@ class DualGraph {
     };
   }
   
-  // Pattern recognition for H_T
-  // Enami (2019) - Theorem 1, 2, 3 enumerate specific patterns
+  // H_T 패턴 인식
+  // Enami (2019) - 정리 1, 2, 3에서 특정 패턴들 나열
   recognizePattern(subgraph) {
     const n = subgraph.vertices.length;
     const m = subgraph.edges.length;
     
-    if (m === 0) return 'empty';
-    if (m === 1) return 'K2';
-    if (n === 4 && m === 6) return 'K4';
-    if (n === 6 && m === 9) return 'K2,2,2';
+    if (m === 0) return '공집합';
+    if (m === 1) return 'K₂';
+    if (n === 4 && m === 6) return 'K₄';
+    if (n === 6 && m === 9) return 'K₂,₂,₂';
     
-    // Check for complete bipartite-like patterns
-    // This is simplified - full pattern matching would need isomorphism checking
+    if (m === 2 && n === 3) return 'K₁,₂';
+    if (m === 3 && n === 3) return '삼각형';
     
-    if (m === 2 && n === 3) return 'K1,2';
-    if (m === 3 && n === 3) return 'triangle';
-    
-    // Degree sequence analysis
+    // 차수 분석
     const degrees = new Map();
     for (const v of subgraph.vertices) {
       degrees.set(v, 0);
@@ -777,81 +805,78 @@ class DualGraph {
     
     const degSeq = Array.from(degrees.values()).sort((a, b) => b - a);
     
-    // Try to match K_{2,2m}, K_{2,2m-1}, K_{1,1,2m-1}, K_{1,1,2m}
+    // K_{2,2m}, K_{2,2m-1}, K_{1,1,2m-1}, K_{1,1,2m} 매칭 시도
     if (degSeq.length >= 3) {
       const [d1, d2, d3] = degSeq;
       
-      // K_{2,2m}: two vertices of degree 2m, 2m vertices of degree 2
       if (degSeq.filter(d => d === d1).length === 2 && d1 === n - 2) {
         const m_val = d1 / 2;
         if (m_val === Math.floor(m_val)) {
-          return `K2,${d1}`;
+          return `K₂,${d1}`;
         }
       }
       
-      // K_{1,1,k}
       if (degSeq.filter(d => d === d1).length === 2 && d1 === n - 2) {
-        return `K1,1,${n-2}`;
+        return `K₁,₁,${n-2}`;
       }
     }
     
-    // Special cases A1-A6 (Klein bottle, Weiß-Niemeyer Table 2)
-    // Simplified detection
-    if (n === 5 && m === 6) return 'A3';
-    if (n === 5 && m === 5) return 'A1';
+    // 특수 경우 A1-A6 (클라인 병, Weiß-Niemeyer 표 2)
+    if (n === 5 && m === 6) return 'A₃';
+    if (n === 5 && m === 5) return 'A₁';
     
-    return `unknown(${n}v,${m}e)`;
+    return `미분류(${n}정점,${m}간선)`;
   }
   
-  // Determine which surface this twisted subgraph corresponds to
-  // Enami (2019) - Theorems 1, 2, 3
+  // 꼬인 부분그래프가 어떤 표면에 해당하는지 판정
+  // Enami (2019) - 정리 1, 2, 3
   determineSurface(pattern) {
-    // Projective plane: K2, K4
-    if (pattern === 'K2' || pattern === 'K4') {
-      return {surface: 'projective', theorem: 'Enami Thm 1'};
+    // 사영평면: K₂, K₄
+    if (pattern === 'K₂' || pattern === 'K₄') {
+      return {surface: '사영평면', theorem: 'Enami 정리 1'};
     }
     
-    // Torus: K_{2,2,2}, K_{2,2m} (m >= 2), K_{1,1,2m-1}
-    if (pattern === 'K2,2,2') {
-      return {surface: 'torus', theorem: 'Enami Thm 2'};
+    // 토러스: K_{2,2,2}, K_{2,2m} (m >= 2), K_{1,1,2m-1}
+    if (pattern === 'K₂,₂,₂') {
+      return {surface: '토러스', theorem: 'Enami 정리 2'};
     }
-    if (pattern.startsWith('K2,')) {
+    if (pattern.startsWith('K₂,')) {
       const m = parseInt(pattern.split(',')[1]);
       if (m >= 4 && m % 2 === 0) {
-        return {surface: 'torus', theorem: 'Enami Thm 2'};
+        return {surface: '토러스', theorem: 'Enami 정리 2'};
       }
     }
-    if (pattern.startsWith('K1,1,')) {
+    if (pattern.startsWith('K₁,₁,')) {
       const k = parseInt(pattern.split(',')[2]);
       if (k % 2 === 1 && k >= 3) {
-        return {surface: 'torus', theorem: 'Enami Thm 2'};
+        return {surface: '토러스', theorem: 'Enami 정리 2'};
       }
     }
     
-    // Klein bottle: K_{2,2m-1}, K_{1,1,2m}, A1-A6
-    if (pattern.startsWith('K2,')) {
+    // 클라인 병: K_{2,2m-1}, K_{1,1,2m}, A1-A6
+    if (pattern.startsWith('K₂,')) {
       const m = parseInt(pattern.split(',')[1]);
       if (m >= 3 && m % 2 === 1) {
-        return {surface: 'klein', theorem: 'Enami Thm 3'};
+        return {surface: '클라인 병', theorem: 'Enami 정리 3'};
       }
     }
-    if (pattern.startsWith('K1,1,')) {
+    if (pattern.startsWith('K₁,₁,')) {
       const k = parseInt(pattern.split(',')[2]);
       if (k % 2 === 0 && k >= 2) {
-        return {surface: 'klein', theorem: 'Enami Thm 3'};
+        return {surface: '클라인 병', theorem: 'Enami 정리 3'};
       }
     }
     if (pattern.startsWith('A')) {
-      return {surface: 'klein', theorem: 'Enami Thm 3'};
+      return {surface: '클라인 병', theorem: 'Enami 정리 3'};
     }
     
-    return {surface: 'unknown', theorem: 'N/A'};
+    return {surface: '미분류', theorem: '해당없음'};
   }
 }
 
 // ============================================================================
-// Strong Embedding Checker
-// Weiß-Niemeyer (2024) - Theorem 1, Lemmas 16-19
+// 강한 임베딩 검사기
+// Weiß-Niemeyer (2024) - 정리 1, 보조정리 16-19
 // ============================================================================
 class StrongEmbeddingChecker {
   constructor(embedding, dualGraph) {
@@ -859,16 +884,14 @@ class StrongEmbeddingChecker {
     this.dualGraph = dualGraph;
   }
   
-  // Check if embedding is strong (all faces are cycles)
+  // 강한 임베딩인지 확인 (모든 면이 사이클)
   isStrong() {
     const faces = this.embedding.computeFaces();
     
-    // For strong embedding, all faces must be cycles
-    // In our representation, we check if face boundary forms a simple cycle
     for (const face of faces) {
       if (face.length < 3) return false;
       
-      // Check if all consecutive vertices in face are connected
+      // 면의 연속된 정점들이 모두 연결되어 있는지 확인
       for (let i = 0; i < face.length; i++) {
         const u = face[i];
         const v = face[(i + 1) % face.length];
@@ -881,8 +904,8 @@ class StrongEmbeddingChecker {
     return true;
   }
   
-  // Determine if twisted subgraph gives strong embedding
-  // Weiß-Niemeyer (2024) - Lemmas 16, 17, 18, 19
+  // 꼬인 부분그래프가 강한 임베딩을 주는지 판정
+  // Weiß-Niemeyer (2024) - 보조정리 16, 17, 18, 19
   checkStrongByCriteria(pattern, surface) {
     const criteria = {
       isStrong: false,
@@ -890,55 +913,54 @@ class StrongEmbeddingChecker {
       lemma: ''
     };
     
-    // Projective plane - Lemma 16
-    if (surface === 'projective') {
-      if (pattern === 'K4') {
+    // 사영평면 - 보조정리 16
+    if (surface === '사영평면') {
+      if (pattern === 'K₄') {
         criteria.isStrong = true;
-        criteria.reason = 'H_T ≅ K4 on projective plane';
-        criteria.lemma = 'Weiß-Niemeyer Lemma 16';
-      } else if (pattern === 'K2') {
+        criteria.reason = 'H_T ≅ K₄ (사영평면)';
+        criteria.lemma = 'Weiß-Niemeyer 보조정리 16';
+      } else if (pattern === 'K₂') {
         criteria.isStrong = false;
-        criteria.reason = 'H_T ≅ K2 gives non-cycle faces';
-        criteria.lemma = 'Weiß-Niemeyer Lemma 16';
+        criteria.reason = 'H_T ≅ K₂는 비사이클 면 생성';
+        criteria.lemma = 'Weiß-Niemeyer 보조정리 16';
       }
     }
     
-    // Torus - Lemma 17
-    if (surface === 'torus') {
-      if (pattern === 'K2,2,2') {
+    // 토러스 - 보조정리 17
+    if (surface === '토러스') {
+      if (pattern === 'K₂,₂,₂') {
         criteria.isStrong = true;
-        criteria.reason = 'H_T ≅ K_{2,2,2} always strong';
-        criteria.lemma = 'Weiß-Niemeyer Lemma 17';
-      } else if (pattern.startsWith('K2,')) {
-        // K_{2,2m}: strong iff the two size-2 part vertices are non-adjacent
-        criteria.isStrong = true; // Simplified - would need actual check
-        criteria.reason = 'H_T ≅ K_{2,2m}, assuming non-adjacent condition';
-        criteria.lemma = 'Weiß-Niemeyer Lemma 17';
-      } else if (pattern.startsWith('K1,1,')) {
+        criteria.reason = 'H_T ≅ K_{2,2,2}는 항상 강함';
+        criteria.lemma = 'Weiß-Niemeyer 보조정리 17';
+      } else if (pattern.startsWith('K₂,')) {
+        criteria.isStrong = true;
+        criteria.reason = 'H_T ≅ K_{2,2m}, 비인접 조건 가정';
+        criteria.lemma = 'Weiß-Niemeyer 보조정리 17';
+      } else if (pattern.startsWith('K₁,₁,')) {
         criteria.isStrong = false;
-        criteria.reason = 'H_T ≅ K_{1,1,2m-1} not strong';
-        criteria.lemma = 'Weiß-Niemeyer Lemma 17';
+        criteria.reason = 'H_T ≅ K_{1,1,2m-1}은 강하지 않음';
+        criteria.lemma = 'Weiß-Niemeyer 보조정리 17';
       }
     }
     
-    // Klein bottle - Lemmas 18, 19
-    if (surface === 'klein') {
-      if (pattern.startsWith('K2,')) {
+    // 클라인 병 - 보조정리 18, 19
+    if (surface === '클라인 병') {
+      if (pattern.startsWith('K₂,')) {
         criteria.isStrong = true;
-        criteria.reason = 'H_T ≅ K_{2,2m-1}, assuming non-adjacent condition';
-        criteria.lemma = 'Weiß-Niemeyer Lemma 18';
-      } else if (pattern === 'A3' || pattern === 'A5' || pattern === 'A6') {
+        criteria.reason = 'H_T ≅ K_{2,2m-1}, 비인접 조건 가정';
+        criteria.lemma = 'Weiß-Niemeyer 보조정리 18';
+      } else if (pattern === 'A₃' || pattern === 'A₅' || pattern === 'A₆') {
         criteria.isStrong = true;
-        criteria.reason = `H_T ≅ ${pattern} gives strong embedding`;
-        criteria.lemma = 'Weiß-Niemeyer Lemma 19';
-      } else if (pattern === 'A1' || pattern === 'A2' || pattern === 'A4') {
+        criteria.reason = `H_T ≅ ${pattern}는 강한 임베딩`;
+        criteria.lemma = 'Weiß-Niemeyer 보조정리 19';
+      } else if (pattern === 'A₁' || pattern === 'A₂' || pattern === 'A₄') {
         criteria.isStrong = false;
-        criteria.reason = `H_T ≅ ${pattern} not strong`;
-        criteria.lemma = 'Weiß-Niemeyer Lemma 19';
-      } else if (pattern.startsWith('K1,1,')) {
+        criteria.reason = `H_T ≅ ${pattern}는 강하지 않음`;
+        criteria.lemma = 'Weiß-Niemeyer 보조정리 19';
+      } else if (pattern.startsWith('K₁,₁,')) {
         criteria.isStrong = false;
-        criteria.reason = 'H_T ≅ K_{1,1,2m} not strong';
-        criteria.lemma = 'Weiß-Niemeyer Lemma 18';
+        criteria.reason = 'H_T ≅ K_{1,1,2m}은 강하지 않음';
+        criteria.lemma = 'Weiß-Niemeyer 보조정리 18';
       }
     }
     
@@ -947,7 +969,7 @@ class StrongEmbeddingChecker {
 }
 
 // ============================================================================
-// Example Graphs Generator
+// 예제 그래프 생성기
 // ============================================================================
 class ExampleGraphs {
   static createCube() {
@@ -955,7 +977,7 @@ class ExampleGraphs {
     const r = 150;
     const center = 250;
     
-    // 8 vertices of cube in circular layout
+    // 정육면체의 8개 정점을 원형 배치
     for (let i = 0; i < 8; i++) {
       const angle = (i / 8) * 2 * Math.PI;
       g.addVertex(
@@ -964,11 +986,11 @@ class ExampleGraphs {
       );
     }
     
-    // Edges of cube (3-regular)
+    // 정육면체 간선 (3-정규)
     const edges = [
-      [0,1],[1,2],[2,3],[3,0], // outer square
-      [4,5],[5,6],[6,7],[7,4], // inner square
-      [0,4],[1,5],[2,6],[3,7]  // connecting edges
+      [0,1],[1,2],[2,3],[3,0], // 외부 정사각형
+      [4,5],[5,6],[6,7],[7,4], // 내부 정사각형
+      [0,4],[1,5],[2,6],[3,7]  // 연결 간선
     ];
     
     for (const [u, v] of edges) {
@@ -983,7 +1005,7 @@ class ExampleGraphs {
     const r = 120;
     const center = 250;
     
-    // 6 vertices
+    // 6개 정점
     for (let i = 0; i < 6; i++) {
       const angle = (i / 6) * 2 * Math.PI;
       g.addVertex(
@@ -992,7 +1014,7 @@ class ExampleGraphs {
       );
     }
     
-    // Octahedron edges (3-regular, 12 edges)
+    // 정팔면체 간선 (3-정규, 12개 간선)
     const edges = [
       [0,1],[1,2],[2,3],[3,4],[4,5],[5,0],
       [0,2],[2,4],[4,0],
@@ -1011,7 +1033,7 @@ class ExampleGraphs {
     const r = 100;
     const center = 250;
     
-    // 6 vertices (two triangles)
+    // 6개 정점 (두 개의 삼각형)
     for (let i = 0; i < 3; i++) {
       const angle = (i / 3) * 2 * Math.PI;
       g.addVertex(
@@ -1027,11 +1049,11 @@ class ExampleGraphs {
       );
     }
     
-    // Edges
+    // 간선
     const edges = [
-      [0,1],[1,2],[2,0], // first triangle
-      [3,4],[4,5],[5,3], // second triangle
-      [0,3],[1,4],[2,5]  // connecting edges
+      [0,1],[1,2],[2,0], // 첫 번째 삼각형
+      [3,4],[4,5],[5,3], // 두 번째 삼각형
+      [0,3],[1,4],[2,5]  // 연결 간선
     ];
     
     for (const [u, v] of edges) {
@@ -1046,7 +1068,7 @@ class ExampleGraphs {
     const r = 100;
     const center = 250;
     
-    // 4 vertices
+    // 4개 정점
     for (let i = 0; i < 4; i++) {
       const angle = (i / 4) * 2 * Math.PI;
       g.addVertex(
@@ -1055,7 +1077,7 @@ class ExampleGraphs {
       );
     }
     
-    // All edges (complete graph)
+    // 모든 간선 (완전 그래프)
     for (let i = 0; i < 4; i++) {
       for (let j = i + 1; j < 4; j++) {
         g.addEdge(i, j);
@@ -1070,7 +1092,7 @@ class ExampleGraphs {
     const r = 150;
     const center = 250;
     
-    // 12 vertices in circular layout
+    // 12개 정점을 원형 배치
     for (let i = 0; i < 12; i++) {
       const angle = (i / 12) * 2 * Math.PI;
       g.addVertex(
@@ -1079,8 +1101,7 @@ class ExampleGraphs {
       );
     }
     
-    // Truncated tetrahedron edges (3-regular, 18 edges)
-    // Simplified layout
+    // 절단 사면체 간선 (3-정규, 18개 간선)
     const edges = [
       [0,1],[1,2],[3,4],[4,5],[6,7],[7,8],[9,10],[10,11],
       [0,11],[2,3],[5,6],[8,9],
@@ -1094,9 +1115,9 @@ class ExampleGraphs {
     return g;
   }
   
-  // Hubard et al. (2016) - Minimal triangulation examples
+  // Hubard et al. (2016) - 최소 삼각분할 예제
   static createTorusMinimal() {
-    // 7 vertices minimal triangulation of torus
+    // 토러스의 7개 정점 최소 삼각분할
     const g = new Graph();
     const r = 120;
     const center = 250;
@@ -1109,7 +1130,7 @@ class ExampleGraphs {
       );
     }
     
-    // Complete graph K7 (simplified - actual minimal triangulation has specific structure)
+    // 완전 그래프 K7 (간소화 - 실제 최소 삼각분할은 특정 구조를 가짐)
     for (let i = 0; i < 7; i++) {
       for (let j = i + 1; j < 7; j++) {
         g.addEdge(i, j);
@@ -1120,8 +1141,8 @@ class ExampleGraphs {
   }
   
   static createKleinMinimal() {
-    // Klein bottle minimal triangulation Kc1
-    // Hubard et al. (2016) Theorem 2 - no shortest path embedding on unit square
+    // 클라인 병 최소 삼각분할 Kc1
+    // Hubard et al. (2016) 정리 2 - 단위 정사각형에서 최단 경로 임베딩 불가
     const g = new Graph();
     const r = 100;
     const center = 250;
@@ -1134,7 +1155,7 @@ class ExampleGraphs {
       );
     }
     
-    // Specific Klein bottle triangulation
+    // 클라인 병 특정 삼각분할
     const edges = [
       [0,1],[1,2],[2,3],[3,4],[4,5],[5,0],
       [0,2],[2,4],[4,0],
@@ -1150,7 +1171,7 @@ class ExampleGraphs {
 }
 
 // ============================================================================
-// Visualization & Rendering
+// 시각화 및 렌더링
 // ============================================================================
 class Renderer {
   constructor(svgElement) {
@@ -1167,10 +1188,11 @@ class Renderer {
     this.surface = 'sphere';
     
     this.selectedVertex = null;
-    this.firstSelectedVertex = null; // For edge creation
+    this.draggingVertex = null;
     
     this.onVertexClick = null;
     this.onEdgeClick = null;
+    this.onCanvasClick = null;
   }
   
   setGraph(graph, embedding) {
@@ -1190,23 +1212,23 @@ class Renderer {
     this.clear();
     if (!this.graph) return;
     
-    // Draw surface background
+    // 표면 배경 그리기
     this.drawSurface();
     
-    // Draw faces if enabled
+    // 면 그리기 (활성화된 경우)
     if (this.showFaces && this.embedding) {
       this.drawFaces();
     }
     
-    // Draw dual graph if enabled
+    // 쌍대 그래프 그리기 (활성화된 경우)
     if (this.showDual && this.embedding) {
       this.drawDualGraph();
     }
     
-    // Draw edges
+    // 간선 그리기
     this.drawEdges();
     
-    // Draw vertices
+    // 정점 그리기
     this.drawVertices();
   }
   
@@ -1215,7 +1237,6 @@ class Renderer {
     g.setAttribute('id', 'surface-background');
     
     if (this.surface === 'sphere') {
-      // Simple rectangle
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttribute('x', 50);
       rect.setAttribute('y', 50);
@@ -1231,11 +1252,11 @@ class Renderer {
       text.setAttribute('y', 70);
       text.setAttribute('font-size', 12);
       text.setAttribute('fill', '#999');
-      text.textContent = 'Sphere (Planar)';
+      text.textContent = '구면 (평면)';
       g.appendChild(text);
     }
     else if (this.surface === 'torus') {
-      // Fundamental polygon: square with identified edges
+      // 기본 다각형: 대변이 식별된 정사각형
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttribute('x', 100);
       rect.setAttribute('y', 100);
@@ -1246,22 +1267,22 @@ class Renderer {
       rect.setAttribute('stroke-width', 3);
       g.appendChild(rect);
       
-      // Arrows showing identification
-      this.drawArrow(g, 100, 250, 80, 250, '#e74c3c'); // left
-      this.drawArrow(g, 500, 250, 520, 250, '#e74c3c'); // right
-      this.drawArrow(g, 300, 100, 300, 80, '#3498db'); // top
-      this.drawArrow(g, 300, 500, 300, 520, '#3498db'); // bottom
+      // 식별을 나타내는 화살표
+      this.drawArrow(g, 100, 250, 80, 250, '#e74c3c'); // 왼쪽
+      this.drawArrow(g, 500, 250, 520, 250, '#e74c3c'); // 오른쪽
+      this.drawArrow(g, 300, 100, 300, 80, '#3498db'); // 위
+      this.drawArrow(g, 300, 500, 300, 520, '#3498db'); // 아래
       
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('x', 110);
       text.setAttribute('y', 120);
       text.setAttribute('font-size', 12);
       text.setAttribute('fill', '#666');
-      text.textContent = 'Torus (opposite edges identified)';
+      text.textContent = '토러스 (대변 식별)';
       g.appendChild(text);
     }
     else if (this.surface === 'klein') {
-      // Klein bottle: rectangle with one pair reversed
+      // 클라인 병: 한 쌍은 반대 방향으로 식별
       const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       rect.setAttribute('x', 100);
       rect.setAttribute('y', 100);
@@ -1272,9 +1293,9 @@ class Renderer {
       rect.setAttribute('stroke-width', 3);
       g.appendChild(rect);
       
-      // Arrows (one pair reversed)
+      // 화살표 (한 쌍은 반대 방향)
       this.drawArrow(g, 100, 250, 80, 250, '#e74c3c');
-      this.drawArrow(g, 520, 250, 500, 250, '#e74c3c'); // reversed
+      this.drawArrow(g, 520, 250, 500, 250, '#e74c3c'); // 반대
       this.drawArrow(g, 300, 100, 300, 80, '#3498db');
       this.drawArrow(g, 300, 500, 300, 520, '#3498db');
       
@@ -1283,11 +1304,11 @@ class Renderer {
       text.setAttribute('y', 120);
       text.setAttribute('font-size', 12);
       text.setAttribute('fill', '#666');
-      text.textContent = 'Klein Bottle (one pair reversed)';
+      text.textContent = '클라인 병 (한 쌍 반대 식별)';
       g.appendChild(text);
     }
     else if (this.surface === 'projective') {
-      // Projective plane: disk with antipodal points identified
+      // 사영평면: 대척점이 식별된 원판
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       circle.setAttribute('cx', 300);
       circle.setAttribute('cy', 300);
@@ -1303,7 +1324,7 @@ class Renderer {
       text.setAttribute('y', 120);
       text.setAttribute('font-size', 12);
       text.setAttribute('fill', '#666');
-      text.textContent = 'Projective Plane (antipodal identification)';
+      text.textContent = '사영평면 (대척점 식별)';
       g.appendChild(text);
     }
     
@@ -1321,7 +1342,7 @@ class Renderer {
     line.setAttribute('marker-end', 'url(#arrowhead)');
     parent.appendChild(line);
     
-    // Define arrowhead marker if not exists
+    // 화살표 마커 정의 (없으면)
     if (!this.svg.querySelector('#arrowhead')) {
       const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
       const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
@@ -1371,7 +1392,7 @@ class Renderer {
     const dual = new DualGraph(this.embedding);
     dual.compute();
     
-    // Compute center of each face for dual vertex position
+    // 각 면의 중심을 쌍대 정점 위치로 계산
     const dualPositions = [];
     for (const dv of dual.dualVertices) {
       let cx = 0, cy = 0;
@@ -1385,7 +1406,7 @@ class Renderer {
       dualPositions.push({x: cx, y: cy});
     }
     
-    // Draw dual edges
+    // 쌍대 간선 그리기
     for (const de of dual.dualEdges) {
       const p1 = dualPositions[de.u];
       const p2 = dualPositions[de.v];
@@ -1403,7 +1424,7 @@ class Renderer {
       this.svg.appendChild(line);
     }
     
-    // Draw dual vertices
+    // 쌍대 정점 그리기
     for (const pos of dualPositions) {
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       circle.setAttribute('cx', pos.x);
@@ -1434,7 +1455,8 @@ class Renderer {
       line.setAttribute('data-edge-id', e.id);
       line.style.cursor = 'pointer';
       
-      line.addEventListener('click', () => {
+      line.addEventListener('click', (event) => {
+        event.stopPropagation();
         if (this.onEdgeClick) {
           this.onEdgeClick(e.id);
         }
@@ -1450,16 +1472,16 @@ class Renderer {
       circle.setAttribute('cx', v.x);
       circle.setAttribute('cy', v.y);
       circle.setAttribute('r', 8);
-      circle.setAttribute('fill', '#3498db');
+      circle.setAttribute('fill', this.selectedVertex === v.id ? '#f39c12' : '#3498db');
       circle.setAttribute('stroke', '#2c3e50');
       circle.setAttribute('stroke-width', 2);
       circle.setAttribute('data-vertex-id', v.id);
       circle.style.cursor = 'pointer';
       
-      circle.addEventListener('click', (e) => {
+      circle.addEventListener('mousedown', (e) => {
         e.stopPropagation();
         if (this.onVertexClick) {
-          this.onVertexClick(v.id);
+          this.onVertexClick(v.id, e);
         }
       });
       
@@ -1474,6 +1496,7 @@ class Renderer {
         text.setAttribute('fill', '#2c3e50');
         text.setAttribute('font-weight', 'bold');
         text.textContent = `v${v.id}`;
+        text.style.pointerEvents = 'none';
         
         this.svg.appendChild(text);
       }
@@ -1482,7 +1505,7 @@ class Renderer {
 }
 
 // ============================================================================
-// Main Application Controller
+// 메인 애플리케이션 컨트롤러
 // ============================================================================
 class App {
   constructor() {
@@ -1490,13 +1513,16 @@ class App {
     this.embedding = new Embedding(this.graph);
     this.renderer = new Renderer(document.getElementById('mainCanvas'));
     this.editMode = false;
+    this.selectedVertex = null;
+    this.draggingVertex = null;
     
     this.initUI();
+    this.initCanvasEvents();
     this.loadExampleGraph('cube');
   }
   
   initUI() {
-    // Example graphs
+    // 예제 그래프
     document.getElementById('loadExample').addEventListener('click', () => {
       const selected = document.getElementById('exampleGraphs').value;
       if (selected) {
@@ -1504,19 +1530,33 @@ class App {
       }
     });
     
-    // Edit mode
+    // 편집 모드
     document.getElementById('editMode').addEventListener('change', (e) => {
       this.editMode = e.target.checked;
-    });
-    
-    // Clear graph
-    document.getElementById('clearGraph').addEventListener('click', () => {
-      this.graph = new Graph();
-      this.embedding = new Embedding(this.graph);
+      const canvas = document.getElementById('mainCanvas');
+      if (this.editMode) {
+        canvas.classList.add('edit-mode');
+        document.getElementById('editModeStatus').innerHTML = 
+          '<div class="edit-mode-active">✓ 편집 모드 활성화됨</div>';
+      } else {
+        canvas.classList.remove('edit-mode');
+        document.getElementById('editModeStatus').innerHTML = '';
+        this.selectedVertex = null;
+      }
       this.updateView();
     });
     
-    // Export/Import
+    // 그래프 초기화
+    document.getElementById('clearGraph').addEventListener('click', () => {
+      if (confirm('그래프를 초기화하시겠습니까?')) {
+        this.graph = new Graph();
+        this.embedding = new Embedding(this.graph);
+        this.selectedVertex = null;
+        this.updateView();
+      }
+    });
+    
+    // 내보내기/불러오기
     document.getElementById('exportGraph').addEventListener('click', () => {
       document.getElementById('graphData').value = JSON.stringify(this.graph.toJSON(), null, 2);
     });
@@ -1529,11 +1569,11 @@ class App {
         this.embedding.computePlanarRotation();
         this.updateView();
       } catch (e) {
-        alert('Invalid JSON: ' + e.message);
+        alert('잘못된 JSON 형식: ' + e.message);
       }
     });
     
-    // Surface tabs
+    // 표면 탭
     document.querySelectorAll('.surface-tab').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.surface-tab').forEach(b => b.classList.remove('active'));
@@ -1546,7 +1586,7 @@ class App {
       });
     });
     
-    // Theory tabs
+    // 이론 탭
     document.querySelectorAll('.tab').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
@@ -1558,7 +1598,7 @@ class App {
       });
     });
     
-    // Visualization options
+    // 시각화 옵션
     document.getElementById('showFaces').addEventListener('change', (e) => {
       this.renderer.showFaces = e.target.checked;
       this.updateView();
@@ -1574,7 +1614,7 @@ class App {
       this.updateView();
     });
     
-    // Enami module
+    // Enami 모듈
     document.getElementById('computeDual').addEventListener('click', () => {
       this.computeDualInfo();
     });
@@ -1583,17 +1623,17 @@ class App {
       this.enumerateReEmbeddings();
     });
     
-    // Weiß-Niemeyer module
+    // Weiß-Niemeyer 모듈
     document.getElementById('checkStrong').addEventListener('click', () => {
       this.checkStrongEmbedding();
     });
     
-    // Juvan-Mohar module
+    // Juvan-Mohar 모듈
     document.getElementById('tryTorusEmbed').addEventListener('click', () => {
       this.tryTorusEmbedding();
     });
     
-    // Hubard module
+    // Hubard 모듈
     document.getElementById('checkShortestPath').addEventListener('click', () => {
       this.checkShortestPath();
     });
@@ -1606,18 +1646,93 @@ class App {
       this.loadExampleGraph('klein-minimal');
     });
     
-    // Renderer callbacks
+    // 렌더러 콜백
     this.renderer.onEdgeClick = (edgeId) => {
       this.embedding.toggleTwistedEdge(edgeId);
       this.updateView();
     };
     
-    this.renderer.onVertexClick = (vertexId) => {
+    this.renderer.onVertexClick = (vertexId, event) => {
       if (this.editMode) {
-        // Handle edge creation with Shift+click
-        // For simplicity, just highlight for now
+        if (event.shiftKey || event.ctrlKey) {
+          // 간선 추가/삭제 모드
+          if (this.selectedVertex === null) {
+            this.selectedVertex = vertexId;
+            this.renderer.selectedVertex = vertexId;
+          } else if (this.selectedVertex !== vertexId) {
+            this.graph.toggleEdge(this.selectedVertex, vertexId);
+            this.embedding.computePlanarRotation();
+            this.selectedVertex = null;
+            this.renderer.selectedVertex = null;
+          }
+          this.updateView();
+        } else {
+          // 드래그 시작
+          this.draggingVertex = vertexId;
+        }
       }
     };
+    
+    // 키보드 이벤트
+    document.addEventListener('keydown', (e) => {
+      if (this.editMode && e.key === 'Delete' && this.selectedVertex !== null) {
+        this.graph.removeVertex(this.selectedVertex);
+        this.selectedVertex = null;
+        this.renderer.selectedVertex = null;
+        this.embedding.computePlanarRotation();
+        this.updateView();
+      }
+    });
+  }
+  
+  initCanvasEvents() {
+    const svg = document.getElementById('mainCanvas');
+    
+    // 캔버스 클릭 - 정점 추가
+    svg.addEventListener('click', (e) => {
+      if (!this.editMode) return;
+      
+      const rect = svg.getBoundingClientRect();
+      const x = (e.clientX - rect.left) * (this.renderer.width / rect.width);
+      const y = (e.clientY - rect.top) * (this.renderer.height / rect.height);
+      
+      // 기존 정점이나 간선을 클릭한 게 아니면 새 정점 추가
+      if (e.target === svg) {
+        this.graph.addVertex(x, y);
+        this.embedding.computePlanarRotation();
+        this.updateView();
+      }
+    });
+    
+    // 드래그 이동
+    svg.addEventListener('mousemove', (e) => {
+      if (!this.editMode || this.draggingVertex === null) return;
+      
+      const rect = svg.getBoundingClientRect();
+      const x = (e.clientX - rect.left) * (this.renderer.width / rect.width);
+      const y = (e.clientY - rect.top) * (this.renderer.height / rect.height);
+      
+      const vertex = this.graph.getVertex(this.draggingVertex);
+      if (vertex) {
+        vertex.x = x;
+        vertex.y = y;
+        this.updateView();
+      }
+    });
+    
+    svg.addEventListener('mouseup', () => {
+      if (this.draggingVertex !== null) {
+        this.embedding.computePlanarRotation();
+        this.draggingVertex = null;
+      }
+    });
+    
+    svg.addEventListener('mouseleave', () => {
+      if (this.draggingVertex !== null) {
+        this.embedding.computePlanarRotation();
+        this.draggingVertex = null;
+      }
+    });
   }
   
   loadExampleGraph(name) {
@@ -1647,38 +1762,48 @@ class App {
     
     this.embedding = new Embedding(this.graph);
     this.embedding.computePlanarRotation();
+    this.selectedVertex = null;
     this.updateView();
   }
   
   updateView() {
-    // Update stats
+    // 통계 업데이트
     document.getElementById('vertexCount').textContent = this.graph.vertices.length;
     document.getElementById('edgeCount').textContent = this.graph.edges.length;
     
-    // Update properties
+    // 속성 업데이트
     const props = [];
-    if (this.graph.isConnected()) props.push('Connected');
-    if (this.graph.is3Regular()) props.push('3-Regular');
-    if (this.graph.vertices.length >= 4 && this.graph.is3Connected()) props.push('3-Connected');
+    if (this.graph.isConnected()) props.push('연결됨');
+    if (this.graph.is3Regular()) props.push('3-정규');
+    if (this.graph.vertices.length >= 4 && this.graph.is3Connected()) props.push('3-연결');
     
     document.getElementById('graphProperties').innerHTML = props.length > 0 
       ? '<br>' + props.join(', ') 
-      : '<br><span style="color:#e74c3c;">Check failed</span>';
+      : '<br><span style="color:#e74c3c;">조건 미충족</span>';
     
-    // Update embedding info
-    document.getElementById('currentSurface').textContent = this.embedding.surface;
+    // 임베딩 정보 업데이트
+    const surfaceNames = {
+      'sphere': '구면',
+      'projective': '사영평면',
+      'torus': '토러스',
+      'klein': '클라인 병'
+    };
+    document.getElementById('currentSurface').textContent = surfaceNames[this.embedding.surface] || this.embedding.surface;
     document.getElementById('twistedCount').textContent = this.embedding.twistedEdges.size;
     document.getElementById('rotationInfo').textContent = this.embedding.getRotationString();
     
-    // Render
+    // 렌더링
     this.renderer.setGraph(this.graph, this.embedding);
+    this.renderer.selectedVertex = this.selectedVertex;
     this.renderer.render();
   }
   
   computeDualInfo() {
     if (!this.graph.is3Regular() || !this.graph.is3Connected()) {
       document.getElementById('dualInfo').innerHTML = 
-        '<div class="error">Graph must be 3-connected and 3-regular</div>';
+        '<div class="error">그래프는 3-연결이고 3-정규여야 합니다</div>';
+      document.getElementById('htInfo').innerHTML = 
+        '<div class="error">그래프는 3-연결이고 3-정규여야 합니다</div>';
       return;
     }
     
@@ -1689,16 +1814,16 @@ class App {
     const pattern = dual.recognizePattern(ht);
     const surfaceInfo = dual.determineSurface(pattern);
     
-    let html = `<strong>Dual Graph:</strong><br>`;
-    html += `Vertices (faces): ${dual.dualVertices.length}<br>`;
-    html += `Edges: ${dual.dualEdges.length}<br><br>`;
+    let html = `<strong>쌍대 그래프:</strong><br>`;
+    html += `정점 수 (면): ${dual.dualVertices.length}<br>`;
+    html += `간선 수: ${dual.dualEdges.length}<br><br>`;
     
-    html += `<strong>H<sub>T</sub> (Twisted Subgraph):</strong><br>`;
-    html += `Pattern: <code>${pattern}</code><br>`;
-    html += `Vertices: ${ht.vertices.length}<br>`;
-    html += `Edges: ${ht.edges.length}<br>`;
-    html += `Predicted surface: <strong>${surfaceInfo.surface}</strong><br>`;
-    html += `Reference: ${surfaceInfo.theorem}`;
+    html += `<strong>H<sub>T</sub> (꼬인 부분그래프):</strong><br>`;
+    html += `패턴: <code>${pattern}</code><br>`;
+    html += `정점: ${ht.vertices.length}<br>`;
+    html += `간선: ${ht.edges.length}<br>`;
+    html += `예측 표면: <strong>${surfaceInfo.surface}</strong><br>`;
+    html += `참조: ${surfaceInfo.theorem}`;
     
     document.getElementById('dualInfo').innerHTML = html;
     document.getElementById('htInfo').innerHTML = html;
@@ -1707,7 +1832,7 @@ class App {
   enumerateReEmbeddings() {
     if (this.graph.edges.length > 15) {
       document.getElementById('embeddingsList').innerHTML = 
-        '<div class="error">Graph too large for enumeration (max 15 edges)</div>';
+        '<div class="error">그래프가 너무 큽니다 (최대 15개 간선)</div>';
       return;
     }
     
@@ -1717,7 +1842,7 @@ class App {
     const results = [];
     const numEdges = this.graph.edges.length;
     
-    // Try all subsets of edges (simplified - only small subsets)
+    // 모든 간선 부분집합 시도 (간소화 - 작은 부분집합만)
     for (let mask = 0; mask < Math.min(1 << numEdges, 256); mask++) {
       const twistedSet = new Set();
       for (let i = 0; i < numEdges; i++) {
@@ -1726,7 +1851,7 @@ class App {
         }
       }
       
-      // Temporarily set twisted edges
+      // 임시로 꼬인 간선 설정
       const oldTwisted = this.embedding.twistedEdges;
       this.embedding.twistedEdges = twistedSet;
       
@@ -1736,7 +1861,7 @@ class App {
       const pattern = dual2.recognizePattern(ht);
       const surfaceInfo = dual2.determineSurface(pattern);
       
-      if (surfaceInfo.surface !== 'unknown') {
+      if (surfaceInfo.surface !== '미분류') {
         results.push({
           twistedSet: new Set(twistedSet),
           pattern,
@@ -1748,10 +1873,10 @@ class App {
       this.embedding.twistedEdges = oldTwisted;
     }
     
-    // Display results
+    // 결과 표시
     let html = '';
-    for (const r of results.slice(0, 20)) { // Limit to 20
-      const edgeList = Array.from(r.twistedSet).join(', ') || 'none';
+    for (const r of results.slice(0, 20)) { // 최대 20개
+      const edgeList = Array.from(r.twistedSet).join(', ') || '없음';
       html += `<div class="edge-item" data-twisted="${edgeList}">`;
       html += `T = {${edgeList}}<br>`;
       html += `${r.pattern} → ${r.surface}<br>`;
@@ -1760,17 +1885,21 @@ class App {
     }
     
     if (results.length > 20) {
-      html += `<div class="info-box">... and ${results.length - 20} more</div>`;
+      html += `<div class="info-box">... 외 ${results.length - 20}개 더</div>`;
+    }
+    
+    if (results.length === 0) {
+      html = '<div class="info-box">허용 가능한 재임베딩을 찾지 못했습니다</div>';
     }
     
     document.getElementById('embeddingsList').innerHTML = html;
     
-    // Add click handlers
+    // 클릭 핸들러 추가
     document.querySelectorAll('#embeddingsList .edge-item').forEach(item => {
       item.addEventListener('click', () => {
         const twisted = item.dataset.twisted;
         this.embedding.twistedEdges.clear();
-        if (twisted !== 'none') {
+        if (twisted !== '없음') {
           twisted.split(', ').forEach(id => {
             this.embedding.twistedEdges.add(parseInt(id));
           });
@@ -1790,100 +1919,107 @@ class App {
     const checker = new StrongEmbeddingChecker(this.embedding, dual);
     const criteria = checker.checkStrongByCriteria(pattern, surfaceInfo.surface);
     
-    // Also check actual face structure
+    // 실제 면 구조 확인
     const actualStrong = checker.isStrong();
     
     let html = '';
     html += `<div class="result-strong ${criteria.isStrong ? 'yes' : 'no'}">`;
-    html += criteria.isStrong ? 'STRONG EMBEDDING' : 'NOT STRONG';
+    html += criteria.isStrong ? '강한 임베딩' : '강하지 않음';
     html += `</div>`;
     
     document.getElementById('strongResult').innerHTML = html;
     
-    let explanation = `<strong>H<sub>T</sub> Pattern:</strong> ${pattern}<br>`;
-    explanation += `<strong>Surface:</strong> ${surfaceInfo.surface}<br>`;
-    explanation += `<strong>Theoretical Prediction:</strong> ${criteria.isStrong ? 'Strong' : 'Not strong'}<br>`;
-    explanation += `<strong>Reason:</strong> ${criteria.reason}<br>`;
-    explanation += `<strong>Reference:</strong> ${criteria.lemma}<br><br>`;
-    explanation += `<strong>Actual Face Check:</strong> ${actualStrong ? 'All faces are cycles' : 'Some faces not cycles'}`;
+    let explanation = `<strong>H<sub>T</sub> 패턴:</strong> ${pattern}<br>`;
+    explanation += `<strong>표면:</strong> ${surfaceInfo.surface}<br>`;
+    explanation += `<strong>이론적 예측:</strong> ${criteria.isStrong ? '강함' : '강하지 않음'}<br>`;
+    explanation += `<strong>이유:</strong> ${criteria.reason}<br>`;
+    explanation += `<strong>참조:</strong> ${criteria.lemma}<br><br>`;
+    explanation += `<strong>실제 면 검사:</strong> ${actualStrong ? '모든 면이 사이클임' : '일부 면이 사이클 아님'}`;
     
     document.getElementById('strongExplanation').innerHTML = explanation;
   }
   
   tryTorusEmbedding() {
-    // Juvan-Mohar (1997) - simplified educational version
-    // Check basic necessary conditions for torus embedding
+    // Juvan-Mohar (1997) - 간소화된 교육용 버전
+    // 토러스 임베딩을 위한 기본 필요 조건 확인
     
-    let html = '<strong>Torus Embedding Analysis</strong><br><br>';
+    let html = '<strong>토러스 임베딩 분석</strong><br><br>';
     
     const n = this.graph.vertices.length;
     const m = this.graph.edges.length;
     
-    html += `Vertices: ${n}, Edges: ${m}<br>`;
-    html += `Euler characteristic: χ = ${n - m + this.embedding.computeFaces().length}<br><br>`;
+    html += `정점: ${n}, 간선: ${m}<br>`;
+    html += `오일러 특성: χ = ${n - m + this.embedding.computeFaces().length}<br><br>`;
     
-    // For torus: χ = 0, so n - m + f = 0
-    // For triangulation: 3f = 2m, so f = 2m/3
-    // Thus: n - m + 2m/3 = 0 → n = m/3
+    // 토러스의 경우: χ = 0, 즉 n - m + f = 0
+    // 삼각분할의 경우: 3f = 2m, 따라서 f = 2m/3
+    // 그러므로: n - m + 2m/3 = 0 → n = m/3
     
     if (!this.graph.isConnected()) {
-      html += '<div class="error">Graph is not connected</div>';
+      html += '<div class="error">그래프가 연결되어 있지 않습니다</div>';
     } else if (m > 3 * n) {
-      html += '<div class="error">Too many edges for torus (m > 3n)</div>';
+      html += '<div class="error">토러스에 비해 간선이 너무 많습니다 (m > 3n)</div>';
     } else {
-      html += '<div class="success">Basic conditions satisfied</div>';
-      html += '<br>A complete implementation would:<br>';
+      html += '<div class="success">기본 조건은 만족합니다</div>';
+      html += '<br>완전한 구현은 다음을 수행합니다:<br>';
       html += '<ul>';
-      html += '<li>Decompose into 3-connected components</li>';
-      html += '<li>Check projective planarity</li>';
-      html += '<li>Compute face-width</li>';
-      html += '<li>Construct rotation system</li>';
+      html += '<li>3-연결 성분으로 분해</li>';
+      html += '<li>사영 평면성 확인</li>';
+      html += '<li>면-너비 계산</li>';
+      html += '<li>회전 체계 구성</li>';
       html += '</ul>';
-      html += '<br><small>Reference: Juvan & Mohar (1997) Section 3-4</small>';
+      html += '<br><small>참조: Juvan & Mohar (1997) 섹션 3-4</small>';
     }
     
     document.getElementById('torusResult').innerHTML = html;
   }
   
   checkShortestPath() {
-    // Hubard et al. (2016) - simplified shortest path check
-    // Check if current embedding could be a shortest path embedding
+    // Hubard et al. (2016) - 간소화된 최단 경로 확인
+    // 현재 임베딩이 최단 경로 임베딩일 수 있는지 확인
     
-    let html = '<strong>Shortest Path Embedding Check</strong><br><br>';
+    let html = '<strong>최단 경로 임베딩 확인</strong><br><br>';
     
-    html += `Current surface: ${this.embedding.surface}<br>`;
-    html += `Vertices: ${this.graph.vertices.length}, Edges: ${this.graph.edges.length}<br><br>`;
+    const surfaceNames = {
+      'sphere': '구면',
+      'projective': '사영평면',
+      'torus': '토러스',
+      'klein': '클라인 병'
+    };
+    
+    html += `현재 표면: ${surfaceNames[this.embedding.surface]}<br>`;
+    html += `정점: ${this.graph.vertices.length}, 간선: ${this.graph.edges.length}<br><br>`;
     
     if (this.embedding.surface === 'klein') {
       html += '<div class="warning">';
-      html += '<strong>Theorem 2 (Hubard et al.):</strong><br>';
-      html += 'On Klein bottle with unit square flat metric, ';
-      html += 'there is NO universal shortest path metric.<br>';
-      html += 'Example: Kc1 minimal triangulation';
+      html += '<strong>정리 2 (Hubard et al.):</strong><br>';
+      html += '단위 정사각형 평탄 메트릭을 가진 클라인 병에서는 ';
+      html += '보편적인 최단 경로 메트릭이 존재하지 않습니다.<br>';
+      html += '예: Kc1 최소 삼각분할';
       html += '</div>';
     } else if (this.embedding.surface === 'torus') {
       html += '<div class="success">';
-      html += 'Torus with flat metric supports shortest path embeddings.<br>';
-      html += 'Minimal triangulation with 7 vertices can be embedded as shortest paths.';
+      html += '평탄 메트릭을 가진 토러스는 최단 경로 임베딩을 지원합니다.<br>';
+      html += '7개 정점의 최소 삼각분할은 최단 경로로 임베딩될 수 있습니다.';
       html += '</div>';
     } else if (this.embedding.surface === 'sphere') {
       html += '<div class="success">';
-      html += 'Sphere: convex polyhedra are shortest path embeddings.';
+      html += '구면: 볼록 다면체는 최단 경로 임베딩입니다.';
       html += '</div>';
     } else {
       html += '<div class="info-box">';
-      html += 'Projective plane analysis requires specific metric choice.';
+      html += '사영평면 분석은 특정 메트릭 선택이 필요합니다.';
       html += '</div>';
     }
     
-    html += '<br><small>Reference: Hubard et al. (2016) Theorems 1-4</small>';
+    html += '<br><small>참조: Hubard et al. (2016) 정리 1-4</small>';
     
     document.getElementById('shortestPathResult').innerHTML = html;
   }
 }
 
 // ============================================================================
-// Initialize Application
+// 애플리케이션 초기화
 // ============================================================================
 document.addEventListener('DOMContentLoaded', () => {
   window.app = new App();
