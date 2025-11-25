@@ -1,0 +1,1474 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>포물선 거울 광학 시뮬레이터</title>
+    
+    <!-- MathJax CDN for LaTeX rendering -->
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <!-- Plotly.js CDN for graphing -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    
+    <style>
+        /* ===== 기본 스타일 ===== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            min-height: 100vh;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        /* ===== 헤더 스타일 ===== */
+        header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 20px 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 0.95rem;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+        
+        .citations {
+            font-size: 0.8rem;
+            opacity: 0.8;
+            border-top: 1px solid rgba(255,255,255,0.3);
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+        
+        .citations div {
+            margin-bottom: 5px;
+        }
+        
+        /* ===== 메인 컨테이너 ===== */
+        .main-container {
+            display: flex;
+            flex-wrap: wrap;
+            padding: 20px;
+            gap: 20px;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+        
+        /* ===== 좌측 패널 (파라미터) ===== */
+        .left-panel {
+            width: 320px;
+            flex-shrink: 0;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            height: fit-content;
+        }
+        
+        .panel-section {
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .panel-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .panel-section h3 {
+            color: #2c3e50;
+            font-size: 1rem;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #3498db;
+        }
+        
+        .param-group {
+            margin-bottom: 12px;
+        }
+        
+        .param-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: #555;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .param-group input[type="number"],
+        .param-group input[type="range"] {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            transition: border-color 0.3s;
+        }
+        
+        .param-group input[type="number"]:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        .param-group input[type="range"] {
+            padding: 0;
+            height: 6px;
+            -webkit-appearance: none;
+            background: #ddd;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        .param-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #3498db;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .param-value {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 3px;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn.secondary {
+            background: linear-gradient(135deg, #27ae60 0%, #1e8449 100%);
+        }
+        
+        .btn.secondary:hover {
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4);
+        }
+        
+        /* ===== 우측 영역 (시각화) ===== */
+        .right-area {
+            flex: 1;
+            min-width: 600px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        /* ===== 탭 스타일 ===== */
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .tab-btn {
+            flex: 1;
+            padding: 15px 20px;
+            border: none;
+            background: transparent;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+        
+        .tab-btn.active {
+            color: #3498db;
+            background: white;
+        }
+        
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #3498db;
+        }
+        
+        .tab-btn:hover:not(.active) {
+            background: #e9ecef;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 20px;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* ===== 이론 요약 박스 ===== */
+        .theory-box {
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .theory-box h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .theory-box p {
+            font-size: 0.9rem;
+            color: #555;
+            margin-bottom: 8px;
+        }
+        
+        /* ===== 캔버스 컨테이너 ===== */
+        .canvas-container {
+            position: relative;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+        
+        #parabolaCanvas {
+            display: block;
+            width: 100%;
+            background: #0a0a20;
+        }
+        
+        .canvas-info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255,255,255,0.95);
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            max-width: 300px;
+        }
+        
+        .canvas-info .error-value {
+            color: #e74c3c;
+            font-weight: 600;
+        }
+        
+        .canvas-info .success-value {
+            color: #27ae60;
+            font-weight: 600;
+        }
+        
+        /* ===== 그래프 컨테이너 ===== */
+        .graph-container {
+            margin-top: 20px;
+        }
+        
+        .graph-title {
+            font-size: 1rem;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        /* ===== 상태 메시지 ===== */
+        .status-message {
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+        
+        .status-message.computing {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffc107;
+        }
+        
+        .status-message.complete {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #28a745;
+        }
+        
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #dc3545;
+        }
+        
+        /* ===== 결과 정보 ===== */
+        .result-info {
+            background: #e8f4fd;
+            border: 1px solid #bee5eb;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .result-info h5 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .result-info p {
+            font-size: 0.9rem;
+            color: #555;
+            margin-bottom: 5px;
+        }
+        
+        /* ===== 푸터 ===== */
+        footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 0.8rem;
+            color: #888;
+            background: #f8f9fa;
+            margin-top: 20px;
+        }
+        
+        /* ===== 반응형 디자인 ===== */
+        @media (max-width: 1000px) {
+            .main-container {
+                flex-direction: column;
+            }
+            
+            .left-panel {
+                width: 100%;
+            }
+            
+            .right-area {
+                min-width: auto;
+            }
+        }
+        
+        /* ===== 체크박스/라디오 스타일 ===== */
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .checkbox-group label {
+            margin: 0;
+            cursor: pointer;
+        }
+        
+        /* ===== 로딩 스피너 ===== */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0,0,0,0.1);
+            border-radius: 50%;
+            border-top-color: #3498db;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- ===== 헤더 ===== -->
+    <header>
+        <h1>🔬 포물선 거울 광학 시뮬레이터</h1>
+        <p>포물면 거울의 반사 성질과 라디얼 편광 빔 집속 특성을 시뮬레이션합니다.</p>
+        <div class="citations">
+            <div><strong>[1]</strong> V. Ivchenko, "The analytical proof of the reflective property of a parabolic mirror", <em>Lat. Am. J. Phys. Educ.</em> 17, 2 (2023).</div>
+            <div><strong>[2]</strong> Z.T. Godana et al., "Focusing of Radially Polarized Electromagnetic Waves by a Parabolic Mirror", <em>Photonics</em> 10, 848 (2023).</div>
+        </div>
+    </header>
+    
+    <!-- ===== 메인 컨테이너 ===== -->
+    <div class="main-container">
+        <!-- 좌측 패널: 파라미터 입력 -->
+        <div class="left-panel">
+            <!-- 탭 1 파라미터 -->
+            <div class="panel-section" id="tab1Params">
+                <h3>📐 포물선 거울 파라미터</h3>
+                
+                <div class="param-group">
+                    <label for="focalLength">초점 거리 f</label>
+                    <input type="range" id="focalLengthSlider" min="0.5" max="5" step="0.1" value="1.5">
+                    <input type="number" id="focalLength" min="0.5" max="5" step="0.1" value="1.5">
+                    <div class="param-value">범위: 0.5 ~ 5.0</div>
+                </div>
+                
+                <div class="param-group">
+                    <label for="numRays">입사 광선 개수</label>
+                    <input type="range" id="numRaysSlider" min="5" max="30" step="1" value="15">
+                    <input type="number" id="numRays" min="5" max="30" step="1" value="15">
+                    <div class="param-value">범위: 5 ~ 30개</div>
+                </div>
+                
+                <div class="param-group">
+                    <label for="xMaxFactor">거울 표시 범위 (×f)</label>
+                    <input type="range" id="xMaxFactorSlider" min="1" max="4" step="0.1" value="2">
+                    <input type="number" id="xMaxFactor" min="1" max="4" step="0.1" value="2">
+                    <div class="param-value">xMax = k × f, 범위: 1.0 ~ 4.0</div>
+                </div>
+                
+                <button class="btn" onclick="updateParabolaSimulation()">🔄 시뮬레이션 업데이트</button>
+            </div>
+            
+            <!-- 탭 2 파라미터 -->
+            <div class="panel-section" id="tab2Params" style="display:none;">
+                <h3>🌀 라디얼 편광 빔 파라미터</h3>
+                
+                <div class="param-group">
+                    <label for="lambdaOverF">λ/f (파장/초점거리 비)</label>
+                    <input type="number" id="lambdaOverF" min="0.001" max="0.1" step="0.001" value="0.01">
+                    <div class="param-value">범위: 0.001 ~ 0.1</div>
+                </div>
+                
+                <div class="param-group">
+                    <label for="r0OverF">r₀/f (개구 반경/초점거리 비)</label>
+                    <input type="number" id="r0OverF" min="0.1" max="2" step="0.05" value="0.6">
+                    <div class="param-value">범위: 0.1 ~ 2.0</div>
+                </div>
+                
+                <div class="param-group">
+                    <label for="focalLengthMM">초점거리 f (mm)</label>
+                    <input type="number" id="focalLengthMM" min="10" max="200" step="5" value="50">
+                    <div class="param-value">단위 일관성용, 기본 50mm</div>
+                </div>
+                
+                <h3 style="margin-top:15px;">⚙️ 수치 적분 설정</h3>
+                
+                <div class="param-group">
+                    <label for="nRhoF">N_ρF (반경방향 분할)</label>
+                    <input type="number" id="nRhoF" min="20" max="150" step="10" value="80">
+                </div>
+                
+                <div class="param-group">
+                    <label for="nPhiF">N_φF (각도방향 분할)</label>
+                    <input type="number" id="nPhiF" min="30" max="200" step="10" value="120">
+                </div>
+                
+                <div class="param-group">
+                    <label for="nRho">N_ρ (관측점 샘플)</label>
+                    <input type="number" id="nRho" min="30" max="150" step="10" value="80">
+                </div>
+                
+                <div class="param-group">
+                    <label for="rhoMaxLambda">ρ_max/λ</label>
+                    <input type="number" id="rhoMaxLambda" min="1" max="20" step="0.5" value="5">
+                    <div class="param-value">관측 범위 (파장 단위)</div>
+                </div>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="showAbsValue" checked>
+                    <label for="showAbsValue">절댓값 |E| 표시</label>
+                </div>
+                
+                <button class="btn secondary" onclick="computeAndPlotFields()">📊 Eρ, Ez 계산 & 그래프 업데이트</button>
+            </div>
+        </div>
+        
+        <!-- 우측 영역: 시각화 -->
+        <div class="right-area">
+            <!-- 탭 버튼 -->
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab(0)">📐 포물선 거울 기하 & 반사</button>
+                <button class="tab-btn" onclick="switchTab(1)">🌀 라디얼 편광 빔 집속</button>
+            </div>
+            
+            <!-- 탭 1: 포물선 거울 반사 -->
+            <div class="tab-content active" id="tab1Content">
+                <div class="theory-box">
+                    <h4>이론 요약 (논문 1 기반)</h4>
+                    <p>2차원 포물선 \(y(x) = \frac{x^2}{4f}\)에서 초점 \(F=(0,f)\)로 모든 평행광선이 수렴합니다.</p>
+                    <p>반사 법칙: \(\mathbf{k}_r = \mathbf{k}_i - 2(\mathbf{k}_i \cdot \mathbf{n})\mathbf{n}\)</p>
+                    <p>법선 벡터: \(\mathbf{n} = \frac{(-y', 1)}{\sqrt{1+{y'}^2}}\), 여기서 \(y' = \frac{x}{2f}\)</p>
+                </div>
+                
+                <div class="canvas-container">
+                    <canvas id="parabolaCanvas" width="800" height="600"></canvas>
+                    <div class="canvas-info" id="canvasInfo">
+                        <div><strong>이론적 초점:</strong> F(0, f)</div>
+                        <div id="focusErrorDisplay">마우스를 캔버스 위에 올려 정보를 확인하세요.</div>
+                    </div>
+                </div>
+                
+                <div class="result-info">
+                    <h5>📌 시뮬레이션 결과</h5>
+                    <p id="tab1Results">시뮬레이션 업데이트 버튼을 눌러 결과를 확인하세요.</p>
+                </div>
+            </div>
+            
+            <!-- 탭 2: 라디얼 편광 빔 집속 -->
+            <div class="tab-content" id="tab2Content">
+                <div class="theory-box">
+                    <h4>이론 요약 (논문 2 기반)</h4>
+                    <p>라디얼 편광 빔이 포물면 거울에서 집속될 때, 전기장 성분:</p>
+                    <p>\(E_{F\rho}(\rho_F) = E_0 \frac{f}{\sqrt{\rho_F^2+f^2}}\), \(E_{Fz}(\rho_F) = E_0 \frac{\rho_F}{\sqrt{\rho_F^2+f^2}}\)</p>
+                    <p>위상 인자: \(\exp(-iq_F) = \exp\left(-ik\frac{\rho_F^2}{2f}\right)\), 여기서 \(k = \frac{2\pi}{\lambda}\)</p>
+                    <p>큰 개구수(r₀/f)에서 축방향 성분 \(E_z\)가 우세해집니다.</p>
+                </div>
+                
+                <div id="computeStatus" class="status-message" style="display:none;"></div>
+                
+                <div class="graph-container">
+                    <div class="graph-title">초점면(z=0)에서의 전기장 분포</div>
+                    <div id="transverseGraph" style="width:100%;height:450px;"></div>
+                </div>
+                
+                <div class="result-info" id="tab2ResultInfo">
+                    <h5>📌 파라미터 정보</h5>
+                    <p id="currentParams">계산을 실행하면 파라미터 정보가 표시됩니다.</p>
+                    <p id="interpretation" style="margin-top:10px;font-style:italic;"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 푸터 -->
+    <footer>
+        이 웹앱은 Ivchenko (2023), Godana et al. (2023)의 이론을 바탕으로 한 교육용 시뮬레이터이며, 수치적 단순화 및 근사식을 포함합니다.
+    </footer>
+    
+    <script>
+    // ============================================================
+    // 포물선 거울 광학 시뮬레이터 - JavaScript 구현
+    // ============================================================
+    // 전역 네임스페이스 오염 방지를 위한 IIFE 패턴 사용
+
+    (function() {
+        'use strict';
+        
+        // ========================================================
+        // 복소수 클래스 (논문 2의 수치 적분에 사용)
+        // ========================================================
+        class Complex {
+            /**
+             * 복소수 생성자
+             * @param {number} re - 실수부
+             * @param {number} im - 허수부
+             */
+            constructor(re = 0, im = 0) {
+                this.re = re;
+                this.im = im;
+            }
+            
+            /**
+             * 복소수 덧셈
+             * @param {Complex} other 
+             * @returns {Complex}
+             */
+            add(other) {
+                return new Complex(this.re + other.re, this.im + other.im);
+            }
+            
+            /**
+             * 복소수 곱셈
+             * @param {Complex} other 
+             * @returns {Complex}
+             */
+            mul(other) {
+                // (a + bi)(c + di) = (ac - bd) + (ad + bc)i
+                return new Complex(
+                    this.re * other.re - this.im * other.im,
+                    this.re * other.im + this.im * other.re
+                );
+            }
+            
+            /**
+             * 스칼라 배수
+             * @param {number} scalar 
+             * @returns {Complex}
+             */
+            scale(scalar) {
+                return new Complex(this.re * scalar, this.im * scalar);
+            }
+            
+            /**
+             * e^(i*theta) 계산 - 오일러 공식
+             * @param {number} theta 
+             * @returns {Complex}
+             */
+            static exp_i(theta) {
+                // e^(iθ) = cos(θ) + i*sin(θ)
+                return new Complex(Math.cos(theta), Math.sin(theta));
+            }
+            
+            /**
+             * 복소수의 절댓값 (크기)
+             * @returns {number}
+             */
+            abs() {
+                return Math.sqrt(this.re * this.re + this.im * this.im);
+            }
+            
+            /**
+             * 복소수의 위상
+             * @returns {number}
+             */
+            phase() {
+                return Math.atan2(this.im, this.re);
+            }
+        }
+        
+        // ========================================================
+        // 전역 변수 및 상태 관리
+        // ========================================================
+        let currentTab = 0;
+        let rayData = []; // 광선 데이터 저장 (마우스 인터랙션용)
+        
+        // ========================================================
+        // 유틸리티 함수
+        // ========================================================
+        
+        /**
+         * 안전한 숫자 파싱 (유효성 검증 포함)
+         * @param {string} value - 파싱할 문자열
+         * @param {number} defaultVal - 기본값
+         * @param {number} min - 최소값
+         * @param {number} max - 최대값
+         * @returns {number}
+         */
+        function safeParseFloat(value, defaultVal, min, max) {
+            const parsed = parseFloat(value);
+            if (isNaN(parsed) || parsed < min || parsed > max) {
+                return defaultVal;
+            }
+            return parsed;
+        }
+        
+        function safeParseInt(value, defaultVal, min, max) {
+            const parsed = parseInt(value, 10);
+            if (isNaN(parsed) || parsed < min || parsed > max) {
+                return defaultVal;
+            }
+            return parsed;
+        }
+        
+        // ========================================================
+        // 탭 전환 기능
+        // ========================================================
+        window.switchTab = function(index) {
+            currentTab = index;
+            
+            // 탭 버튼 스타일 업데이트
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            tabBtns.forEach((btn, i) => {
+                btn.classList.toggle('active', i === index);
+            });
+            
+            // 탭 콘텐츠 표시/숨김
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach((content, i) => {
+                content.classList.toggle('active', i === index);
+            });
+            
+            // 파라미터 패널 전환
+            document.getElementById('tab1Params').style.display = index === 0 ? 'block' : 'none';
+            document.getElementById('tab2Params').style.display = index === 1 ? 'block' : 'none';
+        };
+        
+        // ========================================================
+        // 탭 1: 포물선 거울 기하학 및 반사 시뮬레이션
+        // ========================================================
+        
+        /**
+         * 포물선 함수 y(x) = x² / (4f)
+         * 논문 1의 기본 포물선 방정식
+         * @param {number} x 
+         * @param {number} f - 초점 거리
+         * @returns {number}
+         */
+        function parabola(x, f) {
+            // Eq. from Ivchenko (2023): y = x²/(4f)
+            return (x * x) / (4 * f);
+        }
+        
+        /**
+         * 포물선의 도함수 y'(x) = x / (2f)
+         * @param {number} x 
+         * @param {number} f 
+         * @returns {number}
+         */
+        function parabolaDerivative(x, f) {
+            // dy/dx = x/(2f)
+            return x / (2 * f);
+        }
+        
+        /**
+         * 포물선 위의 점에서 법선 벡터 계산
+         * 논문 1의 식: n = (-y', 1) / sqrt(1 + y'²)
+         * @param {number} x 
+         * @param {number} f 
+         * @returns {{nx: number, ny: number}}
+         */
+        function getNormalVector(x, f) {
+            const yPrime = parabolaDerivative(x, f);
+            const norm = Math.sqrt(1 + yPrime * yPrime);
+            // 법선 벡터: 거울 안쪽(위쪽)을 향하도록
+            return {
+                nx: -yPrime / norm,
+                ny: 1 / norm
+            };
+        }
+        
+        /**
+         * 반사 벡터 계산
+         * 반사 법칙: k_r = k_i - 2(k_i · n)n
+         * @param {Object} ki - 입사 벡터 {x, y}
+         * @param {Object} n - 법선 벡터 {nx, ny}
+         * @returns {{x: number, y: number}}
+         */
+        function reflect(ki, n) {
+            // k_r = k_i - 2(k_i · n)n
+            const dot = ki.x * n.nx + ki.y * n.ny;
+            return {
+                x: ki.x - 2 * dot * n.nx,
+                y: ki.y - 2 * dot * n.ny
+            };
+        }
+        
+        /**
+         * 반사선이 y축과 교차하는 점 계산
+         * 광선이 (x0, y0)에서 방향 (dx, dy)로 진행할 때 x=0인 점
+         * @param {number} x0 
+         * @param {number} y0 
+         * @param {number} dx 
+         * @param {number} dy 
+         * @returns {{x: number, y: number}|null}
+         */
+        function findYAxisIntersection(x0, y0, dx, dy) {
+            if (Math.abs(dx) < 1e-10) {
+                // 수직선인 경우 (이론적으로 x=0에서 시작하는 광선)
+                return { x: 0, y: y0 };
+            }
+            // t = -x0 / dx (x = 0일 때)
+            const t = -x0 / dx;
+            if (t < 0) return null; // 반대 방향
+            return {
+                x: 0,
+                y: y0 + t * dy
+            };
+        }
+        
+        /**
+         * 포물선 거울과 반사 시뮬레이션 메인 함수
+         */
+        window.updateParabolaSimulation = function() {
+            // 파라미터 읽기 및 검증
+            const f = safeParseFloat(document.getElementById('focalLength').value, 1.5, 0.5, 5);
+            const numRays = safeParseInt(document.getElementById('numRays').value, 15, 5, 30);
+            const xMaxFactor = safeParseFloat(document.getElementById('xMaxFactor').value, 2, 1, 4);
+            
+            // 슬라이더와 입력 동기화
+            document.getElementById('focalLength').value = f;
+            document.getElementById('focalLengthSlider').value = f;
+            document.getElementById('numRays').value = numRays;
+            document.getElementById('numRaysSlider').value = numRays;
+            document.getElementById('xMaxFactor').value = xMaxFactor;
+            document.getElementById('xMaxFactorSlider').value = xMaxFactor;
+            
+            const xMax = xMaxFactor * f;
+            
+            // 캔버스 설정
+            const canvas = document.getElementById('parabolaCanvas');
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            // 좌표 변환 함수 (물리 좌표 → 캔버스 좌표)
+            const margin = 60;
+            const yMaxPhys = parabola(xMax, f) + 0.5 * f; // 거울 최고점 + 여유
+            const yMinPhys = -f * 0.3; // 초점 아래 약간
+            
+            const scaleX = (width - 2 * margin) / (2 * xMax);
+            const scaleY = (height - 2 * margin) / (yMaxPhys - yMinPhys);
+            const scale = Math.min(scaleX, scaleY);
+            
+            const centerX = width / 2;
+            const centerY = height - margin - (-yMinPhys) * scale;
+            
+            function toCanvas(x, y) {
+                return {
+                    cx: centerX + x * scale,
+                    cy: centerY - y * scale
+                };
+            }
+            
+            // 캔버스 초기화
+            ctx.fillStyle = '#0a0a20';
+            ctx.fillRect(0, 0, width, height);
+            
+            // ===== 그리드 및 좌표축 =====
+            ctx.strokeStyle = 'rgba(100, 100, 150, 0.3)';
+            ctx.lineWidth = 0.5;
+            
+            // 그리드 선
+            for (let gx = -xMax; gx <= xMax; gx += f / 2) {
+                const p1 = toCanvas(gx, yMinPhys);
+                const p2 = toCanvas(gx, yMaxPhys);
+                ctx.beginPath();
+                ctx.moveTo(p1.cx, p1.cy);
+                ctx.lineTo(p2.cx, p2.cy);
+                ctx.stroke();
+            }
+            for (let gy = Math.floor(yMinPhys); gy <= yMaxPhys; gy += f / 2) {
+                const p1 = toCanvas(-xMax, gy);
+                const p2 = toCanvas(xMax, gy);
+                ctx.beginPath();
+                ctx.moveTo(p1.cx, p1.cy);
+                ctx.lineTo(p2.cx, p2.cy);
+                ctx.stroke();
+            }
+            
+            // 좌표축
+            ctx.strokeStyle = 'rgba(200, 200, 220, 0.6)';
+            ctx.lineWidth = 1.5;
+            
+            // x축
+            const xAxisStart = toCanvas(-xMax * 1.1, 0);
+            const xAxisEnd = toCanvas(xMax * 1.1, 0);
+            ctx.beginPath();
+            ctx.moveTo(xAxisStart.cx, xAxisStart.cy);
+            ctx.lineTo(xAxisEnd.cx, xAxisEnd.cy);
+            ctx.stroke();
+            
+            // y축
+            const yAxisStart = toCanvas(0, yMinPhys);
+            const yAxisEnd = toCanvas(0, yMaxPhys);
+            ctx.beginPath();
+            ctx.moveTo(yAxisStart.cx, yAxisStart.cy);
+            ctx.lineTo(yAxisEnd.cx, yAxisEnd.cy);
+            ctx.stroke();
+            
+            // 축 레이블
+            ctx.fillStyle = '#aaa';
+            ctx.font = '14px Arial';
+            ctx.fillText('x', xAxisEnd.cx - 15, xAxisEnd.cy - 10);
+            ctx.fillText('y', yAxisEnd.cx + 10, yAxisEnd.cy + 15);
+            
+            // ===== 포물선 거울 그리기 =====
+            ctx.strokeStyle = '#3498db';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            
+            const numPoints = 200;
+            for (let i = 0; i <= numPoints; i++) {
+                const x = -xMax + (2 * xMax * i) / numPoints;
+                const y = parabola(x, f);
+                const pt = toCanvas(x, y);
+                
+                if (i === 0) {
+                    ctx.moveTo(pt.cx, pt.cy);
+                } else {
+                    ctx.lineTo(pt.cx, pt.cy);
+                }
+            }
+            ctx.stroke();
+            
+            // 거울 두께 효과 (그라디언트)
+            ctx.strokeStyle = 'rgba(52, 152, 219, 0.3)';
+            ctx.lineWidth = 8;
+            ctx.stroke();
+            
+            // ===== 초점 표시 =====
+            const focus = toCanvas(0, f);
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.arc(focus.cx, focus.cy, 8, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // 초점 라벨
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 14px Arial';
+            ctx.fillText(`F(0, ${f.toFixed(2)})`, focus.cx + 12, focus.cy - 5);
+            
+            // ===== 광선 추적 및 그리기 =====
+            rayData = []; // 광선 데이터 초기화
+            let totalError = 0;
+            let maxError = 0;
+            
+            const rayStartY = yMaxPhys + 0.2; // 광선 시작 y 위치 (거울 위)
+            
+            for (let i = 0; i < numRays; i++) {
+                // 입사 광선의 x 위치 (균등 분포)
+                const rayX = -xMax * 0.95 + (1.9 * xMax * i) / (numRays - 1);
+                
+                // 입사 방향 벡터 (위에서 아래로, -y 방향)
+                const ki = { x: 0, y: -1 };
+                
+                // 거울과의 교점 (포물선 위의 점)
+                const intersectY = parabola(rayX, f);
+                
+                // 법선 벡터 계산
+                // Eq. from Ivchenko: n = (-y', 1) / sqrt(1 + y'²)
+                const normal = getNormalVector(rayX, f);
+                
+                // 반사 벡터 계산
+                // Eq.: k_r = k_i - 2(k_i · n)n
+                const kr = reflect(ki, normal);
+                
+                // 반사선과 y축의 교점 (이론적으로 초점)
+                const yAxisIntersect = findYAxisIntersection(rayX, intersectY, kr.x, kr.y);
+                
+                // 초점과의 오차 계산
+                let error = 0;
+                if (yAxisIntersect) {
+                    error = Math.abs(yAxisIntersect.y - f);
+                    totalError += error;
+                    maxError = Math.max(maxError, error);
+                }
+                
+                // 광선 데이터 저장
+                rayData.push({
+                    startX: rayX,
+                    startY: rayStartY,
+                    intersectX: rayX,
+                    intersectY: intersectY,
+                    reflectDir: kr,
+                    yAxisPoint: yAxisIntersect,
+                    error: error
+                });
+                
+                // 입사 광선 그리기
+                const rayStart = toCanvas(rayX, rayStartY);
+                const rayHit = toCanvas(rayX, intersectY);
+                
+                ctx.strokeStyle = '#f1c40f';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(rayStart.cx, rayStart.cy);
+                ctx.lineTo(rayHit.cx, rayHit.cy);
+                ctx.stroke();
+                
+                // 입사 광선 화살표
+                ctx.fillStyle = '#f1c40f';
+                ctx.beginPath();
+                ctx.moveTo(rayHit.cx, rayHit.cy);
+                ctx.lineTo(rayHit.cx - 4, rayHit.cy - 12);
+                ctx.lineTo(rayHit.cx + 4, rayHit.cy - 12);
+                ctx.closePath();
+                ctx.fill();
+                
+                // 반사 광선 그리기 (교점에서 초점 방향으로)
+                if (yAxisIntersect) {
+                    // 반사광선 종점 (y축 교점 약간 지나서)
+                    const extendT = 0.3; // 초점 지나서 조금 더 연장
+                    const reflectEndX = yAxisIntersect.x + kr.x * extendT * f;
+                    const reflectEndY = yAxisIntersect.y + kr.y * extendT * f;
+                    const reflectEnd = toCanvas(reflectEndX, reflectEndY);
+                    
+                    // 색상 그라디언트 (입사광 노란색 → 반사광 주황/빨강)
+                    const gradient = ctx.createLinearGradient(rayHit.cx, rayHit.cy, reflectEnd.cx, reflectEnd.cy);
+                    gradient.addColorStop(0, '#f39c12');
+                    gradient.addColorStop(1, '#e74c3c');
+                    
+                    ctx.strokeStyle = gradient;
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(rayHit.cx, rayHit.cy);
+                    ctx.lineTo(reflectEnd.cx, reflectEnd.cy);
+                    ctx.stroke();
+                }
+                
+                // 법선 벡터 표시 (작은 선으로)
+                if (i % 3 === 0) { // 일부 광선에만 표시
+                    const normalLen = 0.3 * f;
+                    const normalEnd = toCanvas(
+                        rayX + normal.nx * normalLen,
+                        intersectY + normal.ny * normalLen
+                    );
+                    ctx.strokeStyle = 'rgba(46, 204, 113, 0.6)';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([4, 4]);
+                    ctx.beginPath();
+                    ctx.moveTo(rayHit.cx, rayHit.cy);
+                    ctx.lineTo(normalEnd.cx, normalEnd.cy);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+            
+            // 평균 오차 계산
+            const avgError = totalError / numRays;
+            
+            // ===== 범례 =====
+            const legendX = 20;
+            const legendY = height - 100;
+            
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(legendX - 5, legendY - 5, 150, 90);
+            
+            ctx.font = '12px Arial';
+            
+            // 입사광
+            ctx.strokeStyle = '#f1c40f';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(legendX, legendY + 10);
+            ctx.lineTo(legendX + 25, legendY + 10);
+            ctx.stroke();
+            ctx.fillStyle = '#f1c40f';
+            ctx.fillText('입사광선', legendX + 30, legendY + 14);
+            
+            // 반사광
+            ctx.strokeStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.moveTo(legendX, legendY + 30);
+            ctx.lineTo(legendX + 25, legendY + 30);
+            ctx.stroke();
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillText('반사광선', legendX + 30, legendY + 34);
+            
+            // 거울
+            ctx.strokeStyle = '#3498db';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(legendX, legendY + 50);
+            ctx.lineTo(legendX + 25, legendY + 50);
+            ctx.stroke();
+            ctx.fillStyle = '#3498db';
+            ctx.fillText('포물선 거울', legendX + 30, legendY + 54);
+            
+            // 법선
+            ctx.strokeStyle = '#2ecc71';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(legendX, legendY + 70);
+            ctx.lineTo(legendX + 25, legendY + 70);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = '#2ecc71';
+            ctx.fillText('법선 벡터', legendX + 30, legendY + 74);
+            
+            // 결과 정보 업데이트
+            const resultsDiv = document.getElementById('tab1Results');
+            resultsDiv.innerHTML = `
+                <strong>초점 거리 f:</strong> ${f.toFixed(3)}<br>
+                <strong>광선 개수:</strong> ${numRays}개<br>
+                <strong>거울 범위:</strong> x ∈ [${(-xMax).toFixed(2)}, ${xMax.toFixed(2)}]<br>
+                <strong>평균 초점 오차:</strong> <span style="color: ${avgError < 1e-10 ? '#27ae60' : '#e74c3c'}">${avgError.toExponential(4)}</span><br>
+                <strong>최대 초점 오차:</strong> <span style="color: ${maxError < 1e-10 ? '#27ae60' : '#e74c3c'}">${maxError.toExponential(4)}</span><br>
+                <em>→ 수치 오차 범위 내에서 모든 반사광선이 초점 F(0, ${f})를 통과함을 확인</em>
+            `;
+        };
+        
+        // 캔버스 마우스 이벤트 핸들러
+        document.getElementById('parabolaCanvas').addEventListener('mousemove', function(e) {
+            const rect = this.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            const f = safeParseFloat(document.getElementById('focalLength').value, 1.5, 0.5, 5);
+            
+            // 캔버스 좌표를 물리 좌표로 변환하는 역변환 필요
+            // 여기서는 간단히 가장 가까운 광선 정보 표시
+            
+            const infoDiv = document.getElementById('focusErrorDisplay');
+            
+            if (rayData.length > 0) {
+                // 마우스에 가장 가까운 광선 찾기 (간단한 근사)
+                const xMaxFactor = safeParseFloat(document.getElementById('xMaxFactor').value, 2, 1, 4);
+                const xMax = xMaxFactor * f;
+                
+                // 광선 인덱스 추정
+                const relX = (mouseX / this.width - 0.5) * 2; // -1 ~ 1
+                const rayIndex = Math.floor((relX + 1) / 2 * rayData.length);
+                
+                if (rayIndex >= 0 && rayIndex < rayData.length) {
+                    const ray = rayData[rayIndex];
+                    infoDiv.innerHTML = `
+                        <strong>광선 #${rayIndex + 1}</strong><br>
+                        입사점: (${ray.intersectX.toFixed(3)}, ${ray.intersectY.toFixed(3)})<br>
+                        반사 후 y축 교점: (0, ${ray.yAxisPoint ? ray.yAxisPoint.y.toFixed(6) : 'N/A'})<br>
+                        초점 오차: <span class="${ray.error < 1e-10 ? 'success-value' : 'error-value'}">${ray.error.toExponential(4)}</span>
+                    `;
+                }
+            }
+        });
+        
+        // 슬라이더-입력 동기화
+        ['focalLength', 'numRays', 'xMaxFactor'].forEach(id => {
+            const slider = document.getElementById(id + 'Slider');
+            const input = document.getElementById(id);
+            
+            if (slider && input) {
+                slider.addEventListener('input', function() {
+                    input.value = this.value;
+                });
+                input.addEventListener('input', function() {
+                    slider.value = this.value;
+                });
+            }
+        });
+        
+        // ========================================================
+        // 탭 2: 라디얼 편광 빔 집속 계산
+        // ========================================================
+        
+        /**
+         * 초점면(z=0)에서의 전기장 분포 계산
+         * 논문 2의 식 (24), (25), (26), (27) 구현
+         * 
+         * @param {Object} params - 계산 파라미터
+         * @returns {Object} 계산 결과
+         */
+        function computeFieldDistribution(params) {
+            const { lambdaOverF, r0OverF, f, nRhoF, nPhiF, nRho, rhoMaxLambda } = params;
+            
+            // 물리 상수 계산
+            const lambda = lambdaOverF * f;      // 파장
+            const r0 = r0OverF * f;              // 개구 반경
+            const k = 2 * Math.PI / lambda;      // 파수
+            
+            // 관측점 ρ 배열 (λ 단위)
+            const rhoArray = [];
+            const rhoMax = rhoMaxLambda * lambda;
+            const dRho_obs = rhoMax / (nRho - 1);
+            
+            for (let i = 0; i < nRho; i++) {
+                rhoArray.push(i * dRho_obs);
+            }
+            
+            // 적분 변수 설정
+            const dRhoF = r0 / nRhoF;
+            const dPhiF = (2 * Math.PI) / nPhiF;
+            
+            // 결과 배열
+            const E_rho_results = []; // 복소수 배열
+            const E_z_results = [];   // 복소수 배열
+            
+            // 각 관측점 ρ에 대해 이중 적분 수행
+            for (let iRho = 0; iRho < nRho; iRho++) {
+                const rho = rhoArray[iRho];
+                
+                // 적분 누적값 (복소수)
+                let E_rho_sum = new Complex(0, 0);
+                let E_z_sum = new Complex(0, 0);
+                
+                // 이중 적분: ∫∫ over ρF and φF
+                for (let iRhoF = 0; iRhoF < nRhoF; iRhoF++) {
+                    // ρF: 거울 위의 반경 좌표 (중심값 사용)
+                    const rhoF = (iRhoF + 0.5) * dRhoF;
+                    
+                    if (rhoF < 1e-10) continue; // 특이점 방지
+                    
+                    // ===== 논문 식 (24): 각도와 전기장 성분 =====
+                    // tan(θF) = ρF/f
+                    // cos(θF) = f/sqrt(ρF² + f²)
+                    // sin(θF) = ρF/sqrt(ρF² + f²)
+                    const denominator = Math.sqrt(rhoF * rhoF + f * f);
+                    const cosTheta = f / denominator;
+                    const sinTheta = rhoF / denominator;
+                    
+                    // E_Fρ = E0 * cos(θF), E_Fz = E0 * sin(θF)
+                    // E0 = 1로 정규화
+                    const E_F_rho = cosTheta;
+                    const E_F_z = sinTheta;
+                    
+                    // ===== 논문 식 (25): 위상 인자 =====
+                    // exp(-iqF) = exp(-ik * ρF²/(2f))
+                    const qF = k * rhoF * rhoF / (2 * f);
+                    const expMinusIqF = Complex.exp_i(-qF);
+                    
+                    // φF에 대한 적분
+                    for (let iPhiF = 0; iPhiF < nPhiF; iPhiF++) {
+                        const phiF = (iPhiF + 0.5) * dPhiF;
+                        
+                        // ===== 거리 함수 u (논문에서 유도된 형태) =====
+                        // u = sqrt(ρF² + f² + ρ² - 2*ρ*ρF*cos(φF))
+                        // 초점면(z=0)에서의 거리
+                        const cosPhiF = Math.cos(phiF);
+                        const uSquared = rhoF * rhoF + f * f + rho * rho - 2 * rho * rhoF * cosPhiF;
+                        
+                        if (uSquared < 1e-20) continue; // 특이점 방지
+                        
+                        const u = Math.sqrt(uSquared);
+                        
+                        // ===== 적분 피적분함수 =====
+                        // 논문 식 (26), (27) 기반
+                        // E_ρ ∝ ∫∫ E_Fρ * exp(-iqF) * exp(-iku) / u² * ρF dρF dφF
+                        // E_z ∝ ∫∫ E_Fz * exp(-iqF) * exp(-iku) / u² * ρF dρF dφF
+                        
+                        const expMinusIku = Complex.exp_i(-k * u);
+                        const integrand_factor = new Complex(0, 0)
+                            .add(expMinusIqF.mul(expMinusIku))
+                            .scale(1 / (u * u) * rhoF);
+                        
+                        // ρ 성분은 cos(φF)로 가중치 (방사 대칭 고려)
+                        // 라디얼 편광이므로 E_ρ는 방향 성분을 고려해야 함
+                        const weightRho = cosPhiF; // 방사 방향 성분
+                        
+                        E_rho_sum = E_rho_sum.add(integrand_factor.scale(E_F_rho * weightRho));
+                        E_z_sum = E_z_sum.add(integrand_factor.scale(E_F_z));
+                    }
+                }
+                
+                // 적분 요소 스케일링 (dρF * dφF)
+                E_rho_sum = E_rho_sum.scale(dRhoF * dPhiF);
+                E_z_sum = E_z_sum.scale(dRhoF * dPhiF);
+                
+                E_rho_results.push(E_rho_sum);
+                E_z_results.push(E_z_sum);
+            }
+            
+            // 정규화: |Ez|_max = 1
+            let maxAbsEz = 0;
+            E_z_results.forEach(ez => {
+                maxAbsEz = Math.max(maxAbsEz, ez.abs());
+            });
+            
+            const normFactor = maxAbsEz > 1e-20 ? 1 / maxAbsEz : 1;
+            
+            const E_rho_normalized = E_rho_results.map(e => e.scale(normFactor));
+            const E_z_normalized = E_z_results.map(e => e.scale(normFactor));
+            
+            // ρ/λ 단위로 변환
+            const rhoOverLambda = rhoArray.map(r => r / lambda);
+            
+            return {
+                rhoOverLambda,
+                E_rho: E_rho_normalized,
+                E_z: E_z_normalized,
+                lambda,
+                f,
+                r0,
+                k
+            };
+        }
+        
+        /**
+         * Plotly를 사용한 전기장 분포 그래프 그리기
+         * @param {Object} data - computeFieldDistribution 결과
+         * @param {boolean} showAbs - 절댓값 표시 여부
+         */
+        function plotTransverseFields(data, showAbs) {
+            const { rhoOverLambda, E_rho, E_z } = data;
+            
+            let trace1, trace2;
+            
+            if (showAbs) {
+                // 절댓값 |E|
+                trace1 = {
+                    x: rhoOverLambda,
+                    y: E_rho.map(e => e.abs()),
+                    name: '|Eρ|',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#e74c3c', width: 2 }
+                };
+                
+                trace2 = {
+                    x: rhoOverLambda,
+                    y: E_z.map(e => e.abs()),
+                    name: '|Ez|',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#3498db', width: 2.5 }
+                };
+            } else {
+                // 실수부 Re(E)
+                trace1 = {
+                    x: rhoOverLambda,
+                    y: E_rho.map(e => e.re),
+                    name: 'Re(Eρ)',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#e74c3c', width: 2 }
+                };
+                
+                trace2 = {
+                    x: rhoOverLambda,
+                    y: E_z.map(e => e.re),
+                    name: 'Re(Ez)',
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { color: '#3498db', width: 2.5 }
+                };
+            }
+            
+            const layout = {
+                title: {
+                    text: showAbs ? '전기장 크기 분포 |E|(ρ)' : '전기장 실수부 분포 Re(E)(ρ)',
+                    font: { size: 16 }
+                },
+                xaxis: {
+                    title: 'ρ / λ',
+                    gridcolor: '#ddd',
+                    zerolinecolor: '#888'
+                },
+                yaxis: {
+                    title: showAbs ? '정규화된 |E|' : '정규화된 Re(E)',
+                    gridcolor: '#ddd',
+                    zerolinecolor: '#888'
+                },
+                legend: {
+                    x: 0.7,
+                    y: 0.95,
+                    bgcolor: 'rgba(255,255,255,0.8)',
+                    bordercolor: '#ddd',
+                    borderwidth: 1
+                },
+                margin: { t: 60, b: 60, l: 70, r: 30 },
+                plot_bgcolor: '#fafafa',
+                paper_bgcolor: '#fff'
+            };
+            
+            const config = {
+                responsive: true,
+                displayModeBar: true,
+                modeBarButtonsToRemove: ['lasso2d', 'select2d']
+            };
+            
+            Plotly.newPlot('transverseGraph', [trace1, trace2], layout, config);
+        }
+        
+        /**
+         * 전기장 계산 및 그래프 업데이트 (UI에서 호출)
+         */
+        window.computeAndPlotFields = function() {
+            // 파라미터 읽기
+            const params = {
+                lambdaOverF: safeParseFloat(document.getElementById('lambdaOverF').value, 0.01, 0.001, 0.1),
+                r0OverF: safeParseFloat(document.getElementById('r0OverF').value, 0.6, 0.1, 2.0),
+                f: safeParseFloat(document.getElementById('focalLengthMM').value, 50, 10, 200),
+                nRhoF: safeParseInt(document.getElementById('nRhoF').value, 80, 20, 150),
+                nPhiF: safeParseInt(document.getElementById('nPhiF').value, 120, 30, 200),
+                nRho: safeParseInt(document.getElementById('nRho').value, 80, 30, 150),
+                rhoMaxLambda: safeParseFloat(document.getElementById('rhoMaxLambda').value, 5, 1, 20)
+            };
+            
+            // 상태 표시
+            const statusDiv = document.getElementById('computeStatus');
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'status-message computing';
+            statusDiv.innerHTML = '<span class="spinner"></span>계산 중... 잠시 기다려주세요.';
+            
+            // 비동기 실행으로 UI 블로킹 방지
+            setTimeout(() => {
+                try {
+                    const startTime = performance.now();
+                    
+                    // 계산 수행
+                    const result = computeFieldDistribution(params);
+                    
+                    const endTime = performance.now();
+                    const computeTime = ((endTime - startTime) / 1000).toFixed(2);
+                    
+                    // 그래프 그리기
+                    const showAbs = document.getElementById('showAbsValue').checked;
+                    plotTransverseFields(result, showAbs);
+                    
+                    // 상태 업데이트
+                    statusDiv.className = 'status-message complete';
+                    statusDiv.textContent = `✓ 계산 완료 (${computeTime}초 소요)`;
+                    
+                    // 파라미터 정보 업데이트
+                    const delta = Math.atan(params.r0OverF) * 180 / Math.PI; // 개구각 (도)
+                    const NA = Math.sin(Math.atan(params.r0OverF)); // 개구수
+                    
+                    document.getElementById('currentParams').innerHTML = `
+                        <strong>λ/f:</strong> ${params.lambdaOverF}<br>
+                        <strong>r₀/f:</strong> ${params.r0OverF}<br>
+                        <strong>f:</strong> ${params.f} mm<br>
+                        <strong>λ:</strong> ${(params.lambdaOverF * params.f).toFixed(4)} mm<br>
+                        <strong>r₀:</strong> ${(params.r0OverF * params.f).toFixed(2)} mm<br>
+                        <strong>개구각 δ:</strong> ${delta.toFixed(2)}°<br>
+                        <strong>개구수 NA:</strong> ${NA.toFixed(4)}<br>
+                        <strong>적분 해상도:</strong> N_ρF=${params.nRhoF}, N_φF=${params.nPhiF}
+                    `;
+                    
+                    // 해석 문구
+                    let interpretation = '';
+                    if (params.r0OverF > 0.8) {
+                        interpretation = '✦ r₀/f가 크므로 (큰 개구수) 중심 축(ρ=0)에서 종방향 전기장 Ez가 Eρ보다 우세하게 나타납니다. 이는 강한 종방향 집속 특성을 의미합니다.';
+                    } else if (params.r0OverF < 0.3) {
+                        interpretation = '✦ r₀/f가 작으므로 (작은 개구수) 횡방향 전기장 Eρ가 주된 성분입니다. 근축 광학 근사가 유효합니다.';
+                    } else {
+                        interpretation = '✦ 중간 개구수 영역입니다. Ez와 Eρ 성분이 혼재하며, 집속 특성이 혼합되어 나타납니다.';
+                    }
+                    
+                    document.getElementById('interpretation').textContent = interpretation;
+                    
+                } catch (error) {
+                    statusDiv.className = 'status-message error';
+                    statusDiv.textContent = '❌ 계산 오류: ' + error.message;
+                    console.error(error);
+                }
+            }, 50);
+        };
+        
+        // ========================================================
+        // 초기화
+        // ========================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            // 탭 1 초기 시뮬레이션 실행
+            updateParabolaSimulation();
+            
+            // 탭 2 초기 빈 그래프
+            const emptyLayout = {
+                title: '계산 버튼을 눌러 시뮬레이션을 시작하세요',
+                xaxis: { title: 'ρ / λ' },
+                yaxis: { title: '정규화된 E' },
+                margin: { t: 60, b: 60, l: 70, r: 30 }
+            };
+            Plotly.newPlot('transverseGraph', [], emptyLayout, { responsive: true });
+            
+            // 슬라이더 이벤트 연결 (실시간 업데이트 옵션)
+            ['focalLengthSlider', 'numRaysSlider', 'xMaxFactorSlider'].forEach(id => {
+                const slider = document.getElementById(id);
+                if (slider) {
+                    slider.addEventListener('change', updateParabolaSimulation);
+                }
+            });
+        });
+        
+    })(); // IIFE 끝
+    </script>
+</body>
+</html>
