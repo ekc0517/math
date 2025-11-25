@@ -11,11 +11,7 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
         
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         
         body {
             font-family: 'Rajdhani', sans-serif;
@@ -69,11 +65,7 @@
             50% { background-position: 100% center; }
         }
         
-        header p {
-            font-size: 1.1rem;
-            color: #8892b0;
-            margin-bottom: 10px;
-        }
+        header p { font-size: 1.1rem; color: #8892b0; margin-bottom: 10px; }
         
         .citations {
             font-size: 0.85rem;
@@ -83,14 +75,8 @@
             margin-top: 12px;
         }
         
-        .citations div {
-            margin-bottom: 4px;
-            transition: color 0.3s;
-        }
-        
-        .citations div:hover {
-            color: #00d4ff;
-        }
+        .citations div { margin-bottom: 4px; transition: color 0.3s; }
+        .citations div:hover { color: #00d4ff; }
         
         .main-container {
             display: flex;
@@ -116,9 +102,7 @@
         .left-panel::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
+            top: 0; left: 0; right: 0;
             height: 3px;
             background: linear-gradient(90deg, #00d4ff, #ff00ff, #00d4ff);
             border-radius: 20px 20px 0 0;
@@ -130,10 +114,7 @@
             border-bottom: 1px solid rgba(100,150,255,0.15);
         }
         
-        .panel-section:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-        }
+        .panel-section:last-child { border-bottom: none; margin-bottom: 0; }
         
         .panel-section h3 {
             font-family: 'Orbitron', sans-serif;
@@ -146,17 +127,8 @@
             text-transform: uppercase;
         }
         
-        .param-group {
-            margin-bottom: 16px;
-        }
-        
-        .param-group label {
-            display: block;
-            font-size: 0.9rem;
-            color: #a0b0d0;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
+        .param-group { margin-bottom: 16px; }
+        .param-group label { display: block; font-size: 0.9rem; color: #a0b0d0; margin-bottom: 8px; font-weight: 500; }
         
         .param-group input[type="number"] {
             width: 100%;
@@ -194,18 +166,9 @@
             border-radius: 50%;
             cursor: pointer;
             box-shadow: 0 0 15px rgba(0,212,255,0.6);
-            transition: transform 0.2s;
         }
         
-        .param-group input[type="range"]::-webkit-slider-thumb:hover {
-            transform: scale(1.2);
-        }
-        
-        .param-value {
-            font-size: 0.8rem;
-            color: #607090;
-            margin-top: 5px;
-        }
+        .param-value { font-size: 0.8rem; color: #607090; margin-top: 5px; }
         
         .btn {
             width: 100%;
@@ -222,23 +185,6 @@
             margin-top: 12px;
             letter-spacing: 1px;
             text-transform: uppercase;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-            transition: left 0.5s;
-        }
-        
-        .btn:hover::before {
-            left: 100%;
         }
         
         .btn:hover {
@@ -246,42 +192,13 @@
             box-shadow: 0 10px 30px rgba(0,212,255,0.4);
         }
         
-        .btn:active {
-            transform: translateY(-1px);
-        }
+        .btn.secondary { background: linear-gradient(135deg, #ff00ff 0%, #aa0088 100%); }
+        .btn.warning { background: linear-gradient(135deg, #ffaa00 0%, #ff6600 100%); }
+        .btn.danger { background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
         
-        .btn.secondary {
-            background: linear-gradient(135deg, #ff00ff 0%, #aa0088 100%);
-        }
-        
-        .btn.secondary:hover {
-            box-shadow: 0 10px 30px rgba(255,0,255,0.4);
-        }
-        
-        .btn.warning {
-            background: linear-gradient(135deg, #ffaa00 0%, #ff6600 100%);
-        }
-        
-        .btn.danger {
-            background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
-        }
-        
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .btn-group {
-            display: flex;
-            gap: 12px;
-            margin-top: 12px;
-        }
-        
-        .btn-group .btn {
-            flex: 1;
-            margin-top: 0;
-        }
+        .btn-group { display: flex; gap: 12px; margin-top: 12px; }
+        .btn-group .btn { flex: 1; margin-top: 0; }
         
         .right-area {
             flex: 1;
@@ -311,7 +228,6 @@
             cursor: pointer;
             transition: all 0.3s;
             position: relative;
-            letter-spacing: 0.5px;
         }
         
         .tab-btn.active {
@@ -322,26 +238,15 @@
         .tab-btn.active::after {
             content: '';
             position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
+            bottom: 0; left: 0; right: 0;
             height: 3px;
             background: linear-gradient(90deg, #00d4ff, #ff00ff);
         }
         
-        .tab-btn:hover:not(.active) {
-            color: #8892b0;
-            background: rgba(100,150,255,0.05);
-        }
+        .tab-btn:hover:not(.active) { color: #8892b0; background: rgba(100,150,255,0.05); }
         
-        .tab-content {
-            display: none;
-            padding: 25px;
-        }
-        
-        .tab-content.active {
-            display: block;
-        }
+        .tab-content { display: none; padding: 25px; }
+        .tab-content.active { display: block; }
         
         .theory-box {
             background: linear-gradient(135deg, rgba(0,50,80,0.4) 0%, rgba(50,0,80,0.4) 100%);
@@ -350,7 +255,6 @@
             padding: 20px 25px;
             margin-bottom: 25px;
             border-radius: 0 15px 15px 0;
-            position: relative;
         }
         
         .theory-box h4 {
@@ -358,14 +262,9 @@
             margin-bottom: 15px;
             font-family: 'Orbitron', sans-serif;
             font-size: 1rem;
-            letter-spacing: 1px;
         }
         
-        .theory-box p {
-            font-size: 0.95rem;
-            color: #a0b0d0;
-            margin-bottom: 10px;
-        }
+        .theory-box p { font-size: 0.95rem; color: #a0b0d0; margin-bottom: 10px; }
         
         .canvas-container {
             position: relative;
@@ -376,10 +275,7 @@
             box-shadow: inset 0 0 50px rgba(0,0,0,0.5), 0 0 30px rgba(0,212,255,0.1);
         }
         
-        #parabolaCanvas {
-            display: block;
-            width: 100%;
-        }
+        #parabolaCanvas { display: block; width: 100%; background: #050a15; }
         
         .canvas-info {
             position: absolute;
@@ -391,13 +287,9 @@
             border-radius: 12px;
             font-size: 0.9rem;
             backdrop-filter: blur(10px);
-            box-shadow: 0 5px 20px rgba(0,0,0,0.4);
         }
         
-        .canvas-info .success-value {
-            color: #00ff88;
-            font-weight: 700;
-        }
+        .canvas-info .success-value { color: #00ff88; font-weight: 700; }
         
         .animation-status {
             position: absolute;
@@ -480,14 +372,9 @@
             margin-bottom: 15px;
             font-family: 'Orbitron', sans-serif;
             font-size: 0.95rem;
-            letter-spacing: 1px;
         }
         
-        .result-info p {
-            font-size: 0.95rem;
-            color: #a0b0d0;
-            margin-bottom: 8px;
-        }
+        .result-info p { font-size: 0.95rem; color: #a0b0d0; margin-bottom: 8px; }
         
         .speed-control {
             display: flex;
@@ -500,11 +387,7 @@
             border: 1px solid rgba(0,212,255,0.2);
         }
         
-        .speed-control label {
-            font-size: 0.9rem;
-            color: #a0b0d0;
-            white-space: nowrap;
-        }
+        .speed-control label { font-size: 0.9rem; color: #a0b0d0; white-space: nowrap; }
         
         .speed-value {
             font-size: 1rem;
@@ -530,12 +413,7 @@
             accent-color: #00d4ff;
         }
         
-        .checkbox-group label {
-            margin: 0;
-            cursor: pointer;
-            color: #a0b0d0;
-            font-size: 0.95rem;
-        }
+        .checkbox-group label { margin: 0; cursor: pointer; color: #a0b0d0; font-size: 0.95rem; }
         
         .status-message {
             padding: 15px 20px;
@@ -544,23 +422,8 @@
             font-size: 0.95rem;
         }
         
-        .status-message.computing {
-            background: rgba(255,170,0,0.2);
-            color: #ffaa00;
-            border: 1px solid rgba(255,170,0,0.4);
-        }
-        
-        .status-message.complete {
-            background: rgba(0,255,136,0.2);
-            color: #00ff88;
-            border: 1px solid rgba(0,255,136,0.4);
-        }
-        
-        .status-message.error {
-            background: rgba(255,68,68,0.2);
-            color: #ff4444;
-            border: 1px solid rgba(255,68,68,0.4);
-        }
+        .status-message.computing { background: rgba(255,170,0,0.2); color: #ffaa00; border: 1px solid rgba(255,170,0,0.4); }
+        .status-message.complete { background: rgba(0,255,136,0.2); color: #00ff88; border: 1px solid rgba(0,255,136,0.4); }
         
         footer {
             text-align: center;
@@ -581,7 +444,6 @@
             border-top-color: #00d4ff;
             animation: spin 1s ease-in-out infinite;
             margin-right: 10px;
-            vertical-align: middle;
         }
         
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -612,27 +474,24 @@
                     <label>초점 거리 f</label>
                     <input type="range" id="focalLengthSlider" min="0.5" max="5" step="0.1" value="1.5">
                     <input type="number" id="focalLength" min="0.5" max="5" step="0.1" value="1.5">
-                    <div class="param-value">범위: 0.5 ~ 5.0</div>
                 </div>
                 
                 <div class="param-group">
                     <label>입사 광선 개수</label>
-                    <input type="range" id="numRaysSlider" min="3" max="25" step="1" value="11">
-                    <input type="number" id="numRays" min="3" max="25" step="1" value="11">
-                    <div class="param-value">범위: 3 ~ 25개</div>
+                    <input type="range" id="numRaysSlider" min="3" max="25" step="1" value="10">
+                    <input type="number" id="numRays" min="3" max="25" step="1" value="10">
                 </div>
                 
                 <div class="param-group">
-                    <label>거울 표시 범위 (×f)</label>
+                    <label>거울 범위 (×f)</label>
                     <input type="range" id="xMaxFactorSlider" min="1" max="4" step="0.1" value="2">
                     <input type="number" id="xMaxFactor" min="1" max="4" step="0.1" value="2">
-                    <div class="param-value">xMax = k × f</div>
                 </div>
                 
                 <div class="speed-control">
                     <label>속도:</label>
-                    <input type="range" id="animSpeed" min="0.3" max="3" step="0.1" value="1" style="flex:1;">
-                    <span class="speed-value" id="speedValue">1.0x</span>
+                    <input type="range" id="animSpeed" min="0.2" max="2" step="0.1" value="0.8" style="flex:1;">
+                    <span class="speed-value" id="speedValue">0.8x</span>
                 </div>
                 
                 <div class="checkbox-group">
@@ -697,7 +556,7 @@
                     <label for="showAbsValue">절댓값 |E| 표시</label>
                 </div>
                 
-                <button class="btn secondary" onclick="computeAndPlotFields()">📊 계산 실행</button>
+                <button class="btn secondary" onclick="computeAndPlotFields()">📊 계산 시작</button>
             </div>
         </div>
         
@@ -709,9 +568,9 @@
             
             <div class="tab-content active" id="tab1Content">
                 <div class="theory-box">
-                    <h4>📐 이론 요약</h4>
-                    <p>포물선 \(y(x) = \frac{x^2}{4f}\)에서 y축에 평행한 입사광은 모두 초점 \(F=(0,f)\)로 수렴합니다.</p>
-                    <p>반사 법칙: \(\mathbf{k}_r = \mathbf{k}_i - 2(\mathbf{k}_i \cdot \mathbf{n})\mathbf{n}\), 법선: \(\mathbf{n} = \frac{(-y', 1)}{\sqrt{1+{y'}^2}}\)</p>
+                    <h4>이론 요약</h4>
+                    <p>포물선 \(y = \frac{x^2}{4f}\)에서 평행광선이 초점 \(F(0,f)\)로 수렴합니다.</p>
+                    <p>반사 법칙: \(\mathbf{k}_r = \mathbf{k}_i - 2(\mathbf{k}_i \cdot \mathbf{n})\mathbf{n}\)</p>
                 </div>
                 
                 <div class="canvas-container">
@@ -719,7 +578,7 @@
                     
                     <div class="canvas-info" id="canvasInfo">
                         <div><strong style="color:#00d4ff;">이론적 초점:</strong> F(0, f)</div>
-                        <div id="focusErrorDisplay">시작 버튼을 눌러 시뮬레이션 실행</div>
+                        <div id="focusErrorDisplay">시작 버튼을 눌러 시뮬레이션을 실행하세요.</div>
                     </div>
                     
                     <div class="animation-status">
@@ -743,9 +602,9 @@
             
             <div class="tab-content" id="tab2Content">
                 <div class="theory-box" style="border-left-color:#ff00ff;">
-                    <h4 style="color:#ff00ff;">🌀 이론 요약</h4>
-                    <p>라디얼 편광 빔의 전기장: \(E_{F\rho} = E_0 \frac{f}{\sqrt{\rho_F^2+f^2}}\), \(E_{Fz} = E_0 \frac{\rho_F}{\sqrt{\rho_F^2+f^2}}\)</p>
-                    <p>큰 개구수(r₀/f)에서 축방향 성분 \(E_z\)가 우세해집니다.</p>
+                    <h4 style="color:#ff00ff;">이론 요약</h4>
+                    <p>라디얼 편광 빔의 전기장 성분:</p>
+                    <p>\(E_{F\rho} = E_0 \frac{f}{\sqrt{\rho_F^2+f^2}}\), \(E_{Fz} = E_0 \frac{\rho_F}{\sqrt{\rho_F^2+f^2}}\)</p>
                 </div>
                 
                 <div id="computeStatus" class="status-message" style="display:none;"></div>
@@ -754,7 +613,7 @@
                 
                 <div class="result-info">
                     <h5>📌 파라미터 정보</h5>
-                    <p id="currentParams">계산을 실행하면 표시됩니다.</p>
+                    <p id="currentParams">계산을 실행하면 정보가 표시됩니다.</p>
                     <p id="interpretation" style="margin-top:12px;font-style:italic;color:#ff00ff;"></p>
                 </div>
             </div>
@@ -762,14 +621,14 @@
     </div>
     
     <footer>
-        이 웹앱은 Ivchenko (2023), Godana et al. (2023)의 이론을 바탕으로 한 교육용 시뮬레이터이며, 수치적 단순화 및 근사식을 포함합니다.
+        이 웹앱은 Ivchenko (2023), Godana et al. (2023)의 이론을 바탕으로 한 교육용 시뮬레이터입니다.
     </footer>
     
     <script>
     (function() {
         'use strict';
         
-        // ========== 복소수 클래스 ==========
+        // ==================== 복소수 클래스 ====================
         class Complex {
             constructor(re = 0, im = 0) { this.re = re; this.im = im; }
             add(o) { return new Complex(this.re + o.re, this.im + o.im); }
@@ -779,23 +638,28 @@
             abs() { return Math.sqrt(this.re*this.re + this.im*this.im); }
         }
         
-        // ========== 상태 ==========
-        const AnimState = { READY: 'ready', RUNNING: 'running', PAUSED: 'paused', COMPLETE: 'complete' };
-        let animationState = AnimState.READY;
+        // ==================== 전역 상태 ====================
+        let animationState = 'ready';
         let animationId = null;
         let rays = [];
-        let transform = null;
-        let viewBounds = null;
+        let lastTime = 0;
+        let startTime = 0;
         
-        function safeFloat(v, d, min, max) {
-            const p = parseFloat(v);
-            return (isNaN(p) || p < min || p > max) ? d : p;
-        }
-        function safeInt(v, d, min, max) {
-            const p = parseInt(v, 10);
-            return (isNaN(p) || p < min || p > max) ? d : p;
-        }
+        // 좌표 변환용 객체
+        let viewConfig = {
+            scale: 1,
+            centerX: 0,
+            centerY: 0,
+            yMin: 0,
+            yMax: 0
+        };
         
+        // ==================== 유틸리티 ====================
+        function clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
+        function safeFloat(v, d, min, max) { const p = parseFloat(v); return isNaN(p) ? d : clamp(p, min, max); }
+        function safeInt(v, d, min, max) { const p = parseInt(v, 10); return isNaN(p) ? d : clamp(p, min, max); }
+        
+        // ==================== 탭 전환 ====================
         window.switchTab = function(i) {
             document.querySelectorAll('.tab-btn').forEach((b, j) => b.classList.toggle('active', i === j));
             document.querySelectorAll('.tab-content').forEach((c, j) => c.classList.toggle('active', i === j));
@@ -803,144 +667,213 @@
             document.getElementById('tab2Params').style.display = i === 1 ? 'block' : 'none';
         };
         
-        // ========== 포물선 기하학 ==========
-        // y(x) = x² / (4f)
-        function parabola(x, f) { 
-            return (x * x) / (4 * f); 
-        }
+        // ==================== 포물선 물리 ====================
+        // 포물선: y = x^2 / (4f)
+        function parabola(x, f) { return (x * x) / (4 * f); }
         
-        // y'(x) = x / (2f)
-        function parabolaDeriv(x, f) { 
-            return x / (2 * f); 
-        }
+        // 도함수: dy/dx = x / (2f)
+        function parabolaDeriv(x, f) { return x / (2 * f); }
         
-        // 법선 벡터 (거울 윗면을 향함)
-        // n = (-y', 1) / sqrt(1 + y'²)
+        // 법선벡터 (위쪽을 향함): n = (-y', 1) / |(-y', 1)|
         function getNormal(x, f) {
             const yp = parabolaDeriv(x, f);
             const len = Math.sqrt(1 + yp * yp);
             return { nx: -yp / len, ny: 1 / len };
         }
         
-        // 반사 법칙: kr = ki - 2(ki·n)n
-        function reflect(ki, n) {
-            const dot = ki.x * n.nx + ki.y * n.ny;
-            return { 
-                x: ki.x - 2 * dot * n.nx, 
-                y: ki.y - 2 * dot * n.ny 
+        // 반사벡터: k_r = k_i - 2(k_i · n)n
+        function reflectVector(kix, kiy, nx, ny) {
+            const dot = kix * nx + kiy * ny;
+            return { x: kix - 2 * dot * nx, y: kiy - 2 * dot * ny };
+        }
+        
+        // ==================== 좌표 변환 설정 ====================
+        function setupView(canvas, f, xMax) {
+            const W = canvas.width, H = canvas.height;
+            const margin = 70;
+            
+            // 물리 좌표 범위
+            const yMaxMirror = parabola(xMax, f);
+            const physYMax = yMaxMirror + f * 1.5;  // 거울 위 영역
+            const physYMin = -f * 2.0;              // 거울 아래 (초점 아래까지)
+            
+            // 스케일 계산
+            const scaleX = (W - 2 * margin) / (2 * xMax);
+            const scaleY = (H - 2 * margin) / (physYMax - physYMin);
+            const scale = Math.min(scaleX, scaleY);
+            
+            viewConfig = {
+                scale: scale,
+                centerX: W / 2,
+                centerY: H - margin - (-physYMin) * scale,
+                yMin: physYMin,
+                yMax: physYMax,
+                xMax: xMax
             };
         }
         
-        // ========== 좌표 변환 ==========
-        function setupTransform(canvas, f, xMax) {
-            const w = canvas.width, h = canvas.height, m = 70;
-            
-            // 뷰 범위 설정 - 반사광이 화면 아래까지 가도록
-            const yMaxP = parabola(xMax, f) * 1.3 + f * 0.5;  // 거울 위쪽 여유
-            const yMinP = -f * 0.8;  // 초점 아래쪽 (반사광 종점)
-            
-            const scX = (w - 2*m) / (2*xMax);
-            const scY = (h - 2*m) / (yMaxP - yMinP);
-            const sc = Math.min(scX, scY);
-            
-            viewBounds = { yMax: yMaxP, yMin: yMinP, xMax: xMax };
-            
-            transform = {
-                scale: sc,
-                centerX: w / 2,
-                centerY: h - m - (-yMinP) * sc,
-                toCanvas(x, y) {
-                    return { 
-                        cx: this.centerX + x * this.scale, 
-                        cy: this.centerY - y * this.scale 
-                    };
-                }
+        // 물리 좌표 → 캔버스 좌표
+        function toCanvas(x, y) {
+            return {
+                cx: viewConfig.centerX + x * viewConfig.scale,
+                cy: viewConfig.centerY - y * viewConfig.scale
             };
-            
-            return viewBounds;
         }
         
-        // ========== 광선 클래스 ==========
+        // ==================== 광선 클래스 ====================
         class Ray {
-            constructor(cfg) {
-                this.startX = cfg.startX;
-                this.startY = cfg.startY;
-                this.mirrorX = cfg.mirrorX;
-                this.mirrorY = cfg.mirrorY;
-                this.endX = cfg.endX;
-                this.endY = cfg.endY;
-                this.focusY = cfg.focusY;
-                this.error = cfg.error;
-                this.delay = cfg.delay || 0;
+            constructor(params) {
+                this.f = params.f;
+                this.startX = params.startX;         // 입사 시작점 x
+                this.startY = params.startY;         // 입사 시작점 y (화면 위)
+                this.mirrorX = params.mirrorX;       // 거울 교점 x
+                this.mirrorY = params.mirrorY;       // 거울 교점 y
+                this.krx = params.krx;               // 반사 방향 x
+                this.kry = params.kry;               // 반사 방향 y
+                this.endX = params.endX;             // 반사 종점 x
+                this.endY = params.endY;             // 반사 종점 y
+                this.focusError = params.focusError; // 초점 오차
+                this.delay = params.delay || 0;      // 시작 지연
                 
-                this.phase = 0; // 0: 대기, 1: 입사중, 2: 반사중, 3: 완료
-                this.t = 0; // 현재 단계 내 진행률 (0~1)
+                // 애니메이션 상태
+                this.t = 0;                          // 0 ~ 2 (0~1: 입사, 1~2: 반사)
                 this.active = false;
                 this.complete = false;
                 
-                this.incidentTrail = [];
-                this.reflectTrail = [];
+                // 자취 배열
+                this.trail = [];
             }
             
-            update(dt, speed) {
-                if (this.complete) return;
-                
-                const rate = speed * 0.0012;
-                this.t += dt * rate;
-                
-                if (this.phase === 1) {
-                    // 입사 구간
-                    const prog = Math.min(this.t, 1);
-                    const x = this.startX;
-                    const y = this.startY + (this.mirrorY - this.startY) * prog;
-                    this.incidentTrail.push({ x, y });
-                    
-                    if (this.t >= 1) {
-                        this.t = 0;
-                        this.phase = 2;
-                        this.reflectTrail.push({ x: this.mirrorX, y: this.mirrorY });
-                    }
-                } else if (this.phase === 2) {
-                    // 반사 구간
-                    const prog = Math.min(this.t, 1);
-                    const x = this.mirrorX + (this.endX - this.mirrorX) * prog;
-                    const y = this.mirrorY + (this.endY - this.mirrorY) * prog;
-                    this.reflectTrail.push({ x, y });
-                    
-                    if (this.t >= 1) {
-                        this.phase = 3;
-                        this.complete = true;
-                    }
-                }
-            }
-            
-            getCurrentPos() {
-                if (this.phase === 1) {
-                    const prog = Math.min(this.t, 1);
+            // 현재 위치
+            getPos() {
+                if (this.t <= 1) {
+                    // 입사 구간: startY → mirrorY
+                    const frac = this.t;
                     return {
                         x: this.startX,
-                        y: this.startY + (this.mirrorY - this.startY) * prog,
-                        type: 'incident'
+                        y: this.startY + (this.mirrorY - this.startY) * frac,
+                        phase: 'incident'
                     };
-                } else if (this.phase === 2) {
-                    const prog = Math.min(this.t, 1);
+                } else {
+                    // 반사 구간: mirror → end
+                    const frac = this.t - 1;
                     return {
-                        x: this.mirrorX + (this.endX - this.mirrorX) * prog,
-                        y: this.mirrorY + (this.endY - this.mirrorY) * prog,
-                        type: 'reflect'
+                        x: this.mirrorX + (this.endX - this.mirrorX) * frac,
+                        y: this.mirrorY + (this.endY - this.mirrorY) * frac,
+                        phase: 'reflect'
                     };
                 }
-                return null;
+            }
+            
+            // 업데이트
+            update(dt, speed) {
+                if (!this.active || this.complete) return;
+                
+                // t 증가
+                this.t += dt * speed * 0.0012;
+                
+                // 자취 추가
+                const pos = this.getPos();
+                this.trail.push({ x: pos.x, y: pos.y, phase: pos.phase });
+                
+                // 완료 체크
+                if (this.t >= 2) {
+                    this.t = 2;
+                    this.complete = true;
+                    // 마지막 점 확실히 추가
+                    this.trail.push({ x: this.endX, y: this.endY, phase: 'reflect' });
+                }
             }
         }
         
-        // ========== 그리기 ==========
-        function drawBackground(ctx, canvas, f, xMax, bounds) {
+        // ==================== 광선 초기화 ====================
+        function initRays() {
+            const f = safeFloat(document.getElementById('focalLength').value, 1.5, 0.5, 5);
+            const numRays = safeInt(document.getElementById('numRays').value, 10, 3, 25);
+            const xMaxFactor = safeFloat(document.getElementById('xMaxFactor').value, 2, 1, 4);
+            const sequential = document.getElementById('sequentialRays').checked;
+            
+            const xMax = xMaxFactor * f;
+            const canvas = document.getElementById('parabolaCanvas');
+            setupView(canvas, f, xMax);
+            
+            rays = [];
+            
+            // 입사 시작 y (화면 위쪽)
+            const rayStartY = viewConfig.yMax - 0.1;
+            // 반사 종점 y (화면 아래쪽 또는 위쪽)
+            const rayEndYBottom = viewConfig.yMin + 0.1;
+            const rayEndYTop = viewConfig.yMax - 0.1;
+            
+            for (let i = 0; i < numRays; i++) {
+                // 광선의 x 위치 (균등 분포)
+                const rayX = -xMax * 0.85 + (1.7 * xMax * i) / Math.max(numRays - 1, 1);
+                
+                // 거울 교점
+                const mirrorY = parabola(rayX, f);
+                
+                // 법선 벡터
+                const normal = getNormal(rayX, f);
+                
+                // 입사 벡터 (위에서 아래로)
+                const ki = { x: 0, y: -1 };
+                
+                // 반사 벡터
+                const kr = reflectVector(ki.x, ki.y, normal.nx, normal.ny);
+                
+                // 반사 종점 계산 (화면 경계까지)
+                let endX, endY;
+                
+                // 반사광이 위로 가는지 아래로 가는지 확인
+                if (kr.y > 0.01) {
+                    // 위쪽으로 반사 → 화면 위쪽 경계까지
+                    const tEnd = (rayEndYTop - mirrorY) / kr.y;
+                    endX = rayX + kr.x * tEnd;
+                    endY = rayEndYTop;
+                } else if (kr.y < -0.01) {
+                    // 아래쪽으로 반사 → 화면 아래쪽 경계까지
+                    const tEnd = (rayEndYBottom - mirrorY) / kr.y;
+                    endX = rayX + kr.x * tEnd;
+                    endY = rayEndYBottom;
+                } else {
+                    // 거의 수평
+                    const tEnd = 10 * f;
+                    endX = rayX + kr.x * tEnd;
+                    endY = mirrorY + kr.y * tEnd;
+                }
+                
+                // 초점 오차 계산 (반사선이 y축과 만나는 점)
+                let focusError = 0;
+                if (Math.abs(kr.x) > 1e-10) {
+                    const tFocus = -rayX / kr.x;
+                    if (tFocus > 0) {
+                        const focusY = mirrorY + kr.y * tFocus;
+                        focusError = Math.abs(focusY - f);
+                    }
+                }
+                
+                rays.push(new Ray({
+                    f: f,
+                    startX: rayX,
+                    startY: rayStartY,
+                    mirrorX: rayX,
+                    mirrorY: mirrorY,
+                    krx: kr.x,
+                    kry: kr.y,
+                    endX: endX,
+                    endY: endY,
+                    focusError: focusError,
+                    delay: sequential ? i * 200 : 0
+                }));
+            }
+        }
+        
+        // ==================== 그리기 함수들 ====================
+        function drawBackground(ctx, canvas, f, xMax) {
             // 배경
             const grad = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, 
-                                                   canvas.width/2, canvas.height/2, canvas.width);
+                                                   canvas.width/2, canvas.height/2, canvas.width * 0.8);
             grad.addColorStop(0, '#0a1628');
-            grad.addColorStop(0.5, '#061020');
             grad.addColorStop(1, '#020810');
             ctx.fillStyle = grad;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -949,32 +882,38 @@
             ctx.strokeStyle = 'rgba(0,150,200,0.06)';
             ctx.lineWidth = 1;
             
-            for (let gx = -Math.ceil(xMax)*2; gx <= Math.ceil(xMax)*2; gx += f/2) {
-                const p1 = transform.toCanvas(gx, bounds.yMin);
-                const p2 = transform.toCanvas(gx, bounds.yMax);
-                ctx.beginPath(); ctx.moveTo(p1.cx, p1.cy); ctx.lineTo(p2.cx, p2.cy); ctx.stroke();
+            const step = f / 2;
+            for (let gx = -xMax * 2; gx <= xMax * 2; gx += step) {
+                const p1 = toCanvas(gx, viewConfig.yMin);
+                const p2 = toCanvas(gx, viewConfig.yMax);
+                ctx.beginPath();
+                ctx.moveTo(p1.cx, p1.cy);
+                ctx.lineTo(p2.cx, p2.cy);
+                ctx.stroke();
             }
-            for (let gy = Math.floor(bounds.yMin); gy <= Math.ceil(bounds.yMax); gy += f/2) {
-                const p1 = transform.toCanvas(-xMax*2, gy);
-                const p2 = transform.toCanvas(xMax*2, gy);
-                ctx.beginPath(); ctx.moveTo(p1.cx, p1.cy); ctx.lineTo(p2.cx, p2.cy); ctx.stroke();
+            
+            for (let gy = Math.floor(viewConfig.yMin / step) * step; gy <= viewConfig.yMax; gy += step) {
+                const p1 = toCanvas(-xMax * 2, gy);
+                const p2 = toCanvas(xMax * 2, gy);
+                ctx.beginPath();
+                ctx.moveTo(p1.cx, p1.cy);
+                ctx.lineTo(p2.cx, p2.cy);
+                ctx.stroke();
             }
             
             // 좌표축
             ctx.strokeStyle = 'rgba(0,200,255,0.2)';
             ctx.lineWidth = 1.5;
-            let p = transform.toCanvas(-xMax*1.5, 0);
-            let q = transform.toCanvas(xMax*1.5, 0);
+            
+            // x축
+            let p = toCanvas(-xMax * 1.5, 0);
+            let q = toCanvas(xMax * 1.5, 0);
             ctx.beginPath(); ctx.moveTo(p.cx, p.cy); ctx.lineTo(q.cx, q.cy); ctx.stroke();
             
-            p = transform.toCanvas(0, bounds.yMin);
-            q = transform.toCanvas(0, bounds.yMax);
+            // y축
+            p = toCanvas(0, viewConfig.yMin);
+            q = toCanvas(0, viewConfig.yMax);
             ctx.beginPath(); ctx.moveTo(p.cx, p.cy); ctx.lineTo(q.cx, q.cy); ctx.stroke();
-            
-            ctx.fillStyle = 'rgba(0,200,255,0.5)';
-            ctx.font = '13px Rajdhani';
-            ctx.fillText('x', transform.toCanvas(xMax*1.4, 0).cx, transform.toCanvas(xMax*1.4, 0).cy - 8);
-            ctx.fillText('y', transform.toCanvas(0, bounds.yMax*0.9).cx + 10, transform.toCanvas(0, bounds.yMax*0.9).cy);
         }
         
         function drawMirror(ctx, f, xMax) {
@@ -982,34 +921,37 @@
             ctx.shadowColor = '#00d4ff';
             ctx.shadowBlur = 20;
             
-            const grad = ctx.createLinearGradient(
-                transform.toCanvas(-xMax, 0).cx, 0,
-                transform.toCanvas(xMax, 0).cx, 0
-            );
-            grad.addColorStop(0, '#005577');
+            // 그라디언트
+            const p1 = toCanvas(-xMax, 0);
+            const p2 = toCanvas(xMax, 0);
+            const grad = ctx.createLinearGradient(p1.cx, 0, p2.cx, 0);
+            grad.addColorStop(0, '#006688');
             grad.addColorStop(0.5, '#00d4ff');
-            grad.addColorStop(1, '#005577');
+            grad.addColorStop(1, '#006688');
             
             ctx.strokeStyle = grad;
-            ctx.lineWidth = 4;
+            ctx.lineWidth = 5;
             ctx.beginPath();
-            for (let i = 0; i <= 200; i++) {
-                const x = -xMax + (2*xMax*i)/200;
+            
+            const steps = 200;
+            for (let i = 0; i <= steps; i++) {
+                const x = -xMax + (2 * xMax * i) / steps;
                 const y = parabola(x, f);
-                const pt = transform.toCanvas(x, y);
+                const pt = toCanvas(x, y);
                 if (i === 0) ctx.moveTo(pt.cx, pt.cy);
                 else ctx.lineTo(pt.cx, pt.cy);
             }
             ctx.stroke();
             ctx.restore();
             
-            ctx.strokeStyle = 'rgba(0,212,255,0.12)';
+            // 두께 효과
+            ctx.strokeStyle = 'rgba(0,212,255,0.1)';
             ctx.lineWidth = 18;
             ctx.stroke();
         }
         
         function drawFocus(ctx, f) {
-            const fc = transform.toCanvas(0, f);
+            const fc = toCanvas(0, f);
             
             // 글로우
             const grad = ctx.createRadialGradient(fc.cx, fc.cy, 0, fc.cx, fc.cy, 40);
@@ -1018,75 +960,98 @@
             grad.addColorStop(1, 'transparent');
             ctx.fillStyle = grad;
             ctx.beginPath();
-            ctx.arc(fc.cx, fc.cy, 40, 0, 2*Math.PI);
+            ctx.arc(fc.cx, fc.cy, 40, 0, 2 * Math.PI);
             ctx.fill();
             
-            // 중심
+            // 점
             ctx.fillStyle = '#ff00ff';
             ctx.shadowColor = '#ff00ff';
             ctx.shadowBlur = 15;
             ctx.beginPath();
-            ctx.arc(fc.cx, fc.cy, 7, 0, 2*Math.PI);
+            ctx.arc(fc.cx, fc.cy, 8, 0, 2 * Math.PI);
             ctx.fill();
             ctx.shadowBlur = 0;
             
+            // 라벨
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 14px Rajdhani';
-            ctx.fillText(`F(0, ${f.toFixed(2)})`, fc.cx + 15, fc.cy - 10);
+            ctx.fillText('F(0, ' + f.toFixed(2) + ')', fc.cx + 15, fc.cy - 12);
         }
         
-        function drawTrail(ctx, trail, isReflect) {
-            if (trail.length < 2) return;
+        function drawTrail(ctx, trail, showTrails) {
+            if (!showTrails || trail.length < 2) return;
             
-            const start = transform.toCanvas(trail[0].x, trail[0].y);
-            const end = transform.toCanvas(trail[trail.length-1].x, trail[trail.length-1].y);
+            // 입사 자취와 반사 자취 분리
+            const incidentPoints = trail.filter(p => p.phase === 'incident');
+            const reflectPoints = trail.filter(p => p.phase === 'reflect');
             
-            const grad = ctx.createLinearGradient(start.cx, start.cy, end.cx, end.cy);
-            if (isReflect) {
-                grad.addColorStop(0, '#ffcc00');
+            // 입사 자취
+            if (incidentPoints.length >= 2) {
+                ctx.beginPath();
+                ctx.strokeStyle = '#00ffc8';
+                ctx.lineWidth = 2;
+                ctx.shadowColor = '#00ffc8';
+                ctx.shadowBlur = 6;
+                
+                for (let i = 0; i < incidentPoints.length; i++) {
+                    const pt = toCanvas(incidentPoints[i].x, incidentPoints[i].y);
+                    if (i === 0) ctx.moveTo(pt.cx, pt.cy);
+                    else ctx.lineTo(pt.cx, pt.cy);
+                }
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+            
+            // 반사 자취
+            if (reflectPoints.length >= 2) {
+                const first = toCanvas(reflectPoints[0].x, reflectPoints[0].y);
+                const last = toCanvas(reflectPoints[reflectPoints.length-1].x, reflectPoints[reflectPoints.length-1].y);
+                
+                const grad = ctx.createLinearGradient(first.cx, first.cy, last.cx, last.cy);
+                grad.addColorStop(0, '#ffaa00');
                 grad.addColorStop(0.5, '#ff6600');
-                grad.addColorStop(1, '#ff0066');
-            } else {
-                grad.addColorStop(0, 'rgba(0,255,200,0.15)');
-                grad.addColorStop(1, '#00ffc8');
+                grad.addColorStop(1, '#ff00ff');
+                
+                ctx.beginPath();
+                ctx.strokeStyle = grad;
+                ctx.lineWidth = 2.5;
+                ctx.shadowColor = '#ff6600';
+                ctx.shadowBlur = 8;
+                
+                for (let i = 0; i < reflectPoints.length; i++) {
+                    const pt = toCanvas(reflectPoints[i].x, reflectPoints[i].y);
+                    if (i === 0) ctx.moveTo(pt.cx, pt.cy);
+                    else ctx.lineTo(pt.cx, pt.cy);
+                }
+                ctx.stroke();
+                ctx.shadowBlur = 0;
             }
-            
-            ctx.strokeStyle = grad;
-            ctx.lineWidth = isReflect ? 2.5 : 2;
-            ctx.shadowColor = isReflect ? '#ff6600' : '#00ffc8';
-            ctx.shadowBlur = 6;
-            
-            ctx.beginPath();
-            for (let i = 0; i < trail.length; i++) {
-                const pt = transform.toCanvas(trail[i].x, trail[i].y);
-                if (i === 0) ctx.moveTo(pt.cx, pt.cy);
-                else ctx.lineTo(pt.cx, pt.cy);
-            }
-            ctx.stroke();
-            ctx.shadowBlur = 0;
         }
         
         function drawRayHead(ctx, ray) {
-            const pos = ray.getCurrentPos();
-            if (!pos) return;
+            if (!ray.active) return;
             
-            const pt = transform.toCanvas(pos.x, pos.y);
-            const color = pos.type === 'incident' ? '#00ffc8' : '#ff6600';
+            const pos = ray.getPos();
+            const pt = toCanvas(pos.x, pos.y);
             
-            const grad = ctx.createRadialGradient(pt.cx, pt.cy, 0, pt.cx, pt.cy, 18);
+            const color = pos.phase === 'incident' ? '#00ffc8' : '#ff6600';
+            
+            // 글로우
+            const grad = ctx.createRadialGradient(pt.cx, pt.cy, 0, pt.cx, pt.cy, 25);
             grad.addColorStop(0, color);
-            grad.addColorStop(0.5, color);
+            grad.addColorStop(0.5, color + '80');
             grad.addColorStop(1, 'transparent');
             ctx.fillStyle = grad;
             ctx.beginPath();
-            ctx.arc(pt.cx, pt.cy, 18, 0, 2*Math.PI);
+            ctx.arc(pt.cx, pt.cy, 25, 0, 2 * Math.PI);
             ctx.fill();
             
+            // 중심점
             ctx.fillStyle = '#fff';
             ctx.shadowColor = color;
             ctx.shadowBlur = 10;
             ctx.beginPath();
-            ctx.arc(pt.cx, pt.cy, 4, 0, 2*Math.PI);
+            ctx.arc(pt.cx, pt.cy, 5, 0, 2 * Math.PI);
             ctx.fill();
             ctx.shadowBlur = 0;
         }
@@ -1094,213 +1059,55 @@
         function drawLegend(ctx, canvas) {
             const x = 20, y = canvas.height - 130;
             
-            ctx.fillStyle = 'rgba(5,15,30,0.85)';
-            ctx.strokeStyle = 'rgba(0,212,255,0.3)';
+            ctx.fillStyle = 'rgba(5,15,30,0.9)';
+            ctx.strokeStyle = 'rgba(0,212,255,0.4)';
             ctx.lineWidth = 1;
             ctx.beginPath();
-            if (ctx.roundRect) ctx.roundRect(x, y, 155, 118, 10);
-            else { ctx.rect(x, y, 155, 118); }
+            ctx.roundRect(x, y, 155, 115, 10);
             ctx.fill();
             ctx.stroke();
             
             ctx.font = '12px Rajdhani';
-            let ly = y + 22;
             
             // 입사광
             ctx.strokeStyle = '#00ffc8';
             ctx.lineWidth = 2;
-            ctx.shadowColor = '#00ffc8';
-            ctx.shadowBlur = 5;
             ctx.beginPath();
-            ctx.moveTo(x+12, ly);
-            ctx.lineTo(x+42, ly);
+            ctx.moveTo(x + 12, y + 22);
+            ctx.lineTo(x + 40, y + 22);
             ctx.stroke();
-            ctx.shadowBlur = 0;
             ctx.fillStyle = '#00ffc8';
-            ctx.fillText('입사광선', x+50, ly+4);
+            ctx.fillText('입사광선', x + 48, y + 27);
             
-            ly += 24;
             // 반사광
             ctx.strokeStyle = '#ff6600';
-            ctx.shadowColor = '#ff6600';
-            ctx.shadowBlur = 5;
             ctx.beginPath();
-            ctx.moveTo(x+12, ly);
-            ctx.lineTo(x+42, ly);
+            ctx.moveTo(x + 12, y + 47);
+            ctx.lineTo(x + 40, y + 47);
             ctx.stroke();
-            ctx.shadowBlur = 0;
             ctx.fillStyle = '#ff6600';
-            ctx.fillText('반사광선', x+50, ly+4);
+            ctx.fillText('반사광선', x + 48, y + 52);
             
-            ly += 24;
             // 거울
             ctx.strokeStyle = '#00d4ff';
-            ctx.lineWidth = 3;
-            ctx.shadowColor = '#00d4ff';
-            ctx.shadowBlur = 5;
+            ctx.lineWidth = 4;
             ctx.beginPath();
-            ctx.moveTo(x+12, ly);
-            ctx.lineTo(x+42, ly);
+            ctx.moveTo(x + 12, y + 72);
+            ctx.lineTo(x + 40, y + 72);
             ctx.stroke();
-            ctx.shadowBlur = 0;
             ctx.fillStyle = '#00d4ff';
-            ctx.fillText('포물선 거울', x+50, ly+4);
+            ctx.fillText('포물선 거울', x + 48, y + 77);
             
-            ly += 24;
             // 초점
             ctx.fillStyle = '#ff00ff';
-            ctx.shadowColor = '#ff00ff';
-            ctx.shadowBlur = 6;
             ctx.beginPath();
-            ctx.arc(x+27, ly, 5, 0, 2*Math.PI);
+            ctx.arc(x + 26, y + 97, 6, 0, 2 * Math.PI);
             ctx.fill();
-            ctx.shadowBlur = 0;
             ctx.fillStyle = '#ff00ff';
-            ctx.fillText('초점 F', x+50, ly+4);
+            ctx.fillText('초점 F', x + 48, y + 102);
         }
         
-        // ========== 광선 초기화 ==========
-        function initRays() {
-            const f = safeFloat(document.getElementById('focalLength').value, 1.5, 0.5, 5);
-            const numRays = safeInt(document.getElementById('numRays').value, 11, 3, 25);
-            const xMaxFactor = safeFloat(document.getElementById('xMaxFactor').value, 2, 1, 4);
-            const sequential = document.getElementById('sequentialRays').checked;
-            
-            const xMax = xMaxFactor * f;
-            const canvas = document.getElementById('parabolaCanvas');
-            const bounds = setupTransform(canvas, f, xMax);
-            
-            rays = [];
-            
-            // 입사광 시작점 (화면 상단 위쪽)
-            const rayStartY = bounds.yMax + 0.3;
-            
-            for (let i = 0; i < numRays; i++) {
-                // 광선 x 위치 (균등 분포)
-                const rayX = -xMax * 0.85 + (1.7 * xMax * i) / (numRays - 1);
-                
-                // 거울 위의 교점
-                const mirrorY = parabola(rayX, f);
-                
-                // 법선 벡터 계산
-                const normal = getNormal(rayX, f);
-                
-                // 입사 방향 (위에서 아래로)
-                const ki = { x: 0, y: -1 };
-                
-                // 반사 방향 계산
-                const kr = reflect(ki, normal);
-                
-                // 반사광이 초점을 지나 화면 끝까지 가도록 종점 계산
-                // kr.y가 양수면 위로, 음수면 아래로 진행
-                let endX, endY;
-                
-                if (Math.abs(kr.y) > 0.001) {
-                    // y 방향 이동이 있는 경우
-                    let targetY;
-                    if (kr.y > 0) {
-                        // 위로 진행 (초점을 지나 위로) - 이론적으로 맞지 않음
-                        // 실제로 평행광이 포물면에서 반사되면 초점을 향해 '아래로' 가야 함
-                        targetY = bounds.yMin - 0.3;
-                    } else {
-                        // 아래로 진행 - 이게 정상
-                        targetY = bounds.yMin - 0.3;
-                    }
-                    const t = (targetY - mirrorY) / kr.y;
-                    endX = rayX + kr.x * t;
-                    endY = targetY;
-                } else {
-                    // 거의 수평
-                    endX = rayX + kr.x * 5 * f;
-                    endY = mirrorY + kr.y * 5 * f;
-                }
-                
-                // y축과의 교차점에서 초점 오차 계산
-                let focusY = f;
-                let error = 0;
-                if (Math.abs(kr.x) > 1e-10) {
-                    const tFocus = (0 - rayX) / kr.x;
-                    if (tFocus > 0) {
-                        focusY = mirrorY + kr.y * tFocus;
-                        error = Math.abs(focusY - f);
-                    }
-                }
-                
-                rays.push(new Ray({
-                    startX: rayX,
-                    startY: rayStartY,
-                    mirrorX: rayX,
-                    mirrorY: mirrorY,
-                    endX: endX,
-                    endY: endY,
-                    focusY: focusY,
-                    error: error,
-                    delay: sequential ? i * 100 : 0
-                }));
-            }
-        }
-        
-        function updateStatus(state, text) {
-            animationState = state;
-            document.getElementById('statusDot').className = 'status-dot ' + state;
-            document.getElementById('statusText').textContent = text;
-            
-            const startBtn = document.getElementById('startBtn');
-            const pauseBtn = document.getElementById('pauseBtn');
-            
-            startBtn.disabled = state === AnimState.RUNNING || state === AnimState.COMPLETE;
-            startBtn.textContent = state === AnimState.PAUSED ? '▶ 계속' : '▶ 시작';
-            pauseBtn.disabled = state !== AnimState.RUNNING;
-        }
-        
-        let lastTime = 0, startTime = 0;
-        
-        function animate(now) {
-            if (animationState !== AnimState.RUNNING) return;
-            
-            if (!lastTime) lastTime = now;
-            const dt = now - lastTime;
-            lastTime = now;
-            
-            const elapsed = now - startTime;
-            const speed = parseFloat(document.getElementById('animSpeed').value);
-            
-            // 광선 활성화 및 업데이트
-            rays.forEach(ray => {
-                if (elapsed >= ray.delay && ray.phase === 0) {
-                    ray.phase = 1;
-                    ray.active = true;
-                    ray.incidentTrail.push({ x: ray.startX, y: ray.startY });
-                }
-                if (ray.active) {
-                    ray.update(dt, speed);
-                }
-            });
-            
-            // 진행률
-            const totalPhases = rays.length * 2;
-            let completedPhases = 0;
-            rays.forEach(r => {
-                if (r.phase >= 2) completedPhases++;
-                if (r.phase >= 3) completedPhases++;
-            });
-            const prog = completedPhases / totalPhases;
-            
-            document.getElementById('progressFill').style.width = (prog * 100) + '%';
-            const completeCount = rays.filter(r => r.complete).length;
-            document.getElementById('progressText').textContent = 
-                `${Math.round(prog * 100)}% (${completeCount}/${rays.length} 완료)`;
-            
-            render();
-            
-            if (rays.every(r => r.complete)) {
-                updateStatus(AnimState.COMPLETE, '완료');
-                showResults();
-            } else {
-                animationId = requestAnimationFrame(animate);
-            }
-        }
-        
+        // ==================== 렌더링 ====================
         function render() {
             const canvas = document.getElementById('parabolaCanvas');
             const ctx = canvas.getContext('2d');
@@ -1309,58 +1116,136 @@
             const xMax = xMaxFactor * f;
             const showTrails = document.getElementById('showTrails').checked;
             
-            const bounds = setupTransform(canvas, f, xMax);
+            setupView(canvas, f, xMax);
             
-            drawBackground(ctx, canvas, f, xMax, bounds);
+            // 배경
+            drawBackground(ctx, canvas, f, xMax);
             
-            if (showTrails) {
-                rays.forEach(ray => {
-                    drawTrail(ctx, ray.incidentTrail, false);
-                    drawTrail(ctx, ray.reflectTrail, true);
-                });
-            }
+            // 자취
+            rays.forEach(ray => {
+                drawTrail(ctx, ray.trail, showTrails);
+            });
             
+            // 거울과 초점
             drawMirror(ctx, f, xMax);
             drawFocus(ctx, f);
             
+            // 광선 머리
             rays.forEach(ray => {
-                if (ray.active && !ray.complete) {
+                if (!ray.complete) {
                     drawRayHead(ctx, ray);
                 }
             });
             
+            // 범례
             drawLegend(ctx, canvas);
+        }
+        
+        // ==================== 상태 업데이트 ====================
+        function updateStatus(state, text) {
+            animationState = state;
+            document.getElementById('statusDot').className = 'status-dot ' + state;
+            document.getElementById('statusText').textContent = text;
+            
+            const startBtn = document.getElementById('startBtn');
+            const pauseBtn = document.getElementById('pauseBtn');
+            
+            if (state === 'ready') {
+                startBtn.disabled = false;
+                startBtn.textContent = '▶ 시작';
+                pauseBtn.disabled = true;
+            } else if (state === 'running') {
+                startBtn.disabled = true;
+                pauseBtn.disabled = false;
+            } else if (state === 'paused') {
+                startBtn.disabled = false;
+                startBtn.textContent = '▶ 계속';
+                pauseBtn.disabled = true;
+            } else if (state === 'complete') {
+                startBtn.disabled = true;
+                pauseBtn.disabled = true;
+            }
+        }
+        
+        // ==================== 애니메이션 루프 ====================
+        function animate(timestamp) {
+            if (animationState !== 'running') return;
+            
+            if (!lastTime) lastTime = timestamp;
+            const dt = timestamp - lastTime;
+            lastTime = timestamp;
+            
+            const elapsed = timestamp - startTime;
+            const speed = parseFloat(document.getElementById('animSpeed').value);
+            
+            let allComplete = true;
+            let completeCount = 0;
+            
+            rays.forEach(ray => {
+                // 지연 후 활성화
+                if (elapsed >= ray.delay && !ray.active && !ray.complete) {
+                    ray.active = true;
+                }
+                
+                // 업데이트
+                if (ray.active && !ray.complete) {
+                    ray.update(dt, speed);
+                    allComplete = false;
+                }
+                
+                if (ray.complete) completeCount++;
+                if (!ray.complete) allComplete = false;
+            });
+            
+            // 진행률
+            const totalProgress = rays.reduce((s, r) => s + r.t / 2, 0) / rays.length;
+            document.getElementById('progressFill').style.width = (totalProgress * 100) + '%';
+            document.getElementById('progressText').textContent = 
+                Math.round(totalProgress * 100) + '% (' + completeCount + '/' + rays.length + ')';
+            
+            // 렌더링
+            render();
+            
+            if (allComplete) {
+                updateStatus('complete', '완료');
+                showResults();
+            } else {
+                animationId = requestAnimationFrame(animate);
+            }
         }
         
         function showResults() {
             const f = safeFloat(document.getElementById('focalLength').value, 1.5, 0.5, 5);
-            let total = 0, maxErr = 0;
-            rays.forEach(r => { total += r.error; maxErr = Math.max(maxErr, r.error); });
-            const avg = total / rays.length;
             
-            document.getElementById('tab1Results').innerHTML = `
-                <strong>초점 거리:</strong> f = ${f.toFixed(3)}<br>
-                <strong>광선 개수:</strong> ${rays.length}개<br>
-                <strong>평균 초점 오차:</strong> <span style="color:#00ff88">${avg.toExponential(4)}</span><br>
-                <strong>최대 초점 오차:</strong> <span style="color:#00ff88">${maxErr.toExponential(4)}</span><br>
-                <em style="color:#00d4ff">✓ 모든 반사광선이 초점 F(0, ${f})를 정확히 통과함을 확인</em>
-            `;
-            document.getElementById('focusErrorDisplay').innerHTML = `
-                <span class="success-value">✓ 초점 수렴 확인</span><br>
-                평균 오차: ${avg.toExponential(2)}
-            `;
+            let totalErr = 0, maxErr = 0;
+            rays.forEach(r => {
+                totalErr += r.focusError;
+                maxErr = Math.max(maxErr, r.focusError);
+            });
+            const avgErr = totalErr / rays.length;
+            
+            document.getElementById('tab1Results').innerHTML = 
+                '<strong>초점 거리:</strong> ' + f.toFixed(3) + '<br>' +
+                '<strong>광선 개수:</strong> ' + rays.length + '개<br>' +
+                '<strong>평균 오차:</strong> <span style="color:#00ff88">' + avgErr.toExponential(4) + '</span><br>' +
+                '<strong>최대 오차:</strong> <span style="color:#00ff88">' + maxErr.toExponential(4) + '</span><br>' +
+                '<em style="color:#00d4ff">✓ 모든 반사광이 초점 F(0, ' + f + ')를 통과</em>';
+            
+            document.getElementById('focusErrorDisplay').innerHTML = 
+                '<span class="success-value">✓ 초점 수렴 확인</span><br>평균 오차: ' + avgErr.toExponential(2);
         }
         
+        // ==================== 공개 함수 ====================
         window.startAnimation = function() {
-            if (animationState === AnimState.PAUSED) {
-                updateStatus(AnimState.RUNNING, '실행 중...');
+            if (animationState === 'paused') {
+                updateStatus('running', '실행 중...');
                 lastTime = 0;
                 animationId = requestAnimationFrame(animate);
             } else {
                 initRays();
                 document.getElementById('progressContainer').style.display = 'block';
                 document.getElementById('progressFill').style.width = '0%';
-                updateStatus(AnimState.RUNNING, '실행 중...');
+                updateStatus('running', '실행 중...');
                 lastTime = 0;
                 startTime = performance.now();
                 animationId = requestAnimationFrame(animate);
@@ -1368,9 +1253,9 @@
         };
         
         window.pauseAnimation = function() {
-            if (animationState === AnimState.RUNNING) {
+            if (animationState === 'running') {
                 cancelAnimationFrame(animationId);
-                updateStatus(AnimState.PAUSED, '일시정지');
+                updateStatus('paused', '일시정지');
             }
         };
         
@@ -1383,128 +1268,207 @@
             const f = safeFloat(document.getElementById('focalLength').value, 1.5, 0.5, 5);
             const xMaxFactor = safeFloat(document.getElementById('xMaxFactor').value, 2, 1, 4);
             const xMax = xMaxFactor * f;
-            const bounds = setupTransform(canvas, f, xMax);
             
-            drawBackground(ctx, canvas, f, xMax, bounds);
+            setupView(canvas, f, xMax);
+            drawBackground(ctx, canvas, f, xMax);
             drawMirror(ctx, f, xMax);
             drawFocus(ctx, f);
             drawLegend(ctx, canvas);
             
             document.getElementById('progressContainer').style.display = 'none';
-            document.getElementById('tab1Results').innerHTML = '시작 버튼을 눌러 광선 추적 애니메이션을 실행하세요.';
-            document.getElementById('focusErrorDisplay').textContent = '시작 버튼을 눌러 시뮬레이션 실행';
-            updateStatus(AnimState.READY, '준비됨');
+            document.getElementById('tab1Results').innerHTML = '시작 버튼을 눌러 시뮬레이션을 실행하세요.';
+            document.getElementById('focusErrorDisplay').textContent = '시작 버튼을 눌러 시뮬레이션을 실행하세요.';
+            updateStatus('ready', '준비됨');
         };
         
-        // 슬라이더 이벤트
+        // 슬라이더 동기화
         document.getElementById('animSpeed').addEventListener('input', function() {
             document.getElementById('speedValue').textContent = parseFloat(this.value).toFixed(1) + 'x';
         });
         
-        ['focalLength', 'numRays', 'xMaxFactor'].forEach(id => {
+        ['focalLength', 'numRays', 'xMaxFactor'].forEach(function(id) {
             const slider = document.getElementById(id + 'Slider');
             const input = document.getElementById(id);
             if (slider && input) {
                 slider.addEventListener('input', function() {
                     input.value = this.value;
-                    if (animationState === AnimState.READY || animationState === AnimState.COMPLETE) {
+                    if (animationState === 'ready' || animationState === 'complete') {
                         resetAnimation();
                     }
                 });
                 input.addEventListener('input', function() {
                     slider.value = this.value;
-                    if (animationState === AnimState.READY || animationState === AnimState.COMPLETE) {
+                    if (animationState === 'ready' || animationState === 'complete') {
                         resetAnimation();
                     }
                 });
             }
         });
         
-        // ========== 탭 2 ==========
-        function computeFieldDistribution(params) {
+        // ==================== 탭 2: 전기장 ====================
+        function computeFields(params) {
             const { lambdaOverF, r0OverF, f, nRhoF, nPhiF, nRho, rhoMaxLambda } = params;
             const lambda = lambdaOverF * f;
             const r0 = r0OverF * f;
             const k = 2 * Math.PI / lambda;
             
-            const rhoArray = [];
+            const rhoArr = [];
             const rhoMax = rhoMaxLambda * lambda;
-            for (let i = 0; i < nRho; i++) rhoArray.push(i * rhoMax / (nRho - 1));
+            for (let i = 0; i < nRho; i++) rhoArr.push(i * rhoMax / (nRho - 1));
             
             const dRhoF = r0 / nRhoF;
             const dPhiF = (2 * Math.PI) / nPhiF;
             
-            const E_rho_results = [], E_z_results = [];
+            const E_rho = [], E_z = [];
             
             for (let iRho = 0; iRho < nRho; iRho++) {
-                const rho = rhoArray[iRho];
-                let E_rho_sum = new Complex(), E_z_sum = new Complex();
+                const rho = rhoArr[iRho];
+                let sumRho = new Complex(), sumZ = new Complex();
                 
                 for (let iRhoF = 0; iRhoF < nRhoF; iRhoF++) {
                     const rhoF = (iRhoF + 0.5) * dRhoF;
                     if (rhoF < 1e-10) continue;
                     
                     const denom = Math.sqrt(rhoF*rhoF + f*f);
-                    const cosTheta = f / denom, sinTheta = rhoF / denom;
+                    const cosT = f / denom, sinT = rhoF / denom;
                     const qF = k * rhoF * rhoF / (2 * f);
-                    const expMinusIqF = Complex.exp_i(-qF);
+                    const expQ = Complex.exp_i(-qF);
                     
                     for (let iPhiF = 0; iPhiF < nPhiF; iPhiF++) {
                         const phiF = (iPhiF + 0.5) * dPhiF;
-                        const cosPhiF = Math.cos(phiF);
-                        const uSq = rhoF*rhoF + f*f + rho*rho - 2*rho*rhoF*cosPhiF;
+                        const cosP = Math.cos(phiF);
+                        const uSq = rhoF*rhoF + f*f + rho*rho - 2*rho*rhoF*cosP;
                         if (uSq < 1e-20) continue;
                         const u = Math.sqrt(uSq);
                         
-                        const expMinusIku = Complex.exp_i(-k * u);
-                        const factor = expMinusIqF.mul(expMinusIku).scale(rhoF / (u * u));
+                        const expU = Complex.exp_i(-k * u);
+                        const fac = expQ.mul(expU).scale(rhoF / (u * u));
                         
-                        E_rho_sum = E_rho_sum.add(factor.scale(cosTheta * cosPhiF));
-                        E_z_sum = E_z_sum.add(factor.scale(sinTheta));
+                        sumRho = sumRho.add(fac.scale(cosT * cosP));
+                        sumZ = sumZ.add(fac.scale(sinT));
                     }
                 }
                 
-                E_rho_results.push(E_rho_sum.scale(dRhoF * dPhiF));
-                E_z_results.push(E_z_sum.scale(dRhoF * dPhiF));
+                E_rho.push(sumRho.scale(dRhoF * dPhiF));
+                E_z.push(sumZ.scale(dRhoF * dPhiF));
             }
             
-            let maxAbsEz = 0;
-            E_z_results.forEach(e => maxAbsEz = Math.max(maxAbsEz, e.abs()));
-            const norm = maxAbsEz > 1e-20 ? 1 / maxAbsEz : 1;
+            let maxAbs = 0;
+            E_z.forEach(e => maxAbs = Math.max(maxAbs, e.abs()));
+            const norm = maxAbs > 1e-20 ? 1 / maxAbs : 1;
             
             return {
-                rhoOverLambda: rhoArray.map(r => r / lambda),
-                E_rho: E_rho_results.map(e => e.scale(norm)),
-                E_z: E_z_results.map(e => e.scale(norm))
+                rhoOverLambda: rhoArr.map(r => r / lambda),
+                E_rho: E_rho.map(e => e.scale(norm)),
+                E_z: E_z.map(e => e.scale(norm))
             };
         }
         
         function plotFields(data, showAbs) {
-            const { rhoOverLambda, E_rho, E_z } = data;
-            
-            const trace1 = {
-                x: rhoOverLambda,
-                y: showAbs ? E_rho.map(e => e.abs()) : E_rho.map(e => e.re),
-                name: showAbs ? '|Eρ|' : 'Re(Eρ)',
-                type: 'scatter', mode: 'lines',
-                line: { color: '#ff6600', width: 2.5 }
-            };
-            const trace2 = {
-                x: rhoOverLambda,
-                y: showAbs ? E_z.map(e => e.abs()) : E_z.map(e => e.re),
-                name: showAbs ? '|Ez|' : 'Re(Ez)',
-                type: 'scatter', mode: 'lines',
-                line: { color: '#00d4ff', width: 3 }
-            };
+            const traces = [
+                {
+                    x: data.rhoOverLambda,
+                    y: showAbs ? data.E_rho.map(e => e.abs()) : data.E_rho.map(e => e.re),
+                    name: showAbs ? '|Eρ|' : 'Re(Eρ)',
+                    type: 'scatter', mode: 'lines',
+                    line: { color: '#ff6600', width: 2.5 }
+                },
+                {
+                    x: data.rhoOverLambda,
+                    y: showAbs ? data.E_z.map(e => e.abs()) : data.E_z.map(e => e.re),
+                    name: showAbs ? '|Ez|' : 'Re(Ez)',
+                    type: 'scatter', mode: 'lines',
+                    line: { color: '#00d4ff', width: 3 }
+                }
+            ];
             
             const layout = {
-                title: { text: showAbs ? '전기장 크기 |E|(ρ)' : '전기장 실수부 Re(E)(ρ)', 
-                         font: { size: 16, color: '#e0e0e0', family: 'Orbitron' }},
+                title: { text: showAbs ? '전기장 |E|(ρ)' : '전기장 Re(E)(ρ)', font: { color: '#e0e0e0', family: 'Orbitron' }},
                 xaxis: { title: 'ρ / λ', gridcolor: 'rgba(100,150,255,0.15)', color: '#a0b0d0' },
-                yaxis: { title: showAbs ? '|E| (정규화)' : 'Re(E) (정규화)', 
-                         gridcolor: 'rgba(100,150,255,0.15)', color: '#a0b0d0' },
-                legend: { x: 0.7, y: 0.95, bgcolor: 'rgba(20,30,50,0.9)', 
-                          bordercolor: 'rgba(0,212,255,0.3)', font: { color: '#e0e0e0' }},
+                yaxis: { title: '정규화된 E', gridcolor: 'rgba(100,150,255,0.15)', color: '#a0b0d0' },
+                legend: { x: 0.7, y: 0.95, bgcolor: 'rgba(20,30,50,0.9)', font: { color: '#e0e0e0' }},
                 plot_bgcolor: 'rgba(10,15,30,1)',
                 paper_bgcolor: 'rgba(10,15,30,1)',
-                font: { family: 'Rajdhani', 
+                font: { family: 'Rajdhani', color: '#a0b0d0' }
+            };
+            
+            Plotly.newPlot('transverseGraph', traces, layout, { responsive: true });
+        }
+        
+        window.computeAndPlotFields = function() {
+            const params = {
+                lambdaOverF: safeFloat(document.getElementById('lambdaOverF').value, 0.01, 0.001, 0.1),
+                r0OverF: safeFloat(document.getElementById('r0OverF').value, 0.6, 0.1, 2.0),
+                f: safeFloat(document.getElementById('focalLengthMM').value, 50, 10, 200),
+                nRhoF: safeInt(document.getElementById('nRhoF').value, 80, 20, 150),
+                nPhiF: safeInt(document.getElementById('nPhiF').value, 120, 30, 200),
+                nRho: safeInt(document.getElementById('nRho').value, 80, 30, 150),
+                rhoMaxLambda: safeFloat(document.getElementById('rhoMaxLambda').value, 5, 1, 20)
+            };
+            
+            const status = document.getElementById('computeStatus');
+            status.style.display = 'block';
+            status.className = 'status-message computing';
+            status.innerHTML = '<span class="spinner"></span>계산 중...';
+            
+            setTimeout(function() {
+                try {
+                    const t0 = performance.now();
+                    const result = computeFields(params);
+                    const dt = ((performance.now() - t0) / 1000).toFixed(2);
+                    
+                    plotFields(result, document.getElementById('showAbsValue').checked);
+                    
+                    status.className = 'status-message complete';
+                    status.textContent = '✓ 계산 완료 (' + dt + '초)';
+                    
+                    const delta = Math.atan(params.r0OverF) * 180 / Math.PI;
+                    const NA = Math.sin(Math.atan(params.r0OverF));
+                    
+                    document.getElementById('currentParams').innerHTML = 
+                        '<strong>λ/f:</strong> ' + params.lambdaOverF + ' | <strong>r₀/f:</strong> ' + params.r0OverF + '<br>' +
+                        '<strong>개구각:</strong> ' + delta.toFixed(2) + '° | <strong>NA:</strong> ' + NA.toFixed(4);
+                    
+                    const interp = params.r0OverF > 0.8 ? '✦ 큰 개구수: Ez가 우세' :
+                                   params.r0OverF < 0.3 ? '✦ 작은 개구수: Eρ가 우세' : '✦ 중간 개구수: 혼재';
+                    document.getElementById('interpretation').textContent = interp;
+                    
+                } catch (e) {
+                    status.className = 'status-message';
+                    status.style.background = 'rgba(255,68,68,0.2)';
+                    status.style.color = '#ff4444';
+                    status.textContent = '오류: ' + e.message;
+                }
+            }, 50);
+        };
+        
+        // ==================== 초기화 ====================
+        document.addEventListener('DOMContentLoaded', function() {
+            // roundRect 폴리필
+            if (!CanvasRenderingContext2D.prototype.roundRect) {
+                CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+                    this.beginPath();
+                    this.moveTo(x + r, y);
+                    this.arcTo(x + w, y, x + w, y + h, r);
+                    this.arcTo(x + w, y + h, x, y + h, r);
+                    this.arcTo(x, y + h, x, y, r);
+                    this.arcTo(x, y, x + w, y, r);
+                    this.closePath();
+                    return this;
+                };
+            }
+            
+            resetAnimation();
+            
+            Plotly.newPlot('transverseGraph', [], {
+                title: { text: '계산 버튼을 눌러 시작', font: { color: '#607090' }},
+                xaxis: { title: 'ρ / λ', gridcolor: 'rgba(100,150,255,0.15)', color: '#607090' },
+                yaxis: { title: 'E', gridcolor: 'rgba(100,150,255,0.15)', color: '#607090' },
+                plot_bgcolor: 'rgba(10,15,30,1)',
+                paper_bgcolor: 'rgba(10,15,30,1)'
+            }, { responsive: true });
+        });
+    })();
+    </script>
+</body>
+</html>
