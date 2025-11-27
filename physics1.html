@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Whispering Gallery - 타원형 음향 전달 시뮬레이션</title>
+    <title>포물선 거울의 반사 성질 시뮬레이터</title>
     <style>
         * {
             margin: 0;
@@ -12,704 +12,1462 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0d0d1a 0%, #1a1a2e 50%, #16213e 100%);
+            font-family: 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
+            background: #1a1a2e;
+            color: #eee;
             min-height: 100vh;
-            color: #e0e0e0;
+            display: flex;
+        }
+
+        .control-panel {
+            width: 340px;
+            min-width: 340px;
+            background: linear-gradient(180deg, #16213e 0%, #1a1a2e 100%);
             padding: 20px;
+            overflow-y: auto;
+            border-right: 2px solid #0f3460;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
         }
 
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-
-        header {
+        .panel-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #00d9ff;
             text-align: center;
-            margin-bottom: 20px;
-        }
-
-        h1 {
-            font-size: 2.2rem;
-            background: linear-gradient(90deg, #00d4ff, #7b2cbf, #ff006e);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 8px;
-        }
-
-        .subtitle {
-            color: #888;
-            font-size: 1rem;
-        }
-
-        .canvas-container {
-            background: #0a0a14;
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5),
-                        inset 0 1px 0 rgba(255, 255, 255, 0.05);
-            margin-bottom: 20px;
-        }
-
-        canvas {
-            display: block;
-            width: 100%;
-            border-radius: 8px;
-            background: #050510;
-        }
-
-        .controls {
-            background: rgba(26, 26, 46, 0.8);
-            border-radius: 12px;
-            padding: 20px;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 15px;
+            border-bottom: 1px solid #0f3460;
+            text-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
         }
 
         .control-group {
+            background: rgba(15, 52, 96, 0.5);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid #0f3460;
+        }
+
+        .control-group h3 {
+            font-size: 0.95em;
+            color: #ffd93d;
+            margin-bottom: 12px;
             display: flex;
-            flex-direction: column;
+            align-items: center;
             gap: 8px;
         }
 
-        .control-group label {
-            font-size: 0.9rem;
-            color: #aaa;
+        .control-group h3::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #ffd93d;
+            border-radius: 50%;
+        }
+
+        .slider-container {
+            margin-bottom: 12px;
+        }
+
+        .slider-container label {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 6px;
+            font-size: 0.85em;
+            color: #ccc;
         }
 
-        .control-group label span {
-            color: #00d4ff;
+        .slider-container label span {
+            color: #00d9ff;
             font-weight: bold;
+            font-family: 'Consolas', monospace;
         }
 
         input[type="range"] {
-            -webkit-appearance: none;
             width: 100%;
             height: 6px;
+            -webkit-appearance: none;
+            background: linear-gradient(90deg, #0f3460, #00d9ff);
             border-radius: 3px;
-            background: linear-gradient(90deg, #2a2a4a, #3a3a5a);
-            outline: none;
+            cursor: pointer;
         }
 
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
             width: 18px;
             height: 18px;
+            background: #ffd93d;
             border-radius: 50%;
-            background: linear-gradient(135deg, #00d4ff, #7b2cbf);
-            cursor: pointer;
-            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+            box-shadow: 0 0 10px rgba(255, 217, 61, 0.5);
         }
 
-        button {
-            padding: 12px 24px;
-            font-size: 1rem;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s ease;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #00d4ff, #0099cc);
-            color: #000;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(0, 212, 255, 0.4);
-        }
-
-        .btn-secondary {
-            background: linear-gradient(135deg, #7b2cbf, #5a1f8f);
-            color: #fff;
-        }
-
-        .btn-secondary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(123, 44, 191, 0.4);
-        }
-
-        .info-panel {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-top: 15px;
-            padding: 15px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 8px;
-        }
-
-        .info-item {
+        .checkbox-container {
             display: flex;
             align-items: center;
+            gap: 10px;
+            margin: 8px 0;
+            font-size: 0.85em;
+            cursor: pointer;
+        }
+
+        .checkbox-container input {
+            width: 18px;
+            height: 18px;
+            accent-color: #00d9ff;
+            cursor: pointer;
+        }
+
+        .btn-group {
+            display: flex;
             gap: 8px;
-            padding: 8px 15px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 20px;
-            font-size: 0.85rem;
+            margin-top: 10px;
         }
 
-        .info-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
+        .action-btn {
+            flex: 1;
+            padding: 12px 8px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.85em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
         }
 
-        .dot-f1 { background: #ff006e; box-shadow: 0 0 8px #ff006e; }
-        .dot-f2 { background: #00ff88; box-shadow: 0 0 8px #00ff88; }
-        .dot-ray { background: #ffcc00; box-shadow: 0 0 8px #ffcc00; }
+        .btn-start {
+            background: linear-gradient(135deg, #4ecdc4, #44a08d);
+            color: white;
+        }
 
-        .status-bar {
+        .btn-start:hover {
+            transform: scale(1.02);
+            box-shadow: 0 0 15px rgba(78, 205, 196, 0.5);
+        }
+
+        .btn-stop {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, #a855f7, #7c3aed);
+            color: white;
+        }
+
+        .info-box {
+            background: rgba(0, 217, 255, 0.1);
+            border: 1px solid rgba(0, 217, 255, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 0.8em;
+            line-height: 1.6;
+        }
+
+        .info-box .formula {
+            font-family: 'Times New Roman', serif;
+            font-size: 1.2em;
+            color: #ffd93d;
+            text-align: center;
+            margin: 10px 0;
+            font-style: italic;
+        }
+
+        .live-data {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Consolas', monospace;
+            font-size: 0.75em;
+            line-height: 1.8;
+        }
+
+        .live-data .label {
+            color: #888;
+        }
+
+        .live-data .value {
+            color: #00d9ff;
+        }
+
+        .live-data .highlight {
+            color: #ffd93d;
+            font-weight: bold;
+        }
+
+        .mode-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .mode-btn {
+            flex: 1;
+            min-width: 80px;
+            padding: 10px 8px;
+            border: none;
+            border-radius: 6px;
+            background: #0f3460;
+            color: #ccc;
+            font-size: 0.8em;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .mode-btn:hover {
+            background: #1a4a7a;
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(135deg, #00d9ff, #0f3460);
+            color: white;
+            box-shadow: 0 0 15px rgba(0, 217, 255, 0.4);
+        }
+
+        .theory-text {
+            font-size: 0.78em;
+            line-height: 1.7;
+            color: #aaa;
+            text-align: justify;
+        }
+
+        .canvas-container {
+            flex: 1;
             display: flex;
             justify-content: center;
-            gap: 30px;
+            align-items: center;
+            padding: 20px;
+            background: #0d1421;
+        }
+
+        #mainCanvas {
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 217, 255, 0.2);
+            cursor: crosshair;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            font-size: 0.75em;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 4px;
+            border-radius: 2px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
             margin-top: 10px;
-            font-size: 0.9rem;
         }
 
-        .status-item {
-            color: #00d4ff;
+        .stat-item {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
         }
 
-        @media (max-width: 600px) {
-            h1 { font-size: 1.6rem; }
-            .controls { padding: 15px; gap: 15px; }
+        .stat-value {
+            font-size: 1.4em;
+            color: #00d9ff;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            font-size: 0.7em;
+            color: #888;
+        }
+
+        @media (max-width: 900px) {
+            body {
+                flex-direction: column;
+            }
+            .control-panel {
+                width: 100%;
+                min-width: auto;
+                max-height: 40vh;
+                border-right: none;
+                border-bottom: 2px solid #0f3460;
+            }
+            .canvas-container {
+                padding: 10px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🔊 Whispering Gallery</h1>
-            <p class="subtitle">타원형 공간에서의 음향 전달 시뮬레이션</p>
-        </header>
+    <div class="control-panel">
+        <h1 class="panel-title">🔭 광학 반사 시뮬레이터</h1>
 
-        <div class="canvas-container">
-            <canvas id="canvas"></canvas>
-            <div class="info-panel">
-                <div class="info-item"><div class="info-dot dot-f1"></div> 발신 초점 (F₁)</div>
-                <div class="info-item"><div class="info-dot dot-f2"></div> 수신 초점 (F₂)</div>
-                <div class="info-item"><div class="info-dot dot-ray"></div> 음파 (광선)</div>
+        <!-- 시뮬레이션 컨트롤 -->
+        <div class="control-group">
+            <h3>시뮬레이션 제어</h3>
+            <div class="btn-group">
+                <button class="action-btn btn-start" id="btnStart">▶ 발사</button>
+                <button class="action-btn btn-stop" id="btnStop">⏸ 정지</button>
+                <button class="action-btn btn-reset" id="btnReset">↺ 리셋</button>
             </div>
-            <div class="status-bar">
-                <span class="status-item">활성 광선: <span id="activeCount">0</span></span>
-                <span class="status-item">F₂ 통과: <span id="f2Count">0</span></span>
-                <span class="status-item">F₁ 복귀 완료: <span id="f1Count">0</span></span>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value" id="activeRays">0</div>
+                    <div class="stat-label">활성 광선</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="reflectedCount">0</div>
+                    <div class="stat-label">총 반사 횟수</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="focusPassCount">0</div>
+                    <div class="stat-label">초점 통과</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="completedCount">0</div>
+                    <div class="stat-label">완료</div>
+                </div>
             </div>
         </div>
 
-        <div class="controls">
-            <div class="control-group">
-                <label>이심률 (Eccentricity): <span id="eccentricityValue">0.60</span></label>
-                <input type="range" id="eccentricity" min="0.1" max="0.95" step="0.01" value="0.6">
+        <!-- 곡선 선택 -->
+        <div class="control-group">
+            <h3>곡선 유형 선택</h3>
+            <div class="mode-buttons">
+                <button class="mode-btn active" data-mode="parabola">포물선</button>
+                <button class="mode-btn" data-mode="ellipse">타원</button>
+                <button class="mode-btn" data-mode="hyperbola">쌍곡선</button>
             </div>
-            <div class="control-group">
-                <label>광선 수: <span id="rayCountValue">24</span></label>
-                <input type="range" id="rayCount" min="8" max="72" step="4" value="24">
+        </div>
+
+        <!-- 기본 컨트롤 -->
+        <div class="control-group">
+            <h3>매개변수 조절</h3>
+            <div class="slider-container">
+                <label>초점 거리 / 이심률: <span id="fValue">2.0</span></label>
+                <input type="range" id="focalLength" min="0.5" max="5" step="0.1" value="2">
             </div>
-            <div class="control-group">
-                <label>속도: <span id="speedValue">1.0</span>x</label>
-                <input type="range" id="speed" min="0.3" max="3" step="0.1" value="1">
+            <div class="slider-container">
+                <label>광선 개수: <span id="rayCountValue">12</span></label>
+                <input type="range" id="rayCount" min="4" max="36" step="2" value="12">
             </div>
-            <div class="control-group" style="flex-direction: row; gap: 10px; align-items: flex-end;">
-                <button class="btn-primary" id="startBtn">▶ 광선 발사</button>
-                <button class="btn-secondary" id="clearBtn">↺ 초기화</button>
+            <div class="slider-container">
+                <label>광선 속도: <span id="speedValue">2.0</span></label>
+                <input type="range" id="raySpeed" min="0.5" max="5" step="0.25" value="2">
             </div>
+            <div class="slider-container">
+                <label>최대 반사 횟수: <span id="maxBounceValue">10</span></label>
+                <input type="range" id="maxBounce" min="1" max="20" step="1" value="10">
+            </div>
+            <div class="slider-container">
+                <label>확대/축소: <span id="scaleValue">45</span></label>
+                <input type="range" id="scale" min="20" max="80" step="5" value="45">
+            </div>
+        </div>
+
+        <!-- 시각화 옵션 -->
+        <div class="control-group">
+            <h3>시각화 옵션</h3>
+            <label class="checkbox-container">
+                <input type="checkbox" id="showGrid" checked>
+                좌표계 및 그리드 표시
+            </label>
+            <label class="checkbox-container">
+                <input type="checkbox" id="showTrail" checked>
+                광선 궤적 표시
+            </label>
+            <label class="checkbox-container">
+                <input type="checkbox" id="showReflectPoints" checked>
+                반사 지점 표시
+            </label>
+            <label class="checkbox-container">
+                <input type="checkbox" id="showGlow" checked>
+                글로우 효과
+            </label>
+        </div>
+
+        <!-- 수학적 정보 -->
+        <div class="control-group">
+            <h3>수학적 공식</h3>
+            <div class="info-box">
+                <div class="formula" id="formulaDisplay">y = x² / 4f</div>
+                <div id="curveDescription">
+                    <strong>포물선의 반사 성질:</strong><br>
+                    축에 평행하게 입사하는 모든 광선은 반사 후 초점 F를 지나갑니다.
+                    여러 번 반사되어도 초점을 반복 통과합니다.
+                </div>
+            </div>
+        </div>
+
+        <!-- 범례 -->
+        <div class="control-group">
+            <h3>범례</h3>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff6b6b;"></div>
+                    <span>곡선</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ffd93d;"></div>
+                    <span>입사광 / F1→F2</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #00ff88;"></div>
+                    <span>반사광 / F2→F1</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #00d9ff;"></div>
+                    <span>반사 지점</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 이론 설명 -->
+        <div class="control-group">
+            <h3>이론적 배경</h3>
+            <p class="theory-text" id="theoryText">
+                <strong>V. Ivchenko의 해석적 증명:</strong><br><br>
+                포물선 y = x²/4f는 평행광선이 한 점(초점)으로 모이는 유일한 곡선입니다.
+                반사된 광선도 다시 포물선에 닿으면 반사되어 초점을 통과합니다.
+            </p>
         </div>
     </div>
 
+    <div class="canvas-container">
+        <canvas id="mainCanvas"></canvas>
+    </div>
+
     <script>
-        const canvas = document.getElementById('canvas');
+        // ============================================
+        // 광학 반사 시뮬레이터
+        // 다중 반사 지원 버전
+        // ============================================
+
+        const canvas = document.getElementById('mainCanvas');
         const ctx = canvas.getContext('2d');
 
-        function resizeCanvas() {
-            const rect = canvas.parentElement.getBoundingClientRect();
-            const dpr = window.devicePixelRatio || 1;
-            canvas.width = (rect.width - 40) * dpr;
-            canvas.height = 500 * dpr;
-            canvas.style.height = '500px';
-            ctx.scale(dpr, dpr);
-        }
-        resizeCanvas();
-        window.addEventListener('resize', () => {
-            resizeCanvas();
-            init();
-        });
-
-        function getDisplaySize() {
-            return {
-                width: canvas.width / (window.devicePixelRatio || 1),
-                height: canvas.height / (window.devicePixelRatio || 1)
-            };
-        }
-
-        const eccentricitySlider = document.getElementById('eccentricity');
-        const rayCountSlider = document.getElementById('rayCount');
-        const speedSlider = document.getElementById('speed');
-        const startBtn = document.getElementById('startBtn');
-        const clearBtn = document.getElementById('clearBtn');
-
-        let rays = [];
-        let animationId = null;
-        let ellipseParams = {};
-        let completedCount = 0;
-
-        function calculateEllipse() {
-            const { width, height } = getDisplaySize();
-            const centerX = width / 2;
-            const centerY = height / 2;
-            const e = parseFloat(eccentricitySlider.value);
+        // ============================================
+        // 상태 관리
+        // ============================================
+        const state = {
+            f: 2.0,
+            scale: 45,
+            mode: 'parabola',
+            raySpeed: 2.0,
+            rayCount: 12,
+            maxBounce: 10,
             
-            const a = Math.min(width, height) * 0.42;
-            const c = a * e;
-            const b = Math.sqrt(a * a - c * c);
+            showGrid: true,
+            showTrail: true,
+            showReflectPoints: true,
+            showGlow: true,
+            
+            isRunning: false,
+            
+            // 타원/쌍곡선 파라미터
+            a: 5,
+            b: 3,
+            eccentricity: 0.6,
+            
+            centerX: 0,
+            centerY: 0
+        };
 
-            ellipseParams = {
-                centerX, centerY, a, b, c,
-                f1: { x: centerX - c, y: centerY },
-                f2: { x: centerX + c, y: centerY }
-            };
+        // 광선 배열 및 통계
+        let rays = [];
+        let totalReflections = 0;
+        let focusPassCount = 0;
+        let completedCount = 0;
+        let animationId = null;
 
-            document.getElementById('eccentricityValue').textContent = e.toFixed(2);
-        }
-
+        // ============================================
+        // 광선 클래스 (다중 반사 지원)
+        // ============================================
         class Ray {
-            constructor(x, y, angle, index, total) {
+            constructor(x, y, dx, dy, index, total) {
                 this.x = x;
                 this.y = y;
-                this.dx = Math.cos(angle);
-                this.dy = Math.sin(angle);
-                this.speed = 4;
+                this.dx = dx;
+                this.dy = dy;
+                this.speed = 0.08;
                 this.bounces = 0;
                 this.active = true;
-                this.state = 'toF2';
+                this.completed = false;
                 
-                // 각 세그먼트를 개별적으로 저장 (색상 정보 포함)
+                // 세그먼트 기반 경로 저장 (색상 정보 포함)
                 this.segments = [];
                 this.currentSegment = [{ x, y }];
-                this.currentColor = 'yellow';
                 
-                const hue = (index / total) * 60 + 30;
-                this.colorYellow = `rgba(255, 200, 50, 0.85)`;
-                this.colorGreen = `rgba(0, 255, 136, 0.85)`;
+                // 타원 모드용 상태
+                this.state = 'initial'; // initial, toF2, toF1, done
+                this.passedF2 = false;
+                this.passedF1Return = false;
+                
+                // 색상 설정
+                const hue = (index / total) * 40 + 40;
+                this.colorYellow = `hsla(${hue}, 100%, 60%, 0.9)`;
+                this.colorGreen = `hsla(${140 + (index / total) * 30}, 100%, 50%, 0.9)`;
+                this.colorCyan = `hsla(${180 + (index / total) * 30}, 100%, 60%, 0.9)`;
+                this.currentColor = 'yellow';
             }
 
-            update(speedMultiplier) {
+            update() {
                 if (!this.active) return;
 
-                const step = this.speed * speedMultiplier;
-                const { f1, f2 } = ellipseParams;
+                const step = this.speed * state.raySpeed;
                 
-                const intersection = this.findEllipseIntersection();
+                // 곡선과의 교차점 찾기
+                const intersection = this.findIntersection();
                 
-                if (!intersection) {
-                    this.active = false;
-                    return;
+                if (intersection) {
+                    const distToIntersect = Math.hypot(
+                        intersection.x - this.x,
+                        intersection.y - this.y
+                    );
+
+                    if (distToIntersect <= step) {
+                        // 벽에 도달 - 반사
+                        this.x = intersection.x;
+                        this.y = intersection.y;
+                        this.currentSegment.push({ x: this.x, y: this.y });
+                        
+                        // 현재 세그먼트 저장
+                        this.segments.push({
+                            points: [...this.currentSegment],
+                            color: this.currentColor
+                        });
+                        
+                        // 반사 수행
+                        this.reflect(intersection.x, intersection.y, intersection.nx, intersection.ny);
+                        this.bounces++;
+                        totalReflections++;
+                        
+                        // 새 세그먼트 시작
+                        this.currentSegment = [{ x: this.x, y: this.y }];
+                        
+                        // 최대 반사 횟수 체크
+                        if (this.bounces >= state.maxBounce) {
+                            this.active = false;
+                            this.completed = true;
+                            completedCount++;
+                        }
+                        
+                        return;
+                    }
                 }
 
-                const distToIntersect = Math.hypot(
-                    intersection.x - this.x,
-                    intersection.y - this.y
-                );
-
-                // 이동 전 위치
+                // 일반 이동
                 const prevX = this.x;
                 const prevY = this.y;
+                this.x += this.dx * step;
+                this.y += this.dy * step;
 
-                if (distToIntersect <= step) {
-                    // 벽에 도달
-                    this.x = intersection.x;
-                    this.y = intersection.y;
+                // 초점 통과 체크
+                this.checkFocusPass(prevX, prevY);
+
+                // 화면 밖 체크
+                const margin = 12;
+                if (Math.abs(this.x) > margin || Math.abs(this.y) > margin) {
                     this.currentSegment.push({ x: this.x, y: this.y });
+                    this.segments.push({
+                        points: [...this.currentSegment],
+                        color: this.currentColor
+                    });
+                    this.active = false;
+                    this.completed = true;
+                    completedCount++;
+                }
+            }
+
+            checkFocusPass(prevX, prevY) {
+                if (state.mode === 'parabola') {
+                    // 포물선: 초점 (0, f) 근처 통과 체크
+                    const focusY = state.f;
+                    const distToFocus = Math.hypot(this.x - 0, this.y - focusY);
                     
-                    // F2 근처 체크 (벽에 닿기 전)
-                    if (this.state === 'toF2') {
-                        const distToF2 = Math.hypot(f2.x - this.x, f2.y - this.y);
-                        if (distToF2 < 50) {
-                            // 노란색 세그먼트 저장하고 초록색 시작
-                            this.segments.push({ points: [...this.currentSegment], color: 'yellow' });
-                            this.currentSegment = [{ x: this.x, y: this.y }];
+                    if (distToFocus < 0.3) {
+                        if (this.currentColor === 'yellow') {
+                            this.currentSegment.push({ x: 0, y: focusY });
+                            this.segments.push({
+                                points: [...this.currentSegment],
+                                color: 'yellow'
+                            });
+                            this.currentSegment = [{ x: 0, y: focusY }];
                             this.currentColor = 'green';
-                            this.state = 'toF1';
+                            focusPassCount++;
+                        } else if (this.currentColor === 'green') {
+                            this.currentSegment.push({ x: 0, y: focusY });
+                            this.segments.push({
+                                points: [...this.currentSegment],
+                                color: 'green'
+                            });
+                            this.currentSegment = [{ x: 0, y: focusY }];
+                            this.currentColor = 'yellow';
+                            focusPassCount++;
                         }
                     }
-
-                    this.reflect(intersection.x, intersection.y);
-                    this.bounces++;
-
-                    if (this.bounces > 10) {
-                        this.active = false;
-                        this.segments.push({ points: [...this.currentSegment], color: this.currentColor });
-                    }
-                } else {
-                    // 일반 이동
-                    this.x += this.dx * step;
-                    this.y += this.dy * step;
+                } else if (state.mode === 'ellipse') {
+                    // 타원: F1, F2 체크
+                    const c = Math.sqrt(state.a * state.a - state.b * state.b);
+                    const f1 = { x: -c, y: 0 };
+                    const f2 = { x: c, y: 0 };
                     
-                    // F2 통과 체크
-                    if (this.state === 'toF2') {
-                        const distToF2 = Math.hypot(f2.x - this.x, f2.y - this.y);
-                        if (distToF2 < 15) {
-                            // F2 지점을 현재 세그먼트에 추가
+                    if (this.state === 'initial' || this.state === 'toF2') {
+                        const distToF2 = Math.hypot(this.x - f2.x, this.y - f2.y);
+                        if (distToF2 < 0.4) {
                             this.currentSegment.push({ x: f2.x, y: f2.y });
-                            // 노란색 세그먼트 저장
-                            this.segments.push({ points: [...this.currentSegment], color: 'yellow' });
-                            // 초록색 세그먼트 시작
+                            this.segments.push({
+                                points: [...this.currentSegment],
+                                color: 'yellow'
+                            });
                             this.currentSegment = [{ x: f2.x, y: f2.y }];
                             this.currentColor = 'green';
                             this.state = 'toF1';
+                            this.passedF2 = true;
+                            focusPassCount++;
                         }
                     }
                     
-                    // F1 도착 체크
                     if (this.state === 'toF1') {
-                        const distToF1 = Math.hypot(f1.x - this.x, f1.y - this.y);
-                        if (distToF1 < 15) {
+                        const distToF1 = Math.hypot(this.x - f1.x, this.y - f1.y);
+                        if (distToF1 < 0.4) {
                             this.currentSegment.push({ x: f1.x, y: f1.y });
-                            this.segments.push({ points: [...this.currentSegment], color: 'green' });
-                            this.currentSegment = [];
-                            this.state = 'done';
-                            this.active = false;
-                            completedCount++;
+                            this.segments.push({
+                                points: [...this.currentSegment],
+                                color: 'green'
+                            });
+                            this.currentSegment = [{ x: f1.x, y: f1.y }];
+                            this.currentColor = 'yellow';
+                            this.state = 'toF2';
+                            focusPassCount++;
+                            
+                            // 완료 체크
+                            if (this.passedF2 && !this.passedF1Return) {
+                                this.passedF1Return = true;
+                            }
                         }
+                    }
+                } else if (state.mode === 'hyperbola') {
+                    // 쌍곡선: 초점 체크
+                    const a = state.a / 2;
+                    const c = Math.sqrt(a * a + state.b * state.b);
+                    const f2 = { x: c, y: 0 };
+                    
+                    const distToF2 = Math.hypot(this.x - f2.x, this.y - f2.y);
+                    if (distToF2 < 0.4 && this.currentColor === 'yellow') {
+                        this.currentSegment.push({ x: f2.x, y: f2.y });
+                        this.segments.push({
+                            points: [...this.currentSegment],
+                            color: 'yellow'
+                        });
+                        this.currentSegment = [{ x: f2.x, y: f2.y }];
+                        this.currentColor = 'green';
+                        focusPassCount++;
                     }
                 }
             }
 
-            findEllipseIntersection() {
-                const { centerX, centerY, a, b } = ellipseParams;
+            findIntersection() {
+                if (state.mode === 'parabola') {
+                    return this.findParabolaIntersection();
+                } else if (state.mode === 'ellipse') {
+                    return this.findEllipseIntersection();
+                } else {
+                    return this.findHyperbolaIntersection();
+                }
+            }
+
+            findParabolaIntersection() {
+                // 포물선: y = x² / 4f
+                // 광선: P(t) = (x + dx*t, y + dy*t)
+                // 대입: y + dy*t = (x + dx*t)² / 4f
                 
-                const rx = this.x - centerX;
-                const ry = this.y - centerY;
+                const f4 = 4 * state.f;
+                const A = (this.dx * this.dx) / f4;
+                const B = (2 * this.x * this.dx) / f4 - this.dy;
+                const C = (this.x * this.x) / f4 - this.y;
                 
-                const A = (this.dx * this.dx) / (a * a) + (this.dy * this.dy) / (b * b);
-                const B = 2 * ((rx * this.dx) / (a * a) + (ry * this.dy) / (b * b));
-                const C = (rx * rx) / (a * a) + (ry * ry) / (b * b) - 1;
+                if (Math.abs(A) < 1e-10) {
+                    // 선형 방정식
+                    if (Math.abs(B) < 1e-10) return null;
+                    const t = -C / B;
+                    if (t < 0.01) return null;
+                    
+                    const ix = this.x + this.dx * t;
+                    const iy = this.y + this.dy * t;
+                    
+                    // 법선 계산
+                    const slope = ix / (2 * state.f);
+                    const nLen = Math.sqrt(slope * slope + 1);
+                    
+                    return {
+                        x: ix, y: iy,
+                        nx: -slope / nLen,
+                        ny: 1 / nLen
+                    };
+                }
                 
-                const discriminant = B * B - 4 * A * C;
+                const disc = B * B - 4 * A * C;
+                if (disc < 0) return null;
                 
-                if (discriminant < 0) return null;
-                
-                const sqrtDisc = Math.sqrt(discriminant);
+                const sqrtDisc = Math.sqrt(disc);
                 const t1 = (-B + sqrtDisc) / (2 * A);
                 const t2 = (-B - sqrtDisc) / (2 * A);
                 
                 let t = null;
-                const epsilon = 0.01;
+                const eps = 0.01;
                 
-                if (t1 > epsilon && t2 > epsilon) {
+                if (t1 > eps && t2 > eps) {
                     t = Math.min(t1, t2);
-                } else if (t1 > epsilon) {
+                } else if (t1 > eps) {
                     t = t1;
-                } else if (t2 > epsilon) {
+                } else if (t2 > eps) {
                     t = t2;
                 }
                 
                 if (t === null) return null;
                 
+                const ix = this.x + this.dx * t;
+                const iy = this.y + this.dy * t;
+                
+                // 화면 범위 체크
+                if (Math.abs(ix) > 10 || iy > 15 || iy < -1) return null;
+                
+                // 법선 계산: 기울기 = x/2f, 법선 = (-slope, 1) 정규화
+                const slope = ix / (2 * state.f);
+                const nLen = Math.sqrt(slope * slope + 1);
+                
                 return {
-                    x: this.x + t * this.dx,
-                    y: this.y + t * this.dy
+                    x: ix, y: iy,
+                    nx: -slope / nLen,
+                    ny: 1 / nLen
                 };
             }
 
-            reflect(px, py) {
-                const { centerX, centerY, a, b } = ellipseParams;
+            findEllipseIntersection() {
+                const { a, b } = state;
                 
-                const ex = px - centerX;
-                const ey = py - centerY;
+                // 타원: x²/a² + y²/b² = 1
+                const A = (this.dx * this.dx) / (a * a) + (this.dy * this.dy) / (b * b);
+                const B = 2 * ((this.x * this.dx) / (a * a) + (this.y * this.dy) / (b * b));
+                const C = (this.x * this.x) / (a * a) + (this.y * this.y) / (b * b) - 1;
                 
-                let nx = ex / (a * a);
-                let ny = ey / (b * b);
+                const disc = B * B - 4 * A * C;
+                if (disc < 0) return null;
                 
-                const nLen = Math.hypot(nx, ny);
+                const sqrtDisc = Math.sqrt(disc);
+                const t1 = (-B + sqrtDisc) / (2 * A);
+                const t2 = (-B - sqrtDisc) / (2 * A);
+                
+                let t = null;
+                const eps = 0.01;
+                
+                if (t1 > eps && t2 > eps) {
+                    t = Math.min(t1, t2);
+                } else if (t1 > eps) {
+                    t = t1;
+                } else if (t2 > eps) {
+                    t = t2;
+                }
+                
+                if (t === null) return null;
+                
+                const ix = this.x + this.dx * t;
+                const iy = this.y + this.dy * t;
+                
+                // 법선 계산
+                let nx = ix / (a * a);
+                let ny = iy / (b * b);
+                const nLen = Math.sqrt(nx * nx + ny * ny);
                 nx /= nLen;
                 ny /= nLen;
                 
-                const dot = this.dx * nx + this.dy * ny;
-                if (dot > 0) {
+                return { x: ix, y: iy, nx, ny };
+            }
+
+            findHyperbolaIntersection() {
+                const a = state.a / 2;
+                const b = state.b;
+                
+                // 쌍곡선: x²/a² - y²/b² = 1 (오른쪽 가지만)
+                const A = (this.dx * this.dx) / (a * a) - (this.dy * this.dy) / (b * b);
+                const B = 2 * ((this.x * this.dx) / (a * a) - (this.y * this.dy) / (b * b));
+                const C = (this.x * this.x) / (a * a) - (this.y * this.y) / (b * b) - 1;
+                
+                if (Math.abs(A) < 1e-10) return null;
+                
+                const disc = B * B - 4 * A * C;
+                if (disc < 0) return null;
+                
+                const sqrtDisc = Math.sqrt(disc);
+                const t1 = (-B + sqrtDisc) / (2 * A);
+                const t2 = (-B - sqrtDisc) / (2 * A);
+                
+                let t = null;
+                const eps = 0.01;
+                
+                // 가장 가까운 양수 t 찾기
+                const candidates = [t1, t2].filter(tt => tt > eps);
+                if (candidates.length === 0) return null;
+                
+                for (const tt of candidates.sort((x, y) => x - y)) {
+                    const ix = this.x + this.dx * tt;
+                    const iy = this.y + this.dy * tt;
+                    
+                    // 오른쪽 가지인지 확인
+                    if (ix >= a - 0.1) {
+                        // 법선 계산
+                        let nx = ix / (a * a);
+                        let ny = -iy / (b * b);
+                        const nLen = Math.sqrt(nx * nx + ny * ny);
+                        
+                        return {
+                            x: ix, y: iy,
+                            nx: nx / nLen,
+                            ny: ny / nLen
+                        };
+                    }
+                }
+                
+                return null;
+            }
+
+            reflect(px, py, nx, ny) {
+                // 법선이 입사 방향과 같은 쪽을 향하도록 조정
+                const dot1 = this.dx * nx + this.dy * ny;
+                if (dot1 > 0) {
                     nx = -nx;
                     ny = -ny;
                 }
                 
-                const dotProduct = this.dx * nx + this.dy * ny;
-                this.dx = this.dx - 2 * dotProduct * nx;
-                this.dy = this.dy - 2 * dotProduct * ny;
+                // 반사 공식: r = d - 2(d·n)n
+                const dot = this.dx * nx + this.dy * ny;
+                this.dx = this.dx - 2 * dot * nx;
+                this.dy = this.dy - 2 * dot * ny;
                 
-                const dLen = Math.hypot(this.dx, this.dy);
-                this.dx /= dLen;
-                this.dy /= dLen;
+                // 정규화
+                const len = Math.sqrt(this.dx * this.dx + this.dy * this.dy);
+                this.dx /= len;
+                this.dy /= len;
+                
+                // 반사 후 약간 이동 (벽에서 떨어지기)
+                this.x = px + this.dx * 0.02;
+                this.y = py + this.dy * 0.02;
             }
 
             draw() {
-                const lineWidth = this.active ? 2.5 : 2;
-
                 // 저장된 모든 세그먼트 그리기
                 for (const segment of this.segments) {
                     if (segment.points.length < 2) continue;
                     
                     ctx.beginPath();
                     ctx.strokeStyle = segment.color === 'yellow' ? this.colorYellow : this.colorGreen;
-                    ctx.lineWidth = lineWidth;
+                    ctx.lineWidth = 2.5;
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
                     
-                    ctx.moveTo(segment.points[0].x, segment.points[0].y);
+                    const p0 = toCanvas(segment.points[0].x, segment.points[0].y);
+                    ctx.moveTo(p0.x, p0.y);
+                    
                     for (let i = 1; i < segment.points.length; i++) {
-                        ctx.lineTo(segment.points[i].x, segment.points[i].y);
+                        const p = toCanvas(segment.points[i].x, segment.points[i].y);
+                        ctx.lineTo(p.x, p.y);
                     }
                     ctx.stroke();
                 }
 
                 // 현재 진행 중인 세그먼트 그리기
-                if (this.currentSegment.length > 0) {
+                if (this.currentSegment.length > 0 && state.showTrail) {
                     ctx.beginPath();
                     ctx.strokeStyle = this.currentColor === 'yellow' ? this.colorYellow : this.colorGreen;
-                    ctx.lineWidth = lineWidth;
+                    ctx.lineWidth = 2.5;
                     ctx.lineCap = 'round';
-                    ctx.lineJoin = 'round';
                     
-                    ctx.moveTo(this.currentSegment[0].x, this.currentSegment[0].y);
+                    const p0 = toCanvas(this.currentSegment[0].x, this.currentSegment[0].y);
+                    ctx.moveTo(p0.x, p0.y);
+                    
                     for (let i = 1; i < this.currentSegment.length; i++) {
-                        ctx.lineTo(this.currentSegment[i].x, this.currentSegment[i].y);
+                        const p = toCanvas(this.currentSegment[i].x, this.currentSegment[i].y);
+                        ctx.lineTo(p.x, p.y);
                     }
+                    
                     if (this.active) {
-                        ctx.lineTo(this.x, this.y);
+                        const pCur = toCanvas(this.x, this.y);
+                        ctx.lineTo(pCur.x, pCur.y);
                     }
                     ctx.stroke();
                 }
 
                 // 반사 지점 표시
-                for (const segment of this.segments) {
-                    for (let i = 1; i < segment.points.length - 1; i++) {
-                        const point = segment.points[i];
-                        ctx.beginPath();
-                        ctx.fillStyle = 'rgba(0, 212, 255, 0.7)';
-                        ctx.arc(point.x, point.y, 3, 0, Math.PI * 2);
-                        ctx.fill();
+                if (state.showReflectPoints) {
+                    for (const segment of this.segments) {
+                        if (segment.points.length > 1) {
+                            const lastPoint = segment.points[segment.points.length - 1];
+                            const pos = toCanvas(lastPoint.x, lastPoint.y);
+                            
+                            ctx.beginPath();
+                            ctx.fillStyle = 'rgba(0, 212, 255, 0.8)';
+                            ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
                     }
                 }
 
                 // 광선 머리 그리기
                 if (this.active) {
-                    const currentColor = this.currentColor === 'yellow' ? '#ffcc00' : '#00ff88';
+                    const pos = toCanvas(this.x, this.y);
+                    const color = this.currentColor === 'yellow' ? '#ffcc00' : '#00ff88';
                     
-                    const gradient = ctx.createRadialGradient(
-                        this.x, this.y, 0,
-                        this.x, this.y, 12
-                    );
-                    gradient.addColorStop(0, currentColor);
-                    gradient.addColorStop(0.4, currentColor);
-                    gradient.addColorStop(1, 'transparent');
-                    
-                    ctx.beginPath();
-                    ctx.fillStyle = gradient;
-                    ctx.arc(this.x, this.y, 12, 0, Math.PI * 2);
-                    ctx.fill();
+                    if (state.showGlow) {
+                        const gradient = ctx.createRadialGradient(
+                            pos.x, pos.y, 0,
+                            pos.x, pos.y, 15
+                        );
+                        gradient.addColorStop(0, color);
+                        gradient.addColorStop(0.4, color);
+                        gradient.addColorStop(1, 'transparent');
+                        
+                        ctx.beginPath();
+                        ctx.fillStyle = gradient;
+                        ctx.arc(pos.x, pos.y, 15, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
                     
                     ctx.beginPath();
                     ctx.fillStyle = '#fff';
-                    ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+                    ctx.arc(pos.x, pos.y, 5, 0, Math.PI * 2);
                     ctx.fill();
                 }
             }
         }
 
-        function drawEllipse() {
-            const { centerX, centerY, a, b, f1, f2 } = ellipseParams;
-            
-            ctx.beginPath();
-            ctx.strokeStyle = 'rgba(0, 212, 255, 0.2)';
-            ctx.lineWidth = 12;
-            ctx.ellipse(centerX, centerY, a, b, 0, 0, Math.PI * 2);
-            ctx.stroke();
-            
-            ctx.beginPath();
-            ctx.strokeStyle = 'rgba(0, 212, 255, 0.4)';
-            ctx.lineWidth = 4;
-            ctx.ellipse(centerX, centerY, a, b, 0, 0, Math.PI * 2);
-            ctx.stroke();
-            
-            ctx.beginPath();
-            ctx.strokeStyle = 'rgba(0, 212, 255, 0.9)';
+        // ============================================
+        // 캔버스 크기 조정
+        // ============================================
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const size = Math.min(container.clientWidth - 40, container.clientHeight - 40, 800);
+            canvas.width = size;
+            canvas.height = size;
+            state.centerX = canvas.width / 2;
+            state.centerY = canvas.height / 2;
+        }
+
+        // ============================================
+        // 좌표 변환
+        // ============================================
+        function toCanvas(x, y) {
+            return {
+                x: state.centerX + x * state.scale,
+                y: state.centerY - y * state.scale
+            };
+        }
+
+        function toMath(px, py) {
+            return {
+                x: (px - state.centerX) / state.scale,
+                y: (state.centerY - py) / state.scale
+            };
+        }
+
+        // ============================================
+        // 그리드 그리기
+        // ============================================
+        function drawGrid() {
+            if (!state.showGrid) return;
+
+            const w = canvas.width;
+            const h = canvas.height;
+
+            // 보조 그리드
+            ctx.strokeStyle = 'rgba(100, 100, 150, 0.15)';
+            ctx.lineWidth = 0.5;
+            const gridStep = state.scale / 2;
+            for (let x = state.centerX % gridStep; x < w; x += gridStep) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, h);
+                ctx.stroke();
+            }
+            for (let y = state.centerY % gridStep; y < h; y += gridStep) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(w, y);
+                ctx.stroke();
+            }
+
+            // 주 그리드
+            ctx.strokeStyle = 'rgba(100, 100, 150, 0.3)';
+            ctx.lineWidth = 1;
+            for (let x = state.centerX % state.scale; x < w; x += state.scale) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, h);
+                ctx.stroke();
+            }
+            for (let y = state.centerY % state.scale; y < h; y += state.scale) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(w, y);
+                ctx.stroke();
+            }
+
+            // 좌표축
+            ctx.strokeStyle = '#555';
             ctx.lineWidth = 2;
-            ctx.ellipse(centerX, centerY, a, b, 0, 0, Math.PI * 2);
+            ctx.beginPath();
+            ctx.moveTo(0, state.centerY);
+            ctx.lineTo(w, state.centerY);
             ctx.stroke();
-            
-            // F1
-            const f1Gradient = ctx.createRadialGradient(f1.x, f1.y, 0, f1.x, f1.y, 25);
-            f1Gradient.addColorStop(0, 'rgba(255, 0, 110, 1)');
-            f1Gradient.addColorStop(0.3, 'rgba(255, 0, 110, 0.6)');
-            f1Gradient.addColorStop(0.6, 'rgba(255, 0, 110, 0.2)');
-            f1Gradient.addColorStop(1, 'transparent');
             ctx.beginPath();
-            ctx.fillStyle = f1Gradient;
-            ctx.arc(f1.x, f1.y, 25, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.moveTo(state.centerX, 0);
+            ctx.lineTo(state.centerX, h);
+            ctx.stroke();
+        }
+
+        // ============================================
+        // 포물선 그리기
+        // ============================================
+        function drawParabola() {
+            ctx.strokeStyle = '#ff6b6b';
+            ctx.lineWidth = 3;
             
-            ctx.beginPath();
-            ctx.fillStyle = '#ff006e';
-            ctx.arc(f1.x, f1.y, 8, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.fillStyle = '#fff';
-            ctx.arc(f1.x, f1.y, 4, 0, Math.PI * 2);
-            ctx.fill();
-            
-            ctx.fillStyle = '#ff006e';
-            ctx.font = 'bold 16px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('F₁', f1.x, f1.y - 35);
-            
-            // F2
-            const f2Gradient = ctx.createRadialGradient(f2.x, f2.y, 0, f2.x, f2.y, 25);
-            f2Gradient.addColorStop(0, 'rgba(0, 255, 136, 1)');
-            f2Gradient.addColorStop(0.3, 'rgba(0, 255, 136, 0.6)');
-            f2Gradient.addColorStop(0.6, 'rgba(0, 255, 136, 0.2)');
-            f2Gradient.addColorStop(1, 'transparent');
-            ctx.beginPath();
-            ctx.fillStyle = f2Gradient;
-            ctx.arc(f2.x, f2.y, 25, 0, Math.PI * 2);
-            ctx.fill();
+            if (state.showGlow) {
+                ctx.shadowColor = '#ff6b6b';
+                ctx.shadowBlur = 15;
+            }
             
             ctx.beginPath();
-            ctx.fillStyle = '#00ff88';
-            ctx.arc(f2.x, f2.y, 8, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.fillStyle = '#fff';
-            ctx.arc(f2.x, f2.y, 4, 0, Math.PI * 2);
-            ctx.fill();
-            
-            ctx.fillStyle = '#00ff88';
-            ctx.font = 'bold 16px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('F₂', f2.x, f2.y - 35);
-            
-            ctx.beginPath();
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            const range = canvas.width / state.scale;
+            let first = true;
+
+            for (let x = -range; x <= range; x += 0.05) {
+                const y = (x * x) / (4 * state.f);
+                const pos = toCanvas(x, y);
+                if (pos.y < -50 || pos.y > canvas.height + 50) continue;
+                
+                if (first) {
+                    ctx.moveTo(pos.x, pos.y);
+                    first = false;
+                } else {
+                    ctx.lineTo(pos.x, pos.y);
+                }
+            }
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // 초점 F
+            drawFocus(0, state.f, 'F', '#ffd93d');
+
+            // 준선
+            ctx.strokeStyle = 'rgba(255, 217, 61, 0.2)';
             ctx.lineWidth = 1;
             ctx.setLineDash([5, 5]);
-            ctx.moveTo(centerX - a - 30, centerY);
-            ctx.lineTo(centerX + a + 30, centerY);
-            ctx.moveTo(centerX, centerY - b - 30);
-            ctx.lineTo(centerX, centerY + b + 30);
+            const directrix = toCanvas(0, -state.f);
+            ctx.beginPath();
+            ctx.moveTo(0, directrix.y);
+            ctx.lineTo(canvas.width, directrix.y);
             ctx.stroke();
             ctx.setLineDash([]);
         }
 
-        function init() {
-            calculateEllipse();
-            rays = [];
-            completedCount = 0;
-            updateStatus();
-            draw();
+        // ============================================
+        // 타원 그리기
+        // ============================================
+        function drawEllipse() {
+            const { a, b } = state;
+            const c = Math.sqrt(a * a - b * b);
+
+            // 타원 테두리 (다층 효과)
+            ctx.strokeStyle = 'rgba(255, 107, 107, 0.2)';
+            ctx.lineWidth = 12;
+            ctx.beginPath();
+            ctx.ellipse(state.centerX, state.centerY, a * state.scale, b * state.scale, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.strokeStyle = 'rgba(255, 107, 107, 0.5)';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.ellipse(state.centerX, state.centerY, a * state.scale, b * state.scale, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.strokeStyle = '#ff6b6b';
+            ctx.lineWidth = 2;
+            if (state.showGlow) {
+                ctx.shadowColor = '#ff6b6b';
+                ctx.shadowBlur = 10;
+            }
+            ctx.beginPath();
+            ctx.ellipse(state.centerX, state.centerY, a * state.scale, b * state.scale, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // 두 초점
+            drawFocus(-c, 0, 'F₁', '#ff006e');
+            drawFocus(c, 0, 'F₂', '#00ff88');
+
+            // 장축/단축 표시
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(state.centerX - a * state.scale - 20, state.centerY);
+            ctx.lineTo(state.centerX + a * state.scale + 20, state.centerY);
+            ctx.moveTo(state.centerX, state.centerY - b * state.scale - 20);
+            ctx.lineTo(state.centerX, state.centerY + b * state.scale + 20);
+            ctx.stroke();
+            ctx.setLineDash([]);
         }
 
+        // ============================================
+        // 쌍곡선 그리기
+        // ============================================
+        function drawHyperbola() {
+            const a = state.a / 2;
+            const b = state.b;
+            const c = Math.sqrt(a * a + b * b);
+
+            ctx.strokeStyle = '#ff6b6b';
+            ctx.lineWidth = 3;
+            if (state.showGlow) {
+                ctx.shadowColor = '#ff6b6b';
+                ctx.shadowBlur = 15;
+            }
+
+            // 오른쪽 가지
+            ctx.beginPath();
+            let first = true;
+            for (let y = -8; y <= 8; y += 0.1) {
+                const x = a * Math.sqrt(1 + (y * y) / (b * b));
+                const pos = toCanvas(x, y);
+                if (pos.x > canvas.width + 50) continue;
+                if (first) { ctx.moveTo(pos.x, pos.y); first = false; }
+                else ctx.lineTo(pos.x, pos.y);
+            }
+            ctx.stroke();
+
+            // 왼쪽 가지 (표시만)
+            ctx.strokeStyle = 'rgba(255, 107, 107, 0.3)';
+            ctx.beginPath();
+            first = true;
+            for (let y = -8; y <= 8; y += 0.1) {
+                const x = -a * Math.sqrt(1 + (y * y) / (b * b));
+                const pos = toCanvas(x, y);
+                if (pos.x < -50) continue;
+                if (first) { ctx.moveTo(pos.x, pos.y); first = false; }
+                else ctx.lineTo(pos.x, pos.y);
+            }
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // 두 초점
+            drawFocus(-c, 0, 'F₁', '#ff006e');
+            drawFocus(c, 0, 'F₂', '#00ff88');
+
+            // 점근선
+            ctx.strokeStyle = 'rgba(255, 217, 61, 0.15)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            const slope = b / a;
+            ctx.beginPath();
+            ctx.moveTo(0, state.centerY + 400 * slope);
+            ctx.lineTo(canvas.width, state.centerY - 400 * slope);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(0, state.centerY - 400 * slope);
+            ctx.lineTo(canvas.width, state.centerY + 400 * slope);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        // ============================================
+        // 초점 그리기 헬퍼
+        // ============================================
+        function drawFocus(x, y, label, color) {
+            const pos = toCanvas(x, y);
+            
+            // 글로우
+            const gradient = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, 25);
+            gradient.addColorStop(0, color);
+            gradient.addColorStop(0.3, color + '99');
+            gradient.addColorStop(0.6, color + '33');
+            gradient.addColorStop(1, 'transparent');
+            
+            ctx.beginPath();
+            ctx.fillStyle = gradient;
+            ctx.arc(pos.x, pos.y, 25, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 중심점
+            ctx.beginPath();
+            ctx.fillStyle = color;
+            ctx.arc(pos.x, pos.y, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.fillStyle = '#fff';
+            ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 라벨
+            ctx.fillStyle = color;
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(label, pos.x, pos.y - 35);
+        }
+
+        // ============================================
+        // 광선 생성
+        // ============================================
         function emitRays() {
-            const rayCount = parseInt(rayCountSlider.value);
-            document.getElementById('rayCountValue').textContent = rayCount;
-            
             rays = [];
+            totalReflections = 0;
+            focusPassCount = 0;
             completedCount = 0;
-            const { f1 } = ellipseParams;
             
-            for (let i = 0; i < rayCount; i++) {
-                const angle = (Math.PI * 2 * i) / rayCount;
-                const ray = new Ray(f1.x, f1.y, angle, i, rayCount);
-                rays.push(ray);
+            const count = state.rayCount;
+
+            if (state.mode === 'parabola') {
+                // 포물선: 위에서 평행하게 내려오는 광선
+                const spread = 6;
+                for (let i = 0; i < count; i++) {
+                    const x = -spread / 2 + (spread * i) / (count - 1 || 1);
+                    const y = 8;
+                    rays.push(new Ray(x, y, 0, -1, i, count));
+                }
+            } else if (state.mode === 'ellipse') {
+                // 타원: F1에서 방사형으로 발사
+                const c = Math.sqrt(state.a * state.a - state.b * state.b);
+                for (let i = 0; i < count; i++) {
+                    const angle = (Math.PI * 2 * i) / count;
+                    const dx = Math.cos(angle);
+                    const dy = Math.sin(angle);
+                    const ray = new Ray(-c, 0, dx, dy, i, count);
+                    ray.state = 'toF2';
+                    rays.push(ray);
+                }
+            } else if (state.mode === 'hyperbola') {
+                // 쌍곡선: 왼쪽에서 F2를 향해 발사
+                const a = state.a / 2;
+                const c = Math.sqrt(a * a + state.b * state.b);
+                const f2 = { x: c, y: 0 };
+                
+                for (let i = 0; i < count; i++) {
+                    const startY = -4 + (8 * i) / (count - 1 || 1);
+                    const startX = -8;
+                    
+                    // F2를 향하는 방향
+                    const dx = f2.x - startX;
+                    const dy = f2.y - startY;
+                    const len = Math.sqrt(dx * dx + dy * dy);
+                    
+                    rays.push(new Ray(startX, startY, dx / len, dy / len, i, count));
+                }
             }
         }
 
-        function updateStatus() {
+        // ============================================
+        // 통계 업데이트
+        // ============================================
+        function updateStats() {
             const activeRays = rays.filter(r => r.active).length;
-            const f2Reached = rays.filter(r => r.state === 'toF1' || r.state === 'done').length;
-            
-            document.getElementById('activeCount').textContent = activeRays;
-            document.getElementById('f2Count').textContent = f2Reached;
-            document.getElementById('f1Count').textContent = completedCount;
+            document.getElementById('activeRays').textContent = activeRays;
+            document.getElementById('reflectedCount').textContent = totalReflections;
+            document.getElementById('focusPassCount').textContent = focusPassCount;
+            document.getElementById('completedCount').textContent = completedCount;
         }
 
+        // ============================================
+        // 애니메이션 루프
+        // ============================================
         function animate() {
-            const { width, height } = getDisplaySize();
-            const speedMultiplier = parseFloat(speedSlider.value);
-            document.getElementById('speedValue').textContent = speedMultiplier.toFixed(1);
-            
-            // 매 프레임 완전히 새로 그리기 (경로 보존을 위해)
+            // 클리어
             ctx.fillStyle = '#050510';
-            ctx.fillRect(0, 0, width, height);
-            
-            drawEllipse();
-            
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 그리드
+            drawGrid();
+
+            // 곡선
+            switch (state.mode) {
+                case 'parabola': drawParabola(); break;
+                case 'ellipse': drawEllipse(); break;
+                case 'hyperbola': drawHyperbola(); break;
+            }
+
+            // 광선 업데이트 및 그리기
             for (const ray of rays) {
-                ray.update(speedMultiplier);
+                if (state.isRunning) {
+                    ray.update();
+                }
                 ray.draw();
             }
-            
-            updateStatus();
-            
+
+            // 통계 업데이트
+            updateStats();
+
+            // 모든 광선이 완료되었는지 체크
             const hasActiveRays = rays.some(r => r.active);
-            if (hasActiveRays) {
-                animationId = requestAnimationFrame(animate);
+            if (!hasActiveRays && state.isRunning) {
+                state.isRunning = false;
+                document.getElementById('btnStart').textContent = '▶ 발사';
+            }
+
+            animationId = requestAnimationFrame(animate);
+        }
+
+        // ============================================
+        // 시뮬레이션 제어
+        // ============================================
+        function startSimulation() {
+            if (rays.length === 0 || rays.every(r => !r.active)) {
+                emitRays();
+            }
+            state.isRunning = true;
+            document.getElementById('btnStart').textContent = '⏸ 일시정지';
+        }
+
+        function toggleSimulation() {
+            if (state.isRunning) {
+                state.isRunning = false;
+                document.getElementById('btnStart').textContent = '▶ 계속';
             } else {
-                animationId = null;
+                startSimulation();
             }
         }
 
-        function draw() {
-            const { width, height } = getDisplaySize();
-            ctx.fillStyle = '#050510';
-            ctx.fillRect(0, 0, width, height);
-            drawEllipse();
+        function stopSimulation() {
+            state.isRunning = false;
+            document.getElementById('btnStart').textContent = '▶ 발사';
+        }
+
+        function resetSimulation() {
+            stopSimulation();
+            rays = [];
+            totalReflections = 0;
+            focusPassCount = 0;
+            completedCount = 0;
+            updateStats();
+        }
+
+        // ============================================
+        // 이벤트 리스너
+        // ============================================
+        document.getElementById('btnStart').addEventListener('click', toggleSimulation);
+        document.getElementById('btnStop').addEventListener('click', stopSimulation);
+        document.getElementById('btnReset').addEventListener('click', resetSimulation);
+
+        document.getElementById('focalLength').addEventListener('input', (e) => {
+            state.f = parseFloat(e.target.value);
+            if (state.mode === 'ellipse') {
+                state.eccentricity = state.f / 5;
+                state.a = 5;
+                state.b = state.a * Math.sqrt(1 - state.eccentricity * state.eccentricity);
+                document.getElementById('fValue').textContent = state.eccentricity.toFixed(2);
+            } else if (state.mode === 'hyperbola') {
+                state.a = state.f * 2;
+                state.b = state.f;
+                document.getElementById('fValue').textContent = state.f.toFixed(1);
+            } else {
+                document.getElementById('fValue').textContent = state.f.toFixed(1);
+            }
+            resetSimulation();
+        });
+
+        document.getElementById('rayCount').addEventListener('input', (e) => {
+            state.rayCount = parseInt(e.target.value);
+            document.getElementById('rayCountValue').textContent = state.rayCount;
+        });
+
+        document.getElementById('raySpeed').addEventListener('input', (e) => {
+            state.raySpeed = parseFloat(e.target.value);
+            document.getElementById('speedValue').textContent = state.raySpeed.toFixed(1);
+        });
+
+        document.getElementById('maxBounce').addEventListener('input', (e) => {
+            state.maxBounce = parseInt(e.target.value);
+            document.getElementById('maxBounceValue').textContent = state.maxBounce;
+        });
+
+        document.getElementById('scale').addEventListener('input', (e) => {
+            state.scale = parseInt(e.target.value);
+            document.getElementById('scaleValue').textContent = state.scale;
+        });
+
+        // 체크박스
+        document.getElementById('showGrid').addEventListener('change', (e) => state.showGrid = e.target.checked);
+        document.getElementById('showTrail').addEventListener('change', (e) => state.showTrail = e.target.checked);
+        document.getElementById('showReflectPoints').addEventListener('change', (e) => state.showReflectPoints = e.target.checked);
+        document.getElementById('showGlow').addEventListener('change', (e) => state.showGlow = e.target.checked);
+
+        // 모드 버튼
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                state.mode = e.target.dataset.mode;
+                resetSimulation();
+                updateCurveInfo();
+                updateSliderForMode();
+            });
+        });
+
+        function updateSliderForMode() {
+            const slider = document.getElementById('focalLength');
+            const label = slider.parentElement.querySelector('label');
             
-            for (const ray of rays) {
-                ray.draw();
+            if (state.mode === 'ellipse') {
+                slider.min = 0.1;
+                slider.max = 0.95;
+                slider.step = 0.05;
+                slider.value = 0.6;
+                state.eccentricity = 0.6;
+                state.a = 5;
+                state.b = state.a * Math.sqrt(1 - 0.36);
+                label.innerHTML = '이심률: <span id="fValue">0.60</span>';
+            } else if (state.mode === 'hyperbola') {
+                slider.min = 1;
+                slider.max = 4;
+                slider.step = 0.25;
+                slider.value = 2;
+                state.a = 4;
+                state.b = 2;
+                label.innerHTML = '크기: <span id="fValue">2.0</span>';
+            } else {
+                slider.min = 0.5;
+                slider.max = 5;
+                slider.step = 0.1;
+                slider.value = 2;
+                state.f = 2;
+                label.innerHTML = '초점 거리 (f): <span id="fValue">2.0</span>';
             }
         }
 
-        eccentricitySlider.addEventListener('input', () => {
-            if (animationId) {
-                cancelAnimationFrame(animationId);
-            }
-            init();
+        function updateCurveInfo() {
+            const formula = document.getElementById('formulaDisplay');
+            const desc = document.getElementById('curveDescription');
+            const theory = document.getElementById('theoryText');
+
+        }
+
+        // ============================================
+        // 초기화 및 시작
+        // ============================================
+        window.addEventListener('resize', () => {
+            resizeCanvas();
         });
 
-        rayCountSlider.addEventListener('input', () => {
-            document.getElementById('rayCountValue').textContent = rayCountSlider.value;
-        });
-
-        speedSlider.addEventListener('input', () => {
-            document.getElementById('speedValue').textContent = parseFloat(speedSlider.value).toFixed(1);
-        });
-
-        startBtn.addEventListener('click', () => {
-            if (animationId) {
-                cancelAnimationFrame(animationId);
-            }
-            calculateEllipse();
-            emitRays();
-            animate();
-        });
-
-        clearBtn.addEventListener('click', () => {
-            if (animationId) {
-                cancelAnimationFrame(animationId);
-                animationId = null;
-            }
-            init();
-        });
-
-        init();
+        resizeCanvas();
+        animate();
     </script>
 </body>
 </html>
