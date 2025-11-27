@@ -434,42 +434,6 @@
             font-weight: bold;
         }
 
-        /* ==================== 탭 시스템 ==================== */
-        .tab-container {
-            margin-bottom: 10px;
-        }
-
-        .tab-buttons {
-            display: flex;
-            gap: 5px;
-            margin-bottom: 10px;
-        }
-
-        .tab-btn {
-            flex: 1;
-            padding: 8px;
-            border: none;
-            background: rgba(15, 52, 96, 0.3);
-            color: #888;
-            font-size: 0.75em;
-            cursor: pointer;
-            border-radius: 6px;
-            transition: all 0.3s;
-        }
-
-        .tab-btn.active {
-            background: rgba(0, 217, 255, 0.2);
-            color: #00d9ff;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
         /* ==================== 반응형 ==================== */
         @media (max-width: 1000px) {
             body {
@@ -528,11 +492,6 @@
         .running-indicator {
             animation: pulse 1s infinite;
             color: #4ecdc4 !important;
-        }
-
-        @keyframes glow {
-            0%, 100% { box-shadow: 0 0 5px currentColor; }
-            50% { box-shadow: 0 0 20px currentColor; }
         }
     </style>
 </head>
@@ -608,9 +567,9 @@
             <div class="slider-container">
                 <label>
                     최대 반사 횟수
-                    <span id="maxBounceValue">15</span>
+                    <span id="maxBounceValue">20</span>
                 </label>
-                <input type="range" id="maxBounce" min="1" max="50" step="1" value="15">
+                <input type="range" id="maxBounce" min="1" max="50" step="1" value="20">
             </div>
             <div class="slider-container">
                 <label>
@@ -740,8 +699,8 @@
                 📍 점 P에서의 접선 기울기: <span class="highlight">m = x/(2f)</span><br>
                 📍 법선은 접선에 수직: <span class="highlight">m_n = -2f/x</span><br>
                 📍 빨간 점 P를 드래그하여 실시간 검증!<br><br>
-                <strong>다중 반사:</strong> 포물선에 닿을 때마다 반사되며, 
-                매번 초점을 통과합니다.
+                <strong>다중 반사:</strong> 광선이 곡선에 닿을 때마다 무조건 반사되며, 
+                포물선의 경우 매번 초점을 통과합니다.
             </p>
         </div>
     </div>
@@ -757,7 +716,7 @@
     <script>
         // ============================================
         // 포물선 거울 반사 성질 시뮬레이터
-        // 무한 반사 + 기하학적 증명 + 타원/쌍곡선 지원
+        // 무한 반사 보장 버전
         // ============================================
 
         const canvas = document.getElementById('mainCanvas');
@@ -768,9 +727,9 @@
         // ============================================
         const state = {
             // 곡선 파라미터
-            f: 2.0,              // 포물선 초점 거리
-            a: 5,                // 타원/쌍곡선 장반경
-            b: 3,                // 타원/쌍곡선 단반경
+            f: 2.0,
+            a: 5,
+            b: 3,
             
             // 뷰 설정
             scale: 40,
@@ -781,7 +740,7 @@
             mode: 'parabola',
             raySpeed: 2.0,
             rayCount: 12,
-            maxBounce: 15,
+            maxBounce: 20,
             isRunning: false,
             
             // 시각화 옵션
@@ -803,12 +762,11 @@
             completedCount: 0
         };
 
-        // 광선 배열
         let rays = [];
         let animationId = null;
 
         // ============================================
-        // 광선 클래스 - 다중 반사 지원
+        // 광선 클래스 - 개선된 다중 반사
         // ============================================
         class Ray {
             constructor(x, y, dx, dy, index, total) {
@@ -816,20 +774,18 @@
                 this.y = y;
                 this.dx = dx;
                 this.dy = dy;
-                this.speed = 0.05;
+                this.speed = 0.04;
                 this.bounces = 0;
                 this.active = true;
-                this.completed = false;
                 
-                // 세그먼트 기반 경로 저장
+                // 경로 저장
                 this.segments = [];
                 this.currentSegment = [{ x, y }];
                 
-                // 색상 관리
+                // 색상
                 this.colorIndex = 0;
                 this.currentColor = 'yellow';
                 
-                // 인덱스 기반 색상 (무지개)
                 const hueOffset = (index / total) * 30;
                 this.colors = {
                     yellow: `hsla(${45 + hueOffset}, 100%, 55%, 0.9)`,
@@ -839,41 +795,44 @@
                     orange: `hsla(${20 + hueOffset}, 100%, 55%, 0.9)`
                 };
                 
-                // 타원 모드용
+                // 타원용
                 this.ellipseState = 'toF2';
                 
-                // 중복 반사 방지
-                this.lastReflectX = null;
-                this.lastReflectY = null;
-                this.reflectCooldown = 0;
+                // 반사 제어 (개선됨)
+                this.lastReflectPos = { x: null, y: null };
+                this.stepsSinceReflect = 0;
             }
 
             update() {
                 if (!this.active) return;
 
-                // 쿨다운 감소
-                if (this.reflectCooldown > 0) {
-                    this.reflectCooldown--;
-                }
-
                 const step = this.speed * state.raySpeed;
+                this.stepsSinceReflect++;
+                
+                // 이전 위치 저장
                 const prevX = this.x;
                 const prevY = this.y;
                 
-                // 곡선과의 교차점 찾기
-                const intersection = this.findIntersection();
+                // 교차점 찾기 (stepsSinceReflect >= 3일 때만)
+                let intersection = null;
+                if (this.stepsSinceReflect >= 3) {
+                    intersection = this.findIntersection();
+                }
                 
-                if (intersection && this.reflectCooldown === 0) {
+                if (intersection) {
                     const distToIntersect = Math.hypot(
                         intersection.x - this.x,
                         intersection.y - this.y
                     );
 
-                    if (distToIntersect <= step + 0.05) {
-                        // 교차점에 도달 - 반사 수행
-                        this.currentSegment.push({ x: intersection.x, y: intersection.y });
+                    // 교차점에 충분히 가까우면 반사
+                    if (distToIntersect <= step * 1.5) {
+                        // 교차점으로 이동
+                        this.x = intersection.x;
+                        this.y = intersection.y;
+                        this.currentSegment.push({ x: this.x, y: this.y });
                         
-                        // 현재 세그먼트 저장
+                        // 세그먼트 저장
                         this.segments.push({
                             points: [...this.currentSegment],
                             color: this.currentColor
@@ -884,9 +843,6 @@
                         
                         // 새 세그먼트 시작
                         this.currentSegment = [{ x: this.x, y: this.y }];
-                        
-                        // 쿨다운 설정 (재충돌 방지)
-                        this.reflectCooldown = 3;
                         
                         return;
                     }
@@ -906,7 +862,7 @@
             performReflection(intersection) {
                 const { x: px, y: py, nx, ny } = intersection;
                 
-                // 법선 방향 조정 (입사 방향과 반대쪽을 향하도록)
+                // 법선 방향 조정
                 let normalX = nx;
                 let normalY = ny;
                 const dotIn = this.dx * normalX + this.dy * normalY;
@@ -915,7 +871,7 @@
                     normalY = -normalY;
                 }
                 
-                // 반사 공식: r = d - 2(d·n)n
+                // 반사 공식
                 const dot = this.dx * normalX + this.dy * normalY;
                 this.dx = this.dx - 2 * dot * normalX;
                 this.dy = this.dy - 2 * dot * normalY;
@@ -928,12 +884,12 @@
                 }
                 
                 // 반사점에서 약간 떨어진 위치로 이동
-                this.x = px + this.dx * 0.2;
-                this.y = py + this.dy * 0.2;
+                this.x = px + this.dx * 0.25;
+                this.y = py + this.dy * 0.25;
                 
                 // 기록
-                this.lastReflectX = px;
-                this.lastReflectY = py;
+                this.lastReflectPos = { x: px, y: py };
+                this.stepsSinceReflect = 0;
                 this.bounces++;
                 state.totalReflections++;
                 
@@ -947,11 +903,12 @@
                 const colorKeys = ['yellow', 'green', 'cyan', 'magenta', 'orange'];
                 
                 if (state.mode === 'parabola') {
-                    // 포물선: 초점 (0, f)
                     const fx = 0, fy = state.f;
                     const dist = Math.hypot(this.x - fx, this.y - fy);
+                    const prevDist = Math.hypot(prevX - fx, prevY - fy);
                     
-                    if (dist < 0.5) {
+                    // 초점 근처를 지나쳤는지 체크
+                    if (dist < 0.6 && prevDist >= 0.6) {
                         this.switchColorAtFocus(fx, fy, colorKeys);
                     }
                 } else if (state.mode === 'ellipse') {
@@ -961,13 +918,15 @@
                     
                     if (this.ellipseState === 'toF2') {
                         const dist = Math.hypot(this.x - f2.x, this.y - f2.y);
-                        if (dist < 0.6) {
+                        const prevDist = Math.hypot(prevX - f2.x, prevY - f2.y);
+                        if (dist < 0.7 && prevDist >= 0.7) {
                             this.switchColorAtFocus(f2.x, f2.y, colorKeys);
                             this.ellipseState = 'toF1';
                         }
                     } else {
                         const dist = Math.hypot(this.x - f1.x, this.y - f1.y);
-                        if (dist < 0.6) {
+                        const prevDist = Math.hypot(prevX - f1.x, prevY - f1.y);
+                        if (dist < 0.7 && prevDist >= 0.7) {
                             this.switchColorAtFocus(f1.x, f1.y, colorKeys);
                             this.ellipseState = 'toF2';
                         }
@@ -978,32 +937,28 @@
                     const f2 = { x: c, y: 0 };
                     
                     const dist = Math.hypot(this.x - f2.x, this.y - f2.y);
-                    if (dist < 0.6 && this.colorIndex === 0) {
+                    const prevDist = Math.hypot(prevX - f2.x, prevY - f2.y);
+                    if (dist < 0.7 && prevDist >= 0.7 && this.colorIndex === 0) {
                         this.switchColorAtFocus(f2.x, f2.y, colorKeys);
                     }
                 }
             }
 
             switchColorAtFocus(fx, fy, colorKeys) {
-                // 현재 세그먼트에 초점 추가하고 저장
                 this.currentSegment.push({ x: fx, y: fy });
                 this.segments.push({
                     points: [...this.currentSegment],
                     color: this.currentColor
                 });
                 
-                // 색상 전환
                 this.colorIndex++;
                 this.currentColor = colorKeys[this.colorIndex % colorKeys.length];
-                
-                // 새 세그먼트 시작
                 this.currentSegment = [{ x: fx, y: fy }];
-                
                 state.focusPassCount++;
             }
 
             checkBounds() {
-                const margin = 18;
+                const margin = 20;
                 if (Math.abs(this.x) > margin || Math.abs(this.y) > margin) {
                     this.finishRay();
                 }
@@ -1016,7 +971,6 @@
                     color: this.currentColor
                 });
                 this.active = false;
-                this.completed = true;
                 state.completedCount++;
             }
 
@@ -1031,21 +985,22 @@
             }
 
             findParabolaIntersection() {
-                // 포물선: y = x² / 4f
                 const f4 = 4 * state.f;
                 
-                // 2차 방정식 계수
+                // 2차 방정식: dx²*t² + (2*x*dx - 4f*dy)*t + (x² - 4f*y) = 0
                 const A = this.dx * this.dx;
                 const B = 2 * this.x * this.dx - f4 * this.dy;
                 const C = this.x * this.x - f4 * this.y;
                 
-                const minT = 0.15;
-                let t = null;
+                // 작은 최소 거리 (더 민감하게)
+                const minT = 0.05;
+                let solutions = [];
                 
                 if (Math.abs(A) < 1e-10) {
+                    // 선형
                     if (Math.abs(B) > 1e-10) {
-                        const t0 = -C / B;
-                        if (t0 > minT) t = t0;
+                        const t = -C / B;
+                        if (t > minT) solutions.push(t);
                     }
                 } else {
                     const disc = B * B - 4 * A * C;
@@ -1054,25 +1009,28 @@
                         const t1 = (-B + sqrtDisc) / (2 * A);
                         const t2 = (-B - sqrtDisc) / (2 * A);
                         
-                        const validTs = [t1, t2].filter(tt => tt > minT);
-                        if (validTs.length > 0) {
-                            t = Math.min(...validTs);
-                        }
+                        if (t1 > minT) solutions.push(t1);
+                        if (t2 > minT) solutions.push(t2);
                     }
                 }
                 
-                if (t === null) return null;
+                if (solutions.length === 0) return null;
                 
+                // 가장 가까운 교차점 선택
+                const t = Math.min(...solutions);
                 const ix = this.x + this.dx * t;
                 const iy = this.y + this.dy * t;
                 
                 // 범위 체크
-                if (Math.abs(ix) > 15 || iy < -1 || iy > 25) return null;
+                if (Math.abs(ix) > 15 || iy < -1 || iy > 30) return null;
                 
-                // 중복 체크
-                if (this.lastReflectX !== null) {
-                    const distFromLast = Math.hypot(ix - this.lastReflectX, iy - this.lastReflectY);
-                    if (distFromLast < 0.4) return null;
+                // 마지막 반사점과 너무 가까우면 무시
+                if (this.lastReflectPos.x !== null) {
+                    const distFromLast = Math.hypot(
+                        ix - this.lastReflectPos.x, 
+                        iy - this.lastReflectPos.y
+                    );
+                    if (distFromLast < 0.2) return null;
                 }
                 
                 // 법선 계산
@@ -1100,18 +1058,21 @@
                 const t1 = (-B + sqrtDisc) / (2 * A);
                 const t2 = (-B - sqrtDisc) / (2 * A);
                 
-                const minT = 0.15;
-                const validTs = [t1, t2].filter(tt => tt > minT);
-                if (validTs.length === 0) return null;
+                const minT = 0.05;
+                const solutions = [t1, t2].filter(tt => tt > minT);
+                if (solutions.length === 0) return null;
                 
-                const t = Math.min(...validTs);
+                const t = Math.min(...solutions);
                 const ix = this.x + this.dx * t;
                 const iy = this.y + this.dy * t;
                 
                 // 중복 체크
-                if (this.lastReflectX !== null) {
-                    const distFromLast = Math.hypot(ix - this.lastReflectX, iy - this.lastReflectY);
-                    if (distFromLast < 0.4) return null;
+                if (this.lastReflectPos.x !== null) {
+                    const distFromLast = Math.hypot(
+                        ix - this.lastReflectPos.x, 
+                        iy - this.lastReflectPos.y
+                    );
+                    if (distFromLast < 0.2) return null;
                 }
                 
                 // 법선
@@ -1143,16 +1104,19 @@
                 const t1 = (-B + sqrtDisc) / (2 * A);
                 const t2 = (-B - sqrtDisc) / (2 * A);
                 
-                const minT = 0.15;
+                const minT = 0.05;
                 
                 for (const t of [t1, t2].filter(tt => tt > minT).sort((x, y) => x - y)) {
                     const ix = this.x + this.dx * t;
                     const iy = this.y + this.dy * t;
                     
                     if (ix >= a - 0.1) {
-                        if (this.lastReflectX !== null) {
-                            const distFromLast = Math.hypot(ix - this.lastReflectX, iy - this.lastReflectY);
-                            if (distFromLast < 0.4) continue;
+                        if (this.lastReflectPos.x !== null) {
+                            const distFromLast = Math.hypot(
+                                ix - this.lastReflectPos.x, 
+                                iy - this.lastReflectPos.y
+                            );
+                            if (distFromLast < 0.2) continue;
                         }
                         
                         let nx = ix / (a * a);
@@ -1173,7 +1137,7 @@
             draw() {
                 const getColor = (colorName) => this.colors[colorName] || this.colors.yellow;
 
-                // 저장된 세그먼트 그리기
+                // 저장된 세그먼트
                 for (const segment of this.segments) {
                     if (segment.points.length < 2) continue;
                     
@@ -1199,7 +1163,7 @@
                     ctx.shadowBlur = 0;
                 }
 
-                // 현재 진행 중인 세그먼트
+                // 현재 세그먼트
                 if (this.currentSegment.length > 0 && state.showTrail) {
                     ctx.beginPath();
                     ctx.strokeStyle = getColor(this.currentColor);
@@ -1227,7 +1191,7 @@
                     ctx.shadowBlur = 0;
                 }
 
-                // 반사 지점 표시
+                // 반사 지점
                 if (state.showReflectPoints) {
                     for (const segment of this.segments) {
                         if (segment.points.length > 1) {
@@ -1361,13 +1325,11 @@
             ctx.strokeStyle = 'rgba(150, 150, 180, 0.6)';
             ctx.lineWidth = 2;
             
-            // X축
             ctx.beginPath();
             ctx.moveTo(0, state.centerY);
             ctx.lineTo(w, state.centerY);
             ctx.stroke();
             
-            // Y축
             ctx.beginPath();
             ctx.moveTo(state.centerX, 0);
             ctx.lineTo(state.centerX, h);
@@ -1379,7 +1341,7 @@
             ctx.fillText('x', w - 20, state.centerY - 10);
             ctx.fillText('y', state.centerX + 10, 20);
 
-            // 눈금 숫자
+            // 눈금
             ctx.font = '11px Consolas, monospace';
             ctx.fillStyle = 'rgba(150, 150, 180, 0.6)';
             const range = Math.ceil(w / state.scale / 2);
@@ -1399,7 +1361,6 @@
                 }
             }
             
-            // 원점
             ctx.fillStyle = 'rgba(150, 150, 180, 0.8)';
             ctx.fillText('O', state.centerX - 15, state.centerY + 16);
         }
@@ -1410,7 +1371,6 @@
         function drawParabola() {
             const range = canvas.width / state.scale;
             
-            // 글로우 효과
             if (state.showGlow) {
                 ctx.strokeStyle = 'rgba(255, 107, 107, 0.2)';
                 ctx.lineWidth = 16;
@@ -1426,7 +1386,6 @@
                 ctx.stroke();
             }
 
-            // 메인 곡선
             ctx.strokeStyle = '#ff6b6b';
             ctx.lineWidth = 3;
             
@@ -1447,10 +1406,8 @@
             ctx.stroke();
             ctx.shadowBlur = 0;
 
-            // 초점
             drawFocus(0, state.f, 'F', '#ffd93d');
 
-            // 준선
             ctx.strokeStyle = 'rgba(255, 217, 61, 0.25)';
             ctx.lineWidth = 1;
             ctx.setLineDash([8, 8]);
@@ -1461,7 +1418,6 @@
             ctx.stroke();
             ctx.setLineDash([]);
             
-            // 준선 라벨
             ctx.fillStyle = 'rgba(255, 217, 61, 0.6)';
             ctx.font = '12px Arial';
             ctx.fillText('준선 (y = -f)', 10, directrix.y - 8);
@@ -1474,7 +1430,6 @@
             const { a, b } = state;
             const c = Math.sqrt(Math.max(0, a * a - b * b));
 
-            // 글로우
             if (state.showGlow) {
                 ctx.strokeStyle = 'rgba(255, 107, 107, 0.15)';
                 ctx.lineWidth = 18;
@@ -1483,14 +1438,12 @@
                 ctx.stroke();
             }
 
-            // 중간 테두리
             ctx.strokeStyle = 'rgba(255, 107, 107, 0.4)';
             ctx.lineWidth = 6;
             ctx.beginPath();
             ctx.ellipse(state.centerX, state.centerY, a * state.scale, b * state.scale, 0, 0, Math.PI * 2);
             ctx.stroke();
 
-            // 메인 곡선
             ctx.strokeStyle = '#ff6b6b';
             ctx.lineWidth = 3;
             if (state.showGlow) {
@@ -1502,11 +1455,9 @@
             ctx.stroke();
             ctx.shadowBlur = 0;
 
-            // 초점들
             drawFocus(-c, 0, 'F₁', '#ff006e');
             drawFocus(c, 0, 'F₂', '#00ff88');
 
-            // 장축/단축 표시
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
             ctx.lineWidth = 1;
             ctx.setLineDash([6, 6]);
@@ -1527,7 +1478,6 @@
             const b = state.b;
             const c = Math.sqrt(a * a + b * b);
 
-            // 글로우 (오른쪽)
             if (state.showGlow) {
                 ctx.strokeStyle = 'rgba(255, 107, 107, 0.15)';
                 ctx.lineWidth = 15;
@@ -1543,7 +1493,6 @@
                 ctx.stroke();
             }
 
-            // 오른쪽 가지 (메인)
             ctx.strokeStyle = '#ff6b6b';
             ctx.lineWidth = 3;
             if (state.showGlow) {
@@ -1562,7 +1511,6 @@
             ctx.stroke();
             ctx.shadowBlur = 0;
 
-            // 왼쪽 가지 (반투명)
             ctx.strokeStyle = 'rgba(255, 107, 107, 0.25)';
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -1576,11 +1524,9 @@
             }
             ctx.stroke();
 
-            // 초점들
             drawFocus(-c, 0, 'F₁', '#ff006e');
             drawFocus(c, 0, 'F₂', '#00ff88');
 
-            // 점근선
             ctx.strokeStyle = 'rgba(255, 217, 61, 0.15)';
             ctx.lineWidth = 1;
             ctx.setLineDash([6, 6]);
@@ -1597,12 +1543,11 @@
         }
 
         // ============================================
-        // 초점 그리기 헬퍼
+        // 초점 그리기
         // ============================================
         function drawFocus(x, y, label, color) {
             const pos = toCanvas(x, y);
             
-            // 큰 글로우
             const gradient = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, 35);
             gradient.addColorStop(0, color);
             gradient.addColorStop(0.25, color + 'cc');
@@ -1614,19 +1559,16 @@
             ctx.arc(pos.x, pos.y, 35, 0, Math.PI * 2);
             ctx.fill();
             
-            // 중간 원
             ctx.beginPath();
             ctx.fillStyle = color;
             ctx.arc(pos.x, pos.y, 10, 0, Math.PI * 2);
             ctx.fill();
             
-            // 중심점
             ctx.beginPath();
             ctx.fillStyle = '#fff';
             ctx.arc(pos.x, pos.y, 5, 0, Math.PI * 2);
             ctx.fill();
             
-            // 라벨
             ctx.fillStyle = color;
             ctx.font = 'bold 18px Arial';
             ctx.textAlign = 'center';
@@ -1637,7 +1579,7 @@
         }
 
         // ============================================
-        // 드래그 점 P 및 기하학적 요소
+        // 드래그 점 P
         // ============================================
         function drawInteractivePointP() {
             if (!state.showDragPoint) return;
@@ -1645,7 +1587,6 @@
             const px = state.pointP.x;
             let py, tangentSlope, normalSlope;
 
-            // 곡선에 따른 y좌표와 기울기 계산
             if (state.mode === 'parabola') {
                 py = (px * px) / (4 * state.f);
                 tangentSlope = px / (2 * state.f);
@@ -1677,7 +1618,7 @@
             
             const pos = toCanvas(state.pointP.x, py);
 
-            // 접선 그리기
+            // 접선
             if (state.showTangentNormal && isFinite(tangentSlope)) {
                 ctx.strokeStyle = '#4ecdc4';
                 ctx.lineWidth = 2;
@@ -1699,13 +1640,12 @@
                 ctx.setLineDash([]);
                 ctx.shadowBlur = 0;
                 
-                // 접선 라벨
                 ctx.fillStyle = '#4ecdc4';
                 ctx.font = '12px Arial';
-                ctx.fillText('접선 (tangent)', p2.x + 10, p2.y - 10);
+                ctx.fillText('접선', p2.x + 10, p2.y - 10);
             }
 
-            // 법선 그리기
+            // 법선
             if (state.showTangentNormal && isFinite(normalSlope) && Math.abs(normalSlope) < 100) {
                 ctx.strokeStyle = '#a855f7';
                 ctx.lineWidth = 2;
@@ -1727,15 +1667,13 @@
                 ctx.setLineDash([]);
                 ctx.shadowBlur = 0;
                 
-                // 법선 라벨
                 ctx.fillStyle = '#a855f7';
                 ctx.font = '12px Arial';
-                ctx.fillText('법선 (normal)', n2.x + 10, n2.y + 15);
+                ctx.fillText('법선', n2.x + 10, n2.y + 15);
             }
 
-            // 포물선에서 입사광/반사광 및 각도 표시
+            // 포물선 모드: 입사광/반사광
             if (state.mode === 'parabola') {
-                // 입사광 (위에서 내려옴)
                 const rayTop = toCanvas(state.pointP.x, py + 6);
                 ctx.strokeStyle = '#ffd93d';
                 ctx.lineWidth = 2.5;
@@ -1751,7 +1689,6 @@
                 ctx.lineTo(pos.x, pos.y);
                 ctx.stroke();
 
-                // 반사광 (초점으로)
                 const focus = toCanvas(0, state.f);
                 ctx.strokeStyle = '#00ff88';
                 
@@ -1766,13 +1703,12 @@
                 ctx.stroke();
                 ctx.shadowBlur = 0;
 
-                // 각도 시각화
                 if (state.showAngles) {
                     drawAngleVisualization(state.pointP.x, py, tangentSlope);
                 }
             }
 
-            // 점 P 그리기
+            // 점 P
             ctx.fillStyle = '#ff6b6b';
             ctx.strokeStyle = '#fff';
             ctx.lineWidth = 3;
@@ -1788,13 +1724,11 @@
             ctx.stroke();
             ctx.shadowBlur = 0;
             
-            // P 라벨
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 14px Arial';
             ctx.textAlign = 'left';
             ctx.fillText('P (드래그)', pos.x + 18, pos.y - 15);
 
-            // 실시간 데이터 업데이트
             updateLiveData(state.pointP.x, py, tangentSlope, normalSlope);
         }
 
@@ -1805,25 +1739,20 @@
             const pos = toCanvas(px, py);
             const radius = 45;
             
-            // 법선 각도 계산
             const slope = px / (2 * state.f);
             const normalAngle = Math.atan2(1, -slope);
             const normalAngleCanvas = -normalAngle;
             
-            // 입사광 각도 (위에서 아래로)
             const incidentAngleCanvas = Math.PI / 2;
             
-            // 반사광 각도 (초점 방향)
             const toFocusX = 0 - px;
             const toFocusY = state.f - py;
             const reflectAngle = Math.atan2(-toFocusY, toFocusX);
 
-            // 입사각
             let theta1 = Math.abs(normalAngleCanvas - incidentAngleCanvas);
             if (theta1 > Math.PI) theta1 = 2 * Math.PI - theta1;
             if (theta1 > Math.PI / 2) theta1 = Math.PI - theta1;
             
-            // 반사각
             let theta2 = Math.abs(reflectAngle - normalAngleCanvas);
             if (theta2 > Math.PI) theta2 = 2 * Math.PI - theta2;
             if (theta2 > Math.PI / 2) theta2 = Math.PI - theta2;
@@ -1848,7 +1777,6 @@
             ctx.arc(pos.x, pos.y, radius - 12, startAngle2, endAngle2);
             ctx.stroke();
 
-            // 각도 레이블
             ctx.font = 'bold 12px Arial';
             ctx.fillStyle = '#ffd93d';
             const labelAngle1 = (normalAngleCanvas + incidentAngleCanvas) / 2;
@@ -1860,14 +1788,13 @@
             ctx.fillText('θ₂', pos.x + Math.cos(labelAngle2) * (radius - 28), 
                         pos.y + Math.sin(labelAngle2) * (radius - 28));
 
-            // UI 업데이트
             document.getElementById('incidentAngle').textContent = theta1Deg.toFixed(2) + '°';
             document.getElementById('reflectAngle').textContent = theta2Deg.toFixed(2) + '°';
 
             const diff = Math.abs(theta1Deg - theta2Deg);
             const verificationEl = document.getElementById('verification');
             if (diff < 0.5) {
-                verificationEl.textContent = 'θ₁ = θ₂ ✓ (반사법칙 성립)';
+                verificationEl.textContent = 'θ₁ = θ₂ ✓';
                 verificationEl.className = 'highlight';
             } else {
                 verificationEl.textContent = `Δ = ${diff.toFixed(2)}°`;
@@ -1875,9 +1802,6 @@
             }
         }
 
-        // ============================================
-        // 실시간 데이터 업데이트
-        // ============================================
         function updateLiveData(px, py, tangentSlope, normalSlope) {
             document.getElementById('pointP').textContent = `(${px.toFixed(2)}, ${py.toFixed(2)})`;
             document.getElementById('tangentSlope').textContent = isFinite(tangentSlope) ? tangentSlope.toFixed(3) : '∞';
@@ -1897,21 +1821,18 @@
             const count = state.rayCount;
 
             if (state.mode === 'parabola') {
-                // 위에서 평행하게 내려오는 광선
                 const spread = 8;
                 for (let i = 0; i < count; i++) {
                     const x = count === 1 ? 0 : -spread / 2 + (spread * i) / (count - 1);
                     rays.push(new Ray(x, 12, 0, -1, i, count));
                 }
             } else if (state.mode === 'ellipse') {
-                // F1에서 방사형 발사
                 const c = Math.sqrt(state.a * state.a - state.b * state.b);
                 for (let i = 0; i < count; i++) {
                     const angle = (Math.PI * 2 * i) / count;
                     rays.push(new Ray(-c, 0, Math.cos(angle), Math.sin(angle), i, count));
                 }
             } else {
-                // 왼쪽에서 F2를 향해 발사
                 const a = state.a / 2;
                 const c = Math.sqrt(a * a + state.b * state.b);
                 const f2 = { x: c, y: 0 };
@@ -1927,9 +1848,6 @@
             }
         }
 
-        // ============================================
-        // 통계 업데이트
-        // ============================================
         function updateStats() {
             const activeCount = rays.filter(r => r.active).length;
             document.getElementById('activeRays').textContent = activeCount;
@@ -1937,7 +1855,6 @@
             document.getElementById('focusPassCount').textContent = state.focusPassCount;
             document.getElementById('completedCount').textContent = state.completedCount;
             
-            // 실행 중 표시
             const statValue = document.querySelectorAll('.stat-value')[0];
             if (state.isRunning && activeCount > 0) {
                 statValue.classList.add('running-indicator');
@@ -1947,24 +1864,20 @@
         }
 
         // ============================================
-        // 메인 렌더링 루프
+        // 렌더링 루프
         // ============================================
         function animate() {
-            // 캔버스 클리어
             ctx.fillStyle = '#050510';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 그리드
             drawGrid();
 
-            // 곡선
             switch (state.mode) {
                 case 'parabola': drawParabola(); break;
                 case 'ellipse': drawEllipse(); break;
                 case 'hyperbola': drawHyperbola(); break;
             }
 
-            // 광선 업데이트 및 그리기
             for (const ray of rays) {
                 if (state.isRunning) {
                     ray.update();
@@ -1972,13 +1885,9 @@
                 ray.draw();
             }
 
-            // 드래그 점 P
             drawInteractivePointP();
-
-            // 통계
             updateStats();
 
-            // 모든 광선 완료 체크
             if (rays.length > 0 && !rays.some(r => r.active) && state.isRunning) {
                 state.isRunning = false;
                 document.getElementById('btnStart').textContent = '▶ 발사';
@@ -1988,7 +1897,7 @@
         }
 
         // ============================================
-        // 시뮬레이션 제어
+        // 컨트롤
         // ============================================
         function toggleSimulation() {
             if (state.isRunning) {
@@ -2018,8 +1927,10 @@
         }
 
         // ============================================
-        // 마우스/터치 이벤트
+        // 이벤트 리스너
         // ============================================
+        
+        // 마우스 이벤트
         canvas.addEventListener('mousedown', (e) => {
             if (!state.showDragPoint) return;
             
@@ -2043,7 +1954,6 @@
             const mouseX = e.clientX - rect.left;
             const math = toMath(mouseX, 0);
             
-            // 모드별 x 범위 제한
             let newX = math.x;
             if (state.mode === 'parabola') {
                 newX = Math.max(-8, Math.min(8, newX));
@@ -2109,14 +2019,12 @@
             state.isDragging = false;
         });
 
-        // ============================================
-        // 컨트롤 패널 이벤트
-        // ============================================
+        // 버튼
         document.getElementById('btnStart').addEventListener('click', toggleSimulation);
         document.getElementById('btnStop').addEventListener('click', stopSimulation);
         document.getElementById('btnReset').addEventListener('click', resetSimulation);
 
-        // 슬라이더들
+        // 슬라이더
         document.getElementById('focalLength').addEventListener('input', (e) => {
             const value = parseFloat(e.target.value);
             
@@ -2157,7 +2065,7 @@
             document.getElementById('scaleValue').textContent = state.scale;
         });
 
-        // 체크박스들
+        // 체크박스
         document.getElementById('showGrid').addEventListener('change', (e) => state.showGrid = e.target.checked);
         document.getElementById('showTrail').addEventListener('change', (e) => state.showTrail = e.target.checked);
         document.getElementById('showReflectPoints').addEventListener('change', (e) => state.showReflectPoints = e.target.checked);
@@ -2166,7 +2074,7 @@
         document.getElementById('showAngles').addEventListener('change', (e) => state.showAngles = e.target.checked);
         document.getElementById('showGlow').addEventListener('change', (e) => state.showGlow = e.target.checked);
 
-        // 모드 버튼들
+        // 모드 버튼
         document.querySelectorAll('.mode-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
@@ -2177,7 +2085,6 @@
                 updateCurveInfo();
                 updateSliderForMode();
                 
-                // 점 P 위치 초기화
                 if (state.mode === 'parabola') {
                     state.pointP.x = 2;
                 } else if (state.mode === 'ellipse') {
@@ -2225,8 +2132,11 @@
             const formula = document.getElementById('formulaDisplay');
             const desc = document.getElementById('curveDescription');
             const theory = document.getElementById('theoryText');
-        
-            // 초기화
+
+            }
+        }
+
+        // 초기화
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
         animate();
