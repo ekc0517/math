@@ -181,52 +181,9 @@
             color: #00d4ff;
         }
 
-        .explanation {
-            background: rgba(26, 26, 46, 0.6);
-            border-radius: 12px;
-            padding: 25px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            line-height: 1.7;
-        }
-
-        .explanation h2 {
-            color: #00d4ff;
-            margin-bottom: 15px;
-            font-size: 1.3rem;
-        }
-
-        .explanation h3 {
-            color: #7b2cbf;
-            margin: 20px 0 10px;
-            font-size: 1.1rem;
-        }
-
-        .explanation p {
-            color: #bbb;
-            margin-bottom: 12px;
-        }
-
-        .math-formula {
-            background: rgba(0, 0, 0, 0.4);
-            padding: 15px 20px;
-            border-radius: 8px;
-            font-family: 'Courier New', monospace;
-            color: #00d4ff;
-            margin: 15px 0;
-            text-align: center;
-            font-size: 1.1rem;
-            border-left: 3px solid #7b2cbf;
-        }
-
-        .highlight {
-            color: #ff006e;
-            font-weight: bold;
-        }
-
         @media (max-width: 600px) {
             h1 { font-size: 1.6rem; }
             .controls { padding: 15px; gap: 15px; }
-            .explanation { padding: 20px; }
         }
     </style>
 </head>
@@ -269,13 +226,12 @@
                 <button class="btn-secondary" id="clearBtn">↺ 초기화</button>
             </div>
         </div>
+    </div>
 
-    
     <script>
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
 
-        // High DPI support
         function resizeCanvas() {
             const rect = canvas.parentElement.getBoundingClientRect();
             const dpr = window.devicePixelRatio || 1;
@@ -297,20 +253,17 @@
             };
         }
 
-        // Controls
         const eccentricitySlider = document.getElementById('eccentricity');
         const rayCountSlider = document.getElementById('rayCount');
         const speedSlider = document.getElementById('speed');
         const startBtn = document.getElementById('startBtn');
         const clearBtn = document.getElementById('clearBtn');
 
-        // State
         let rays = [];
         let animationId = null;
         let ellipseParams = {};
         let completedCount = 0;
 
-        // Calculate ellipse parameters
         function calculateEllipse() {
             const { width, height } = getDisplaySize();
             const centerX = width / 2;
@@ -330,7 +283,6 @@
             document.getElementById('eccentricityValue').textContent = e.toFixed(2);
         }
 
-        // Ray class
         class Ray {
             constructor(x, y, angle, index, total) {
                 this.x = x;
@@ -340,13 +292,13 @@
                 this.speed = 4;
                 this.bounces = 0;
                 this.active = true;
-                this.trace = [{ x, y }];
-                this.state = 'toF2'; // 'toF2' -> 'toF1' -> 'done'
+                this.trace = [{ x, y, phase: 'toF2' }];
+                this.state = 'toF2';
+                this.f2PassedIndex = -1;
                 
-                // Color based on angle for variety
-                const hue = (index / total) * 60 + 30; // 30-90 (yellow-orange range)
-                this.color = `hsl(${hue}, 100%, 55%)`;
-                this.colorF2 = `hsl(${140 + (index / total) * 40}, 100%, 50%)`; // Green range
+                const hue = (index / total) * 60 + 30;
+                this.colorYellow = `hsl(${hue}, 100%, 55%)`;
+                this.colorGreen = `hsl(${140 + (index / total) * 40}, 100%, 50%)`;
             }
 
             update(speedMultiplier) {
@@ -355,7 +307,6 @@
                 const step = this.speed * speedMultiplier;
                 const { f1, f2 } = ellipseParams;
                 
-                // Find next intersection with ellipse
                 const intersection = this.findEllipseIntersection();
                 
                 if (!intersection) {
@@ -368,7 +319,6 @@
                     intersection.y - this.y
                 );
 
-                // Check proximity to foci along the path
                 const checkFociProximity = () => {
                     const threshold = 12;
                     
@@ -376,14 +326,15 @@
                         const distToF2 = Math.hypot(f2.x - this.x, f2.y - this.y);
                         if (distToF2 < threshold) {
                             this.state = 'toF1';
-                            this.trace.push({ x: f2.x, y: f2.y, focus: 'f2' });
+                            this.f2PassedIndex = this.trace.length;
+                            this.trace.push({ x: f2.x, y: f2.y, focus: 'f2', phase: 'toF1' });
                         }
                     } else if (this.state === 'toF1') {
                         const distToF1 = Math.hypot(f1.x - this.x, f1.y - this.y);
                         if (distToF1 < threshold) {
                             this.state = 'done';
                             this.active = false;
-                            this.trace.push({ x: f1.x, y: f1.y, focus: 'f1' });
+                            this.trace.push({ x: f1.x, y: f1.y, focus: 'f1', phase: 'done' });
                             completedCount++;
                             return true;
                         }
@@ -392,28 +343,21 @@
                 };
 
                 if (distToIntersect <= step) {
-                    // Check foci before hitting wall
                     if (checkFociProximity()) return;
                     
-                    // Move to intersection point
                     this.x = intersection.x;
                     this.y = intersection.y;
-                    this.trace.push({ x: this.x, y: this.y, bounce: true });
+                    this.trace.push({ x: this.x, y: this.y, bounce: true, phase: this.state });
 
-                    // Reflect off the wall
                     this.reflect(intersection.x, intersection.y);
                     this.bounces++;
 
-                    // Safety limit
                     if (this.bounces > 10) {
                         this.active = false;
                     }
                 } else {
-                    // Move normally
                     this.x += this.dx * step;
                     this.y += this.dy * step;
-                    
-                    // Check foci proximity after moving
                     checkFociProximity();
                 }
             }
@@ -461,56 +405,72 @@
                 const ex = px - centerX;
                 const ey = py - centerY;
                 
-                // Normal vector (gradient of ellipse equation)
                 let nx = ex / (a * a);
                 let ny = ey / (b * b);
                 
-                // Normalize
                 const nLen = Math.hypot(nx, ny);
                 nx /= nLen;
                 ny /= nLen;
                 
-                // Make sure normal points inward (opposite to ray direction approaching wall)
                 const dot = this.dx * nx + this.dy * ny;
                 if (dot > 0) {
                     nx = -nx;
                     ny = -ny;
                 }
                 
-                // Reflection formula: r = d - 2(d·n)n
                 const dotProduct = this.dx * nx + this.dy * ny;
                 this.dx = this.dx - 2 * dotProduct * nx;
                 this.dy = this.dy - 2 * dotProduct * ny;
                 
-                // Normalize direction
                 const dLen = Math.hypot(this.dx, this.dy);
                 this.dx /= dLen;
                 this.dy /= dLen;
             }
 
             draw() {
-                const currentColor = this.state === 'toF2' ? this.color : this.colorF2;
-                const alpha = this.active ? 0.8 : 0.4;
+                const alpha = this.active ? 0.8 : 0.5;
+                const lineWidth = this.active ? 2.5 : 1.8;
 
-                // Draw complete trace
+                // Draw yellow segment (F1 to F2)
                 ctx.beginPath();
-                ctx.strokeStyle = this.state === 'done' ? 
-                    `rgba(0, 255, 136, 0.5)` : 
-                    (this.state === 'toF1' ? `rgba(0, 255, 136, ${alpha})` : `rgba(255, 200, 50, ${alpha})`);
-                ctx.lineWidth = this.active ? 2.5 : 1.5;
+                ctx.strokeStyle = `rgba(255, 200, 50, ${alpha})`;
+                ctx.lineWidth = lineWidth;
                 ctx.lineCap = 'round';
                 ctx.lineJoin = 'round';
                 
                 if (this.trace.length > 0) {
                     ctx.moveTo(this.trace[0].x, this.trace[0].y);
-                    for (let i = 1; i < this.trace.length; i++) {
+                    
+                    const endIndex = this.f2PassedIndex > 0 ? this.f2PassedIndex : this.trace.length;
+                    for (let i = 1; i < endIndex; i++) {
                         ctx.lineTo(this.trace[i].x, this.trace[i].y);
                     }
-                    if (this.active) {
+                    
+                    if (this.state === 'toF2' && this.active) {
                         ctx.lineTo(this.x, this.y);
                     }
                 }
                 ctx.stroke();
+
+                // Draw green segment (F2 to F1)
+                if (this.f2PassedIndex > 0) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = `rgba(0, 255, 136, ${alpha})`;
+                    ctx.lineWidth = lineWidth;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    
+                    ctx.moveTo(this.trace[this.f2PassedIndex].x, this.trace[this.f2PassedIndex].y);
+                    
+                    for (let i = this.f2PassedIndex + 1; i < this.trace.length; i++) {
+                        ctx.lineTo(this.trace[i].x, this.trace[i].y);
+                    }
+                    
+                    if (this.state === 'toF1' && this.active) {
+                        ctx.lineTo(this.x, this.y);
+                    }
+                    ctx.stroke();
+                }
 
                 // Draw bounce points
                 for (const point of this.trace) {
@@ -524,7 +484,8 @@
 
                 // Draw ray head if active
                 if (this.active) {
-                    // Outer glow
+                    const currentColor = this.state === 'toF2' ? this.colorYellow : this.colorGreen;
+                    
                     const gradient = ctx.createRadialGradient(
                         this.x, this.y, 0,
                         this.x, this.y, 12
@@ -538,7 +499,6 @@
                     ctx.arc(this.x, this.y, 12, 0, Math.PI * 2);
                     ctx.fill();
                     
-                    // Core
                     ctx.beginPath();
                     ctx.fillStyle = '#fff';
                     ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
@@ -547,32 +507,28 @@
             }
         }
 
-        // Draw ellipse and foci
         function drawEllipse() {
             const { centerX, centerY, a, b, f1, f2 } = ellipseParams;
             
-            // Ellipse outer glow
             ctx.beginPath();
             ctx.strokeStyle = 'rgba(0, 212, 255, 0.2)';
             ctx.lineWidth = 12;
             ctx.ellipse(centerX, centerY, a, b, 0, 0, Math.PI * 2);
             ctx.stroke();
             
-            // Ellipse mid glow
             ctx.beginPath();
             ctx.strokeStyle = 'rgba(0, 212, 255, 0.4)';
             ctx.lineWidth = 4;
             ctx.ellipse(centerX, centerY, a, b, 0, 0, Math.PI * 2);
             ctx.stroke();
             
-            // Ellipse main
             ctx.beginPath();
             ctx.strokeStyle = 'rgba(0, 212, 255, 0.9)';
             ctx.lineWidth = 2;
             ctx.ellipse(centerX, centerY, a, b, 0, 0, Math.PI * 2);
             ctx.stroke();
             
-            // F1 (source) - Pink/Magenta
+            // F1
             const f1Gradient = ctx.createRadialGradient(f1.x, f1.y, 0, f1.x, f1.y, 25);
             f1Gradient.addColorStop(0, 'rgba(255, 0, 110, 1)');
             f1Gradient.addColorStop(0.3, 'rgba(255, 0, 110, 0.6)');
@@ -597,7 +553,7 @@
             ctx.textAlign = 'center';
             ctx.fillText('F₁', f1.x, f1.y - 35);
             
-            // F2 (receiver) - Green
+            // F2
             const f2Gradient = ctx.createRadialGradient(f2.x, f2.y, 0, f2.x, f2.y, 25);
             f2Gradient.addColorStop(0, 'rgba(0, 255, 136, 1)');
             f2Gradient.addColorStop(0.3, 'rgba(0, 255, 136, 0.6)');
@@ -622,7 +578,6 @@
             ctx.textAlign = 'center';
             ctx.fillText('F₂', f2.x, f2.y - 35);
             
-            // Draw subtle axes
             ctx.beginPath();
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
             ctx.lineWidth = 1;
@@ -635,7 +590,6 @@
             ctx.setLineDash([]);
         }
 
-        // Initialize
         function init() {
             calculateEllipse();
             rays = [];
@@ -644,7 +598,6 @@
             draw();
         }
 
-        // Emit rays from F1
         function emitRays() {
             const rayCount = parseInt(rayCountSlider.value);
             document.getElementById('rayCountValue').textContent = rayCount;
@@ -660,7 +613,6 @@
             }
         }
 
-        // Update status display
         function updateStatus() {
             const activeRays = rays.filter(r => r.active).length;
             const f2Reached = rays.filter(r => r.state === 'toF1' || r.state === 'done').length;
@@ -670,20 +622,16 @@
             document.getElementById('f1Count').textContent = completedCount;
         }
 
-        // Animation loop
         function animate() {
             const { width, height } = getDisplaySize();
             const speedMultiplier = parseFloat(speedSlider.value);
             document.getElementById('speedValue').textContent = speedMultiplier.toFixed(1);
             
-            // Clear with slight fade for trail effect
             ctx.fillStyle = 'rgba(5, 5, 16, 0.25)';
             ctx.fillRect(0, 0, width, height);
             
-            // Draw ellipse
             drawEllipse();
             
-            // Update and draw rays
             for (const ray of rays) {
                 ray.update(speedMultiplier);
                 ray.draw();
@@ -691,12 +639,10 @@
             
             updateStatus();
             
-            // Continue animation if any rays are active
             const hasActiveRays = rays.some(r => r.active);
             if (hasActiveRays) {
                 animationId = requestAnimationFrame(animate);
             } else {
-                // Final redraw to show complete state
                 ctx.fillStyle = '#050510';
                 ctx.fillRect(0, 0, width, height);
                 drawEllipse();
@@ -706,7 +652,6 @@
             }
         }
 
-        // Draw static frame
         function draw() {
             const { width, height } = getDisplaySize();
             ctx.fillStyle = '#050510';
@@ -718,7 +663,6 @@
             }
         }
 
-        // Event listeners
         eccentricitySlider.addEventListener('input', () => {
             if (animationId) {
                 cancelAnimationFrame(animationId);
@@ -751,7 +695,6 @@
             init();
         });
 
-        // Initial render
         init();
     </script>
 </body>
