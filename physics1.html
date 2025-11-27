@@ -173,28 +173,6 @@
             font-style: italic;
         }
 
-        .live-data {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 8px;
-            padding: 12px;
-            font-family: 'Consolas', monospace;
-            font-size: 0.75em;
-            line-height: 1.8;
-        }
-
-        .live-data .label {
-            color: #888;
-        }
-
-        .live-data .value {
-            color: #00d9ff;
-        }
-
-        .live-data .highlight {
-            color: #ffd93d;
-            font-weight: bold;
-        }
-
         .mode-buttons {
             display: flex;
             gap: 8px;
@@ -365,12 +343,12 @@
                 <input type="range" id="raySpeed" min="0.5" max="5" step="0.25" value="2">
             </div>
             <div class="slider-container">
-                <label>최대 반사 횟수: <span id="maxBounceValue">10</span></label>
-                <input type="range" id="maxBounce" min="1" max="20" step="1" value="10">
+                <label>최대 반사 횟수: <span id="maxBounceValue">15</span></label>
+                <input type="range" id="maxBounce" min="1" max="30" step="1" value="15">
             </div>
             <div class="slider-container">
-                <label>확대/축소: <span id="scaleValue">45</span></label>
-                <input type="range" id="scale" min="20" max="80" step="5" value="45">
+                <label>확대/축소: <span id="scaleValue">40</span></label>
+                <input type="range" id="scale" min="20" max="80" step="5" value="40">
             </div>
         </div>
 
@@ -402,8 +380,7 @@
                 <div class="formula" id="formulaDisplay">y = x² / 4f</div>
                 <div id="curveDescription">
                     <strong>포물선의 반사 성질:</strong><br>
-                    축에 평행하게 입사하는 모든 광선은 반사 후 초점 F를 지나갑니다.
-                    여러 번 반사되어도 초점을 반복 통과합니다.
+                    평행 입사광은 초점 F를 통과하며, 포물선에 닿을 때마다 무조건 반사됩니다.
                 </div>
             </div>
         </div>
@@ -418,11 +395,11 @@
                 </div>
                 <div class="legend-item">
                     <div class="legend-color" style="background: #ffd93d;"></div>
-                    <span>입사광 / F1→F2</span>
+                    <span>초점 통과 전</span>
                 </div>
                 <div class="legend-item">
                     <div class="legend-color" style="background: #00ff88;"></div>
-                    <span>반사광 / F2→F1</span>
+                    <span>초점 통과 후</span>
                 </div>
                 <div class="legend-item">
                     <div class="legend-color" style="background: #00d9ff;"></div>
@@ -435,9 +412,11 @@
         <div class="control-group">
             <h3>이론적 배경</h3>
             <p class="theory-text" id="theoryText">
-                <strong>V. Ivchenko의 해석적 증명:</strong><br><br>
-                포물선 y = x²/4f는 평행광선이 한 점(초점)으로 모이는 유일한 곡선입니다.
-                반사된 광선도 다시 포물선에 닿으면 반사되어 초점을 통과합니다.
+                <strong>다중 반사 시뮬레이션:</strong><br><br>
+                포물선 거울에서 광선은 닿을 때마다 반사됩니다. 
+                평행 입사광은 첫 반사 후 초점을 통과하고, 
+                이후에도 포물선에 닿으면 계속 반사되어 
+                초점을 반복적으로 통과합니다.
             </p>
         </div>
     </div>
@@ -448,23 +427,20 @@
 
     <script>
         // ============================================
-        // 광학 반사 시뮬레이터
-        // 다중 반사 지원 버전
+        // 광학 반사 시뮬레이터 - 무한 반사 버전
         // ============================================
 
         const canvas = document.getElementById('mainCanvas');
         const ctx = canvas.getContext('2d');
 
-        // ============================================
         // 상태 관리
-        // ============================================
         const state = {
             f: 2.0,
-            scale: 45,
+            scale: 40,
             mode: 'parabola',
             raySpeed: 2.0,
             rayCount: 12,
-            maxBounce: 10,
+            maxBounce: 15,
             
             showGrid: true,
             showTrail: true,
@@ -473,16 +449,14 @@
             
             isRunning: false,
             
-            // 타원/쌍곡선 파라미터
+            // 타원 파라미터
             a: 5,
             b: 3,
-            eccentricity: 0.6,
             
             centerX: 0,
             centerY: 0
         };
 
-        // 광선 배열 및 통계
         let rays = [];
         let totalReflections = 0;
         let focusPassCount = 0;
@@ -490,7 +464,7 @@
         let animationId = null;
 
         // ============================================
-        // 광선 클래스 (다중 반사 지원)
+        // 광선 클래스 - 무한 반사 지원
         // ============================================
         class Ray {
             constructor(x, y, dx, dy, index, total) {
@@ -498,32 +472,44 @@
                 this.y = y;
                 this.dx = dx;
                 this.dy = dy;
-                this.speed = 0.08;
+                this.speed = 0.06;
                 this.bounces = 0;
                 this.active = true;
                 this.completed = false;
                 
-                // 세그먼트 기반 경로 저장 (색상 정보 포함)
+                // 세그먼트 기반 경로 저장
                 this.segments = [];
                 this.currentSegment = [{ x, y }];
                 
-                // 타원 모드용 상태
-                this.state = 'initial'; // initial, toF2, toF1, done
-                this.passedF2 = false;
-                this.passedF1Return = false;
-                
-                // 색상 설정
-                const hue = (index / total) * 40 + 40;
-                this.colorYellow = `hsla(${hue}, 100%, 60%, 0.9)`;
-                this.colorGreen = `hsla(${140 + (index / total) * 30}, 100%, 50%, 0.9)`;
-                this.colorCyan = `hsla(${180 + (index / total) * 30}, 100%, 60%, 0.9)`;
+                // 색상 상태
+                this.colorIndex = 0; // 초점 통과 횟수
                 this.currentColor = 'yellow';
+                
+                // 색상 설정 (그라데이션)
+                const hue = (index / total) * 40 + 35;
+                this.colors = {
+                    yellow: `hsla(${hue}, 100%, 55%, 0.9)`,
+                    green: `hsla(${140 + (index / total) * 20}, 100%, 50%, 0.9)`,
+                    cyan: `hsla(${180 + (index / total) * 20}, 100%, 55%, 0.9)`,
+                    magenta: `hsla(${300 + (index / total) * 20}, 100%, 60%, 0.9)`
+                };
+                
+                // 타원용 상태
+                this.ellipseState = 'toF2';
+                
+                // 마지막 반사 위치 (중복 방지)
+                this.lastReflectX = null;
+                this.lastReflectY = null;
             }
 
             update() {
                 if (!this.active) return;
 
                 const step = this.speed * state.raySpeed;
+                
+                // 이전 위치 저장
+                const prevX = this.x;
+                const prevY = this.y;
                 
                 // 곡선과의 교차점 찾기
                 const intersection = this.findIntersection();
@@ -534,11 +520,9 @@
                         intersection.y - this.y
                     );
 
-                    if (distToIntersect <= step) {
-                        // 벽에 도달 - 반사
-                        this.x = intersection.x;
-                        this.y = intersection.y;
-                        this.currentSegment.push({ x: this.x, y: this.y });
+                    if (distToIntersect <= step + 0.01) {
+                        // 교차점에 도달 - 반사 수행
+                        this.currentSegment.push({ x: intersection.x, y: intersection.y });
                         
                         // 현재 세그먼트 저장
                         this.segments.push({
@@ -547,27 +531,16 @@
                         });
                         
                         // 반사 수행
-                        this.reflect(intersection.x, intersection.y, intersection.nx, intersection.ny);
-                        this.bounces++;
-                        totalReflections++;
+                        this.performReflection(intersection);
                         
                         // 새 세그먼트 시작
                         this.currentSegment = [{ x: this.x, y: this.y }];
-                        
-                        // 최대 반사 횟수 체크
-                        if (this.bounces >= state.maxBounce) {
-                            this.active = false;
-                            this.completed = true;
-                            completedCount++;
-                        }
                         
                         return;
                     }
                 }
 
                 // 일반 이동
-                const prevX = this.x;
-                const prevY = this.y;
                 this.x += this.dx * step;
                 this.y += this.dy * step;
 
@@ -575,8 +548,44 @@
                 this.checkFocusPass(prevX, prevY);
 
                 // 화면 밖 체크
-                const margin = 12;
-                if (Math.abs(this.x) > margin || Math.abs(this.y) > margin) {
+                this.checkBounds();
+            }
+
+            performReflection(intersection) {
+                const { x: px, y: py, nx, ny } = intersection;
+                
+                // 법선 방향 조정 (입사 방향과 반대쪽을 향하도록)
+                let normalX = nx;
+                let normalY = ny;
+                const dotIn = this.dx * normalX + this.dy * normalY;
+                if (dotIn > 0) {
+                    normalX = -normalX;
+                    normalY = -normalY;
+                }
+                
+                // 반사 공식: r = d - 2(d·n)n
+                const dot = this.dx * normalX + this.dy * normalY;
+                this.dx = this.dx - 2 * dot * normalX;
+                this.dy = this.dy - 2 * dot * normalY;
+                
+                // 방향 벡터 정규화
+                const len = Math.hypot(this.dx, this.dy);
+                this.dx /= len;
+                this.dy /= len;
+                
+                // 반사점에서 약간 떨어진 위치로 이동 (다음 충돌 감지를 위해)
+                this.x = px + this.dx * 0.15;
+                this.y = py + this.dy * 0.15;
+                
+                // 마지막 반사 위치 기록
+                this.lastReflectX = px;
+                this.lastReflectY = py;
+                
+                this.bounces++;
+                totalReflections++;
+                
+                // 최대 반사 횟수 체크
+                if (this.bounces >= state.maxBounce) {
                     this.currentSegment.push({ x: this.x, y: this.y });
                     this.segments.push({
                         points: [...this.currentSegment],
@@ -590,89 +599,76 @@
 
             checkFocusPass(prevX, prevY) {
                 if (state.mode === 'parabola') {
-                    // 포물선: 초점 (0, f) 근처 통과 체크
-                    const focusY = state.f;
-                    const distToFocus = Math.hypot(this.x - 0, this.y - focusY);
+                    // 포물선: 초점 (0, f)
+                    const fx = 0, fy = state.f;
+                    const dist = Math.hypot(this.x - fx, this.y - fy);
                     
-                    if (distToFocus < 0.3) {
-                        if (this.currentColor === 'yellow') {
-                            this.currentSegment.push({ x: 0, y: focusY });
-                            this.segments.push({
-                                points: [...this.currentSegment],
-                                color: 'yellow'
-                            });
-                            this.currentSegment = [{ x: 0, y: focusY }];
-                            this.currentColor = 'green';
-                            focusPassCount++;
-                        } else if (this.currentColor === 'green') {
-                            this.currentSegment.push({ x: 0, y: focusY });
-                            this.segments.push({
-                                points: [...this.currentSegment],
-                                color: 'green'
-                            });
-                            this.currentSegment = [{ x: 0, y: focusY }];
-                            this.currentColor = 'yellow';
-                            focusPassCount++;
-                        }
+                    if (dist < 0.4) {
+                        // 색상 전환
+                        this.saveSegmentAndSwitch(fx, fy);
+                        focusPassCount++;
                     }
                 } else if (state.mode === 'ellipse') {
-                    // 타원: F1, F2 체크
                     const c = Math.sqrt(state.a * state.a - state.b * state.b);
                     const f1 = { x: -c, y: 0 };
                     const f2 = { x: c, y: 0 };
                     
-                    if (this.state === 'initial' || this.state === 'toF2') {
-                        const distToF2 = Math.hypot(this.x - f2.x, this.y - f2.y);
-                        if (distToF2 < 0.4) {
-                            this.currentSegment.push({ x: f2.x, y: f2.y });
-                            this.segments.push({
-                                points: [...this.currentSegment],
-                                color: 'yellow'
-                            });
-                            this.currentSegment = [{ x: f2.x, y: f2.y }];
-                            this.currentColor = 'green';
-                            this.state = 'toF1';
-                            this.passedF2 = true;
+                    if (this.ellipseState === 'toF2') {
+                        const dist = Math.hypot(this.x - f2.x, this.y - f2.y);
+                        if (dist < 0.5) {
+                            this.saveSegmentAndSwitch(f2.x, f2.y);
+                            this.ellipseState = 'toF1';
                             focusPassCount++;
                         }
-                    }
-                    
-                    if (this.state === 'toF1') {
-                        const distToF1 = Math.hypot(this.x - f1.x, this.y - f1.y);
-                        if (distToF1 < 0.4) {
-                            this.currentSegment.push({ x: f1.x, y: f1.y });
-                            this.segments.push({
-                                points: [...this.currentSegment],
-                                color: 'green'
-                            });
-                            this.currentSegment = [{ x: f1.x, y: f1.y }];
-                            this.currentColor = 'yellow';
-                            this.state = 'toF2';
+                    } else if (this.ellipseState === 'toF1') {
+                        const dist = Math.hypot(this.x - f1.x, this.y - f1.y);
+                        if (dist < 0.5) {
+                            this.saveSegmentAndSwitch(f1.x, f1.y);
+                            this.ellipseState = 'toF2';
                             focusPassCount++;
-                            
-                            // 완료 체크
-                            if (this.passedF2 && !this.passedF1Return) {
-                                this.passedF1Return = true;
-                            }
                         }
                     }
                 } else if (state.mode === 'hyperbola') {
-                    // 쌍곡선: 초점 체크
                     const a = state.a / 2;
                     const c = Math.sqrt(a * a + state.b * state.b);
                     const f2 = { x: c, y: 0 };
                     
-                    const distToF2 = Math.hypot(this.x - f2.x, this.y - f2.y);
-                    if (distToF2 < 0.4 && this.currentColor === 'yellow') {
-                        this.currentSegment.push({ x: f2.x, y: f2.y });
-                        this.segments.push({
-                            points: [...this.currentSegment],
-                            color: 'yellow'
-                        });
-                        this.currentSegment = [{ x: f2.x, y: f2.y }];
-                        this.currentColor = 'green';
+                    const dist = Math.hypot(this.x - f2.x, this.y - f2.y);
+                    if (dist < 0.5 && this.currentColor === 'yellow') {
+                        this.saveSegmentAndSwitch(f2.x, f2.y);
                         focusPassCount++;
                     }
+                }
+            }
+
+            saveSegmentAndSwitch(fx, fy) {
+                // 현재 세그먼트에 초점 위치 추가하고 저장
+                this.currentSegment.push({ x: fx, y: fy });
+                this.segments.push({
+                    points: [...this.currentSegment],
+                    color: this.currentColor
+                });
+                
+                // 색상 전환
+                this.colorIndex++;
+                const colorKeys = ['yellow', 'green', 'cyan', 'magenta'];
+                this.currentColor = colorKeys[this.colorIndex % colorKeys.length];
+                
+                // 새 세그먼트 시작
+                this.currentSegment = [{ x: fx, y: fy }];
+            }
+
+            checkBounds() {
+                const margin = 15;
+                if (Math.abs(this.x) > margin || Math.abs(this.y) > margin) {
+                    this.currentSegment.push({ x: this.x, y: this.y });
+                    this.segments.push({
+                        points: [...this.currentSegment],
+                        color: this.currentColor
+                    });
+                    this.active = false;
+                    this.completed = true;
+                    completedCount++;
                 }
             }
 
@@ -688,50 +684,41 @@
 
             findParabolaIntersection() {
                 // 포물선: y = x² / 4f
-                // 광선: P(t) = (x + dx*t, y + dy*t)
-                // 대입: y + dy*t = (x + dx*t)² / 4f
+                // 광선: (x + dx*t, y + dy*t)
+                // 대입하여 t에 대한 2차 방정식 유도
                 
                 const f4 = 4 * state.f;
-                const A = (this.dx * this.dx) / f4;
-                const B = (2 * this.x * this.dx) / f4 - this.dy;
-                const C = (this.x * this.x) / f4 - this.y;
                 
-                if (Math.abs(A) < 1e-10) {
-                    // 선형 방정식
-                    if (Math.abs(B) < 1e-10) return null;
-                    const t = -C / B;
-                    if (t < 0.01) return null;
-                    
-                    const ix = this.x + this.dx * t;
-                    const iy = this.y + this.dy * t;
-                    
-                    // 법선 계산
-                    const slope = ix / (2 * state.f);
-                    const nLen = Math.sqrt(slope * slope + 1);
-                    
-                    return {
-                        x: ix, y: iy,
-                        nx: -slope / nLen,
-                        ny: 1 / nLen
-                    };
-                }
+                // (x + dx*t)² / 4f = y + dy*t
+                // dx²*t² + 2*x*dx*t + x² = 4f*y + 4f*dy*t
+                // dx²*t² + (2*x*dx - 4f*dy)*t + (x² - 4f*y) = 0
                 
-                const disc = B * B - 4 * A * C;
-                if (disc < 0) return null;
-                
-                const sqrtDisc = Math.sqrt(disc);
-                const t1 = (-B + sqrtDisc) / (2 * A);
-                const t2 = (-B - sqrtDisc) / (2 * A);
+                const A = this.dx * this.dx;
+                const B = 2 * this.x * this.dx - f4 * this.dy;
+                const C = this.x * this.x - f4 * this.y;
                 
                 let t = null;
-                const eps = 0.01;
+                const minT = 0.1; // 최소 거리 (너무 가까운 교차점 무시)
                 
-                if (t1 > eps && t2 > eps) {
-                    t = Math.min(t1, t2);
-                } else if (t1 > eps) {
-                    t = t1;
-                } else if (t2 > eps) {
-                    t = t2;
+                if (Math.abs(A) < 1e-10) {
+                    // 선형: B*t + C = 0
+                    if (Math.abs(B) > 1e-10) {
+                        const t0 = -C / B;
+                        if (t0 > minT) t = t0;
+                    }
+                } else {
+                    const disc = B * B - 4 * A * C;
+                    if (disc >= 0) {
+                        const sqrtDisc = Math.sqrt(disc);
+                        const t1 = (-B + sqrtDisc) / (2 * A);
+                        const t2 = (-B - sqrtDisc) / (2 * A);
+                        
+                        // 양수이면서 최소 거리 이상인 t 중 가장 작은 것 선택
+                        const validTs = [t1, t2].filter(tt => tt > minT);
+                        if (validTs.length > 0) {
+                            t = Math.min(...validTs);
+                        }
+                    }
                 }
                 
                 if (t === null) return null;
@@ -739,16 +726,24 @@
                 const ix = this.x + this.dx * t;
                 const iy = this.y + this.dy * t;
                 
-                // 화면 범위 체크
-                if (Math.abs(ix) > 10 || iy > 15 || iy < -1) return null;
+                // 범위 체크 (포물선이 화면 안에 있는 부분만)
+                if (Math.abs(ix) > 12 || iy < -0.5 || iy > 20) return null;
                 
-                // 법선 계산: 기울기 = x/2f, 법선 = (-slope, 1) 정규화
+                // 마지막 반사점과 너무 가까우면 무시
+                if (this.lastReflectX !== null) {
+                    const distFromLast = Math.hypot(ix - this.lastReflectX, iy - this.lastReflectY);
+                    if (distFromLast < 0.3) return null;
+                }
+                
+                // 법선 계산: y = x²/4f, dy/dx = x/2f
+                // 법선 방향: (-dy/dx, 1) = (-x/2f, 1)
                 const slope = ix / (2 * state.f);
-                const nLen = Math.sqrt(slope * slope + 1);
+                const nLen = Math.hypot(slope, 1);
                 
                 return {
-                    x: ix, y: iy,
-                    nx: -slope / nLen,
+                    x: ix,
+                    y: iy,
+                    nx: -slope / nLen,  // 위쪽을 향하는 법선
                     ny: 1 / nLen
                 };
             }
@@ -768,37 +763,38 @@
                 const t1 = (-B + sqrtDisc) / (2 * A);
                 const t2 = (-B - sqrtDisc) / (2 * A);
                 
-                let t = null;
-                const eps = 0.01;
+                const minT = 0.1;
+                const validTs = [t1, t2].filter(tt => tt > minT);
+                if (validTs.length === 0) return null;
                 
-                if (t1 > eps && t2 > eps) {
-                    t = Math.min(t1, t2);
-                } else if (t1 > eps) {
-                    t = t1;
-                } else if (t2 > eps) {
-                    t = t2;
-                }
-                
-                if (t === null) return null;
-                
+                const t = Math.min(...validTs);
                 const ix = this.x + this.dx * t;
                 const iy = this.y + this.dy * t;
                 
-                // 법선 계산
+                // 마지막 반사점과 너무 가까우면 무시
+                if (this.lastReflectX !== null) {
+                    const distFromLast = Math.hypot(ix - this.lastReflectX, iy - this.lastReflectY);
+                    if (distFromLast < 0.3) return null;
+                }
+                
+                // 법선: 타원 위의 점 (x,y)에서 바깥쪽 방향
                 let nx = ix / (a * a);
                 let ny = iy / (b * b);
-                const nLen = Math.sqrt(nx * nx + ny * ny);
-                nx /= nLen;
-                ny /= nLen;
+                const nLen = Math.hypot(nx, ny);
                 
-                return { x: ix, y: iy, nx, ny };
+                return {
+                    x: ix,
+                    y: iy,
+                    nx: nx / nLen,
+                    ny: ny / nLen
+                };
             }
 
             findHyperbolaIntersection() {
                 const a = state.a / 2;
                 const b = state.b;
                 
-                // 쌍곡선: x²/a² - y²/b² = 1 (오른쪽 가지만)
+                // 쌍곡선: x²/a² - y²/b² = 1
                 const A = (this.dx * this.dx) / (a * a) - (this.dy * this.dy) / (b * b);
                 const B = 2 * ((this.x * this.dx) / (a * a) - (this.y * this.dy) / (b * b));
                 const C = (this.x * this.x) / (a * a) - (this.y * this.y) / (b * b) - 1;
@@ -812,26 +808,26 @@
                 const t1 = (-B + sqrtDisc) / (2 * A);
                 const t2 = (-B - sqrtDisc) / (2 * A);
                 
-                let t = null;
-                const eps = 0.01;
+                const minT = 0.1;
                 
-                // 가장 가까운 양수 t 찾기
-                const candidates = [t1, t2].filter(tt => tt > eps);
-                if (candidates.length === 0) return null;
-                
-                for (const tt of candidates.sort((x, y) => x - y)) {
-                    const ix = this.x + this.dx * tt;
-                    const iy = this.y + this.dy * tt;
+                for (const t of [t1, t2].filter(tt => tt > minT).sort((x, y) => x - y)) {
+                    const ix = this.x + this.dx * t;
+                    const iy = this.y + this.dy * t;
                     
-                    // 오른쪽 가지인지 확인
+                    // 오른쪽 가지만 (x >= a)
                     if (ix >= a - 0.1) {
-                        // 법선 계산
+                        if (this.lastReflectX !== null) {
+                            const distFromLast = Math.hypot(ix - this.lastReflectX, iy - this.lastReflectY);
+                            if (distFromLast < 0.3) continue;
+                        }
+                        
                         let nx = ix / (a * a);
                         let ny = -iy / (b * b);
-                        const nLen = Math.sqrt(nx * nx + ny * ny);
+                        const nLen = Math.hypot(nx, ny);
                         
                         return {
-                            x: ix, y: iy,
+                            x: ix,
+                            y: iy,
                             nx: nx / nLen,
                             ny: ny / nLen
                         };
@@ -841,36 +837,17 @@
                 return null;
             }
 
-            reflect(px, py, nx, ny) {
-                // 법선이 입사 방향과 같은 쪽을 향하도록 조정
-                const dot1 = this.dx * nx + this.dy * ny;
-                if (dot1 > 0) {
-                    nx = -nx;
-                    ny = -ny;
-                }
-                
-                // 반사 공식: r = d - 2(d·n)n
-                const dot = this.dx * nx + this.dy * ny;
-                this.dx = this.dx - 2 * dot * nx;
-                this.dy = this.dy - 2 * dot * ny;
-                
-                // 정규화
-                const len = Math.sqrt(this.dx * this.dx + this.dy * this.dy);
-                this.dx /= len;
-                this.dy /= len;
-                
-                // 반사 후 약간 이동 (벽에서 떨어지기)
-                this.x = px + this.dx * 0.02;
-                this.y = py + this.dy * 0.02;
-            }
-
             draw() {
+                const getColor = (colorName) => {
+                    return this.colors[colorName] || this.colors.yellow;
+                };
+
                 // 저장된 모든 세그먼트 그리기
                 for (const segment of this.segments) {
                     if (segment.points.length < 2) continue;
                     
                     ctx.beginPath();
-                    ctx.strokeStyle = segment.color === 'yellow' ? this.colorYellow : this.colorGreen;
+                    ctx.strokeStyle = getColor(segment.color);
                     ctx.lineWidth = 2.5;
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
@@ -885,10 +862,10 @@
                     ctx.stroke();
                 }
 
-                // 현재 진행 중인 세그먼트 그리기
+                // 현재 진행 중인 세그먼트
                 if (this.currentSegment.length > 0 && state.showTrail) {
                     ctx.beginPath();
-                    ctx.strokeStyle = this.currentColor === 'yellow' ? this.colorYellow : this.colorGreen;
+                    ctx.strokeStyle = getColor(this.currentColor);
                     ctx.lineWidth = 2.5;
                     ctx.lineCap = 'round';
                     
@@ -910,35 +887,36 @@
                 // 반사 지점 표시
                 if (state.showReflectPoints) {
                     for (const segment of this.segments) {
-                        if (segment.points.length > 1) {
-                            const lastPoint = segment.points[segment.points.length - 1];
-                            const pos = toCanvas(lastPoint.x, lastPoint.y);
-                            
-                            ctx.beginPath();
-                            ctx.fillStyle = 'rgba(0, 212, 255, 0.8)';
-                            ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2);
-                            ctx.fill();
-                        }
+                        const lastPoint = segment.points[segment.points.length - 1];
+                        const pos = toCanvas(lastPoint.x, lastPoint.y);
+                        
+                        ctx.beginPath();
+                        ctx.fillStyle = 'rgba(0, 212, 255, 0.8)';
+                        ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2);
+                        ctx.fill();
                     }
                 }
 
-                // 광선 머리 그리기
+                // 광선 머리
                 if (this.active) {
                     const pos = toCanvas(this.x, this.y);
-                    const color = this.currentColor === 'yellow' ? '#ffcc00' : '#00ff88';
+                    const colorMap = {
+                        yellow: '#ffcc00',
+                        green: '#00ff88',
+                        cyan: '#00d9ff',
+                        magenta: '#ff00ff'
+                    };
+                    const headColor = colorMap[this.currentColor] || '#ffcc00';
                     
                     if (state.showGlow) {
-                        const gradient = ctx.createRadialGradient(
-                            pos.x, pos.y, 0,
-                            pos.x, pos.y, 15
-                        );
-                        gradient.addColorStop(0, color);
-                        gradient.addColorStop(0.4, color);
+                        const gradient = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, 18);
+                        gradient.addColorStop(0, headColor);
+                        gradient.addColorStop(0.5, headColor + '88');
                         gradient.addColorStop(1, 'transparent');
                         
                         ctx.beginPath();
                         ctx.fillStyle = gradient;
-                        ctx.arc(pos.x, pos.y, 15, 0, Math.PI * 2);
+                        ctx.arc(pos.x, pos.y, 18, 0, Math.PI * 2);
                         ctx.fill();
                     }
                     
@@ -951,7 +929,7 @@
         }
 
         // ============================================
-        // 캔버스 크기 조정
+        // 유틸리티 함수
         // ============================================
         function resizeCanvas() {
             const container = canvas.parentElement;
@@ -962,9 +940,6 @@
             state.centerY = canvas.height / 2;
         }
 
-        // ============================================
-        // 좌표 변환
-        // ============================================
         function toCanvas(x, y) {
             return {
                 x: state.centerX + x * state.scale,
@@ -980,7 +955,7 @@
         }
 
         // ============================================
-        // 그리드 그리기
+        // 그리기 함수들
         // ============================================
         function drawGrid() {
             if (!state.showGrid) return;
@@ -988,7 +963,6 @@
             const w = canvas.width;
             const h = canvas.height;
 
-            // 보조 그리드
             ctx.strokeStyle = 'rgba(100, 100, 150, 0.15)';
             ctx.lineWidth = 0.5;
             const gridStep = state.scale / 2;
@@ -1005,7 +979,6 @@
                 ctx.stroke();
             }
 
-            // 주 그리드
             ctx.strokeStyle = 'rgba(100, 100, 150, 0.3)';
             ctx.lineWidth = 1;
             for (let x = state.centerX % state.scale; x < w; x += state.scale) {
@@ -1021,7 +994,6 @@
                 ctx.stroke();
             }
 
-            // 좌표축
             ctx.strokeStyle = '#555';
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -1034,38 +1006,40 @@
             ctx.stroke();
         }
 
-        // ============================================
-        // 포물선 그리기
-        // ============================================
         function drawParabola() {
+            // 포물선 그림자/글로우
+            if (state.showGlow) {
+                ctx.strokeStyle = 'rgba(255, 107, 107, 0.3)';
+                ctx.lineWidth = 12;
+                ctx.beginPath();
+                const range = canvas.width / state.scale;
+                let first = true;
+                for (let x = -range; x <= range; x += 0.1) {
+                    const y = (x * x) / (4 * state.f);
+                    const pos = toCanvas(x, y);
+                    if (pos.y < -100 || pos.y > canvas.height + 100) continue;
+                    if (first) { ctx.moveTo(pos.x, pos.y); first = false; }
+                    else ctx.lineTo(pos.x, pos.y);
+                }
+                ctx.stroke();
+            }
+
+            // 메인 포물선
             ctx.strokeStyle = '#ff6b6b';
             ctx.lineWidth = 3;
-            
-            if (state.showGlow) {
-                ctx.shadowColor = '#ff6b6b';
-                ctx.shadowBlur = 15;
-            }
-            
             ctx.beginPath();
             const range = canvas.width / state.scale;
             let first = true;
-
             for (let x = -range; x <= range; x += 0.05) {
                 const y = (x * x) / (4 * state.f);
                 const pos = toCanvas(x, y);
-                if (pos.y < -50 || pos.y > canvas.height + 50) continue;
-                
-                if (first) {
-                    ctx.moveTo(pos.x, pos.y);
-                    first = false;
-                } else {
-                    ctx.lineTo(pos.x, pos.y);
-                }
+                if (pos.y < -100 || pos.y > canvas.height + 100) continue;
+                if (first) { ctx.moveTo(pos.x, pos.y); first = false; }
+                else ctx.lineTo(pos.x, pos.y);
             }
             ctx.stroke();
-            ctx.shadowBlur = 0;
 
-            // 초점 F
+            // 초점
             drawFocus(0, state.f, 'F', '#ffd93d');
 
             // 준선
@@ -1080,57 +1054,29 @@
             ctx.setLineDash([]);
         }
 
-        // ============================================
-        // 타원 그리기
-        // ============================================
         function drawEllipse() {
             const { a, b } = state;
             const c = Math.sqrt(a * a - b * b);
 
-            // 타원 테두리 (다층 효과)
-            ctx.strokeStyle = 'rgba(255, 107, 107, 0.2)';
-            ctx.lineWidth = 12;
-            ctx.beginPath();
-            ctx.ellipse(state.centerX, state.centerY, a * state.scale, b * state.scale, 0, 0, Math.PI * 2);
-            ctx.stroke();
-
-            ctx.strokeStyle = 'rgba(255, 107, 107, 0.5)';
-            ctx.lineWidth = 4;
-            ctx.beginPath();
-            ctx.ellipse(state.centerX, state.centerY, a * state.scale, b * state.scale, 0, 0, Math.PI * 2);
-            ctx.stroke();
+            // 글로우
+            if (state.showGlow) {
+                ctx.strokeStyle = 'rgba(255, 107, 107, 0.2)';
+                ctx.lineWidth = 15;
+                ctx.beginPath();
+                ctx.ellipse(state.centerX, state.centerY, a * state.scale, b * state.scale, 0, 0, Math.PI * 2);
+                ctx.stroke();
+            }
 
             ctx.strokeStyle = '#ff6b6b';
-            ctx.lineWidth = 2;
-            if (state.showGlow) {
-                ctx.shadowColor = '#ff6b6b';
-                ctx.shadowBlur = 10;
-            }
+            ctx.lineWidth = 3;
             ctx.beginPath();
             ctx.ellipse(state.centerX, state.centerY, a * state.scale, b * state.scale, 0, 0, Math.PI * 2);
             ctx.stroke();
-            ctx.shadowBlur = 0;
 
-            // 두 초점
             drawFocus(-c, 0, 'F₁', '#ff006e');
             drawFocus(c, 0, 'F₂', '#00ff88');
-
-            // 장축/단축 표시
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-            ctx.lineWidth = 1;
-            ctx.setLineDash([5, 5]);
-            ctx.beginPath();
-            ctx.moveTo(state.centerX - a * state.scale - 20, state.centerY);
-            ctx.lineTo(state.centerX + a * state.scale + 20, state.centerY);
-            ctx.moveTo(state.centerX, state.centerY - b * state.scale - 20);
-            ctx.lineTo(state.centerX, state.centerY + b * state.scale + 20);
-            ctx.stroke();
-            ctx.setLineDash([]);
         }
 
-        // ============================================
-        // 쌍곡선 그리기
-        // ============================================
         function drawHyperbola() {
             const a = state.a / 2;
             const b = state.b;
@@ -1138,15 +1084,11 @@
 
             ctx.strokeStyle = '#ff6b6b';
             ctx.lineWidth = 3;
-            if (state.showGlow) {
-                ctx.shadowColor = '#ff6b6b';
-                ctx.shadowBlur = 15;
-            }
 
             // 오른쪽 가지
             ctx.beginPath();
             let first = true;
-            for (let y = -8; y <= 8; y += 0.1) {
+            for (let y = -10; y <= 10; y += 0.1) {
                 const x = a * Math.sqrt(1 + (y * y) / (b * b));
                 const pos = toCanvas(x, y);
                 if (pos.x > canvas.width + 50) continue;
@@ -1155,11 +1097,11 @@
             }
             ctx.stroke();
 
-            // 왼쪽 가지 (표시만)
+            // 왼쪽 가지 (반투명)
             ctx.strokeStyle = 'rgba(255, 107, 107, 0.3)';
             ctx.beginPath();
             first = true;
-            for (let y = -8; y <= 8; y += 0.1) {
+            for (let y = -10; y <= 10; y += 0.1) {
                 const x = -a * Math.sqrt(1 + (y * y) / (b * b));
                 const pos = toCanvas(x, y);
                 if (pos.x < -50) continue;
@@ -1167,62 +1109,40 @@
                 else ctx.lineTo(pos.x, pos.y);
             }
             ctx.stroke();
-            ctx.shadowBlur = 0;
 
-            // 두 초점
             drawFocus(-c, 0, 'F₁', '#ff006e');
             drawFocus(c, 0, 'F₂', '#00ff88');
-
-            // 점근선
-            ctx.strokeStyle = 'rgba(255, 217, 61, 0.15)';
-            ctx.lineWidth = 1;
-            ctx.setLineDash([5, 5]);
-            const slope = b / a;
-            ctx.beginPath();
-            ctx.moveTo(0, state.centerY + 400 * slope);
-            ctx.lineTo(canvas.width, state.centerY - 400 * slope);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(0, state.centerY - 400 * slope);
-            ctx.lineTo(canvas.width, state.centerY + 400 * slope);
-            ctx.stroke();
-            ctx.setLineDash([]);
         }
 
-        // ============================================
-        // 초점 그리기 헬퍼
-        // ============================================
         function drawFocus(x, y, label, color) {
             const pos = toCanvas(x, y);
             
             // 글로우
-            const gradient = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, 25);
+            const gradient = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, 30);
             gradient.addColorStop(0, color);
-            gradient.addColorStop(0.3, color + '99');
-            gradient.addColorStop(0.6, color + '33');
+            gradient.addColorStop(0.3, color + 'aa');
+            gradient.addColorStop(0.6, color + '44');
             gradient.addColorStop(1, 'transparent');
             
             ctx.beginPath();
             ctx.fillStyle = gradient;
-            ctx.arc(pos.x, pos.y, 25, 0, Math.PI * 2);
+            ctx.arc(pos.x, pos.y, 30, 0, Math.PI * 2);
             ctx.fill();
             
-            // 중심점
             ctx.beginPath();
             ctx.fillStyle = color;
-            ctx.arc(pos.x, pos.y, 8, 0, Math.PI * 2);
+            ctx.arc(pos.x, pos.y, 10, 0, Math.PI * 2);
             ctx.fill();
             
             ctx.beginPath();
             ctx.fillStyle = '#fff';
-            ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2);
+            ctx.arc(pos.x, pos.y, 5, 0, Math.PI * 2);
             ctx.fill();
             
-            // 라벨
             ctx.fillStyle = color;
             ctx.font = 'bold 16px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText(label, pos.x, pos.y - 35);
+            ctx.fillText(label, pos.x, pos.y - 40);
         }
 
         // ============================================
@@ -1237,50 +1157,36 @@
             const count = state.rayCount;
 
             if (state.mode === 'parabola') {
-                // 포물선: 위에서 평행하게 내려오는 광선
-                const spread = 6;
+                const spread = 7;
                 for (let i = 0; i < count; i++) {
-                    const x = -spread / 2 + (spread * i) / (count - 1 || 1);
-                    const y = 8;
+                    const x = count === 1 ? 0 : -spread / 2 + (spread * i) / (count - 1);
+                    const y = 10;
                     rays.push(new Ray(x, y, 0, -1, i, count));
                 }
             } else if (state.mode === 'ellipse') {
-                // 타원: F1에서 방사형으로 발사
                 const c = Math.sqrt(state.a * state.a - state.b * state.b);
                 for (let i = 0; i < count; i++) {
                     const angle = (Math.PI * 2 * i) / count;
-                    const dx = Math.cos(angle);
-                    const dy = Math.sin(angle);
-                    const ray = new Ray(-c, 0, dx, dy, i, count);
-                    ray.state = 'toF2';
-                    rays.push(ray);
+                    rays.push(new Ray(-c, 0, Math.cos(angle), Math.sin(angle), i, count));
                 }
             } else if (state.mode === 'hyperbola') {
-                // 쌍곡선: 왼쪽에서 F2를 향해 발사
                 const a = state.a / 2;
                 const c = Math.sqrt(a * a + state.b * state.b);
                 const f2 = { x: c, y: 0 };
                 
                 for (let i = 0; i < count; i++) {
-                    const startY = -4 + (8 * i) / (count - 1 || 1);
-                    const startX = -8;
-                    
-                    // F2를 향하는 방향
+                    const startY = count === 1 ? 0 : -5 + (10 * i) / (count - 1);
+                    const startX = -10;
                     const dx = f2.x - startX;
                     const dy = f2.y - startY;
-                    const len = Math.sqrt(dx * dx + dy * dy);
-                    
+                    const len = Math.hypot(dx, dy);
                     rays.push(new Ray(startX, startY, dx / len, dy / len, i, count));
                 }
             }
         }
 
-        // ============================================
-        // 통계 업데이트
-        // ============================================
         function updateStats() {
-            const activeRays = rays.filter(r => r.active).length;
-            document.getElementById('activeRays').textContent = activeRays;
+            document.getElementById('activeRays').textContent = rays.filter(r => r.active).length;
             document.getElementById('reflectedCount').textContent = totalReflections;
             document.getElementById('focusPassCount').textContent = focusPassCount;
             document.getElementById('completedCount').textContent = completedCount;
@@ -1290,21 +1196,17 @@
         // 애니메이션 루프
         // ============================================
         function animate() {
-            // 클리어
             ctx.fillStyle = '#050510';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 그리드
             drawGrid();
 
-            // 곡선
             switch (state.mode) {
                 case 'parabola': drawParabola(); break;
                 case 'ellipse': drawEllipse(); break;
                 case 'hyperbola': drawHyperbola(); break;
             }
 
-            // 광선 업데이트 및 그리기
             for (const ray of rays) {
                 if (state.isRunning) {
                     ray.update();
@@ -1312,12 +1214,9 @@
                 ray.draw();
             }
 
-            // 통계 업데이트
             updateStats();
 
-            // 모든 광선이 완료되었는지 체크
-            const hasActiveRays = rays.some(r => r.active);
-            if (!hasActiveRays && state.isRunning) {
+            if (!rays.some(r => r.active) && state.isRunning) {
                 state.isRunning = false;
                 document.getElementById('btnStart').textContent = '▶ 발사';
             }
@@ -1326,22 +1225,18 @@
         }
 
         // ============================================
-        // 시뮬레이션 제어
+        // 컨트롤
         // ============================================
-        function startSimulation() {
-            if (rays.length === 0 || rays.every(r => !r.active)) {
-                emitRays();
-            }
-            state.isRunning = true;
-            document.getElementById('btnStart').textContent = '⏸ 일시정지';
-        }
-
         function toggleSimulation() {
             if (state.isRunning) {
                 state.isRunning = false;
                 document.getElementById('btnStart').textContent = '▶ 계속';
             } else {
-                startSimulation();
+                if (rays.length === 0 || rays.every(r => !r.active)) {
+                    emitRays();
+                }
+                state.isRunning = true;
+                document.getElementById('btnStart').textContent = '⏸ 일시정지';
             }
         }
 
@@ -1359,9 +1254,7 @@
             updateStats();
         }
 
-        // ============================================
         // 이벤트 리스너
-        // ============================================
         document.getElementById('btnStart').addEventListener('click', toggleSimulation);
         document.getElementById('btnStop').addEventListener('click', stopSimulation);
         document.getElementById('btnReset').addEventListener('click', resetSimulation);
@@ -1369,14 +1262,9 @@
         document.getElementById('focalLength').addEventListener('input', (e) => {
             state.f = parseFloat(e.target.value);
             if (state.mode === 'ellipse') {
-                state.eccentricity = state.f / 5;
                 state.a = 5;
-                state.b = state.a * Math.sqrt(1 - state.eccentricity * state.eccentricity);
-                document.getElementById('fValue').textContent = state.eccentricity.toFixed(2);
-            } else if (state.mode === 'hyperbola') {
-                state.a = state.f * 2;
-                state.b = state.f;
-                document.getElementById('fValue').textContent = state.f.toFixed(1);
+                state.b = state.a * Math.sqrt(1 - Math.pow(state.f / 5, 2));
+                document.getElementById('fValue').textContent = (state.f / 5).toFixed(2);
             } else {
                 document.getElementById('fValue').textContent = state.f.toFixed(1);
             }
@@ -1403,13 +1291,11 @@
             document.getElementById('scaleValue').textContent = state.scale;
         });
 
-        // 체크박스
         document.getElementById('showGrid').addEventListener('change', (e) => state.showGrid = e.target.checked);
         document.getElementById('showTrail').addEventListener('change', (e) => state.showTrail = e.target.checked);
         document.getElementById('showReflectPoints').addEventListener('change', (e) => state.showReflectPoints = e.target.checked);
         document.getElementById('showGlow').addEventListener('change', (e) => state.showGlow = e.target.checked);
 
-        // 모드 버튼
         document.querySelectorAll('.mode-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
@@ -1426,29 +1312,21 @@
             const label = slider.parentElement.querySelector('label');
             
             if (state.mode === 'ellipse') {
-                slider.min = 0.1;
-                slider.max = 0.95;
-                slider.step = 0.05;
-                slider.value = 0.6;
-                state.eccentricity = 0.6;
+                slider.min = 0.5; slider.max = 4.5; slider.step = 0.1; slider.value = 3;
                 state.a = 5;
                 state.b = state.a * Math.sqrt(1 - 0.36);
-                label.innerHTML = '이심률: <span id="fValue">0.60</span>';
+                label.innerHTML = '이심률 (c): <span id="fValue">0.60</span>';
+                document.getElementById('fValue').textContent = '0.60';
             } else if (state.mode === 'hyperbola') {
-                slider.min = 1;
-                slider.max = 4;
-                slider.step = 0.25;
-                slider.value = 2;
-                state.a = 4;
-                state.b = 2;
-                label.innerHTML = '크기: <span id="fValue">2.0</span>';
+                slider.min = 1; slider.max = 4; slider.step = 0.25; slider.value = 2;
+                state.a = 4; state.b = 2;
+                label.innerHTML = '크기 (a): <span id="fValue">2.0</span>';
+                document.getElementById('fValue').textContent = '2.0';
             } else {
-                slider.min = 0.5;
-                slider.max = 5;
-                slider.step = 0.1;
-                slider.value = 2;
+                slider.min = 0.5; slider.max = 5; slider.step = 0.1; slider.value = 2;
                 state.f = 2;
                 label.innerHTML = '초점 거리 (f): <span id="fValue">2.0</span>';
+                document.getElementById('fValue').textContent = '2.0';
             }
         }
 
@@ -1457,15 +1335,27 @@
             const desc = document.getElementById('curveDescription');
             const theory = document.getElementById('theoryText');
 
+            switch (state.mode) {
+                case 'parabola':
+                    formula.textContent = 'y = x² / 4f';
+                    desc.innerHTML = '<strong>포물선 다중 반사:</strong><br>광선이 포물선에 닿을 때마다 반사되며, 매번 초점을 통과합니다.';
+                    theory.innerHTML = '평행 입사광 → 초점 통과 → 재반사 → 초점 통과... 이 과정이 반복됩니다. 색상이 바뀔 때마다 초점을 통과한 것입니다.';
+                    break;
+                case 'ellipse':
+                    formula.textContent = 'x²/a² + y²/b² = 1';
+                    desc.innerHTML = '<strong>타원 (Whispering Gallery):</strong><br>F₁에서 출발한 광선이 F₂를 거쳐 다시 F₁으로 돌아옵니다.';
+                    theory.innerHTML = 'F₁ → F₂ (노란색) → F₁ (초록색) → F₂ → ... 반복. 타원 내부에서 두 초점을 교대로 통과합니다.';
+                    break;
+                case 'hyperbola':
+                    formula.textContent = 'x²/a² - y²/b² = 1';
+                    desc.innerHTML = '<strong>쌍곡선 반사:</strong><br>F₂를 향하는 광선이 반사 후 F₁에서 발산하는 것처럼 보입니다.';
+                    theory.innerHTML = '카세그레인 망원경의 원리. 광선이 한 초점을 향해 입사하면 다른 초점 방향으로 반사됩니다.';
+                    break;
+            }
         }
 
-        // ============================================
-        // 초기화 및 시작
-        // ============================================
-        window.addEventListener('resize', () => {
-            resizeCanvas();
-        });
-
+        // 초기화
+        window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
         animate();
     </script>
