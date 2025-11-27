@@ -169,6 +169,18 @@
         .dot-f2 { background: #00ff88; box-shadow: 0 0 8px #00ff88; }
         .dot-ray { background: #ffcc00; box-shadow: 0 0 8px #ffcc00; }
 
+        .status-bar {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+
+        .status-item {
+            color: #00d4ff;
+        }
+
         .explanation {
             background: rgba(26, 26, 46, 0.6);
             border-radius: 12px;
@@ -232,6 +244,11 @@
                 <div class="info-item"><div class="info-dot dot-f2"></div> 수신 초점 (F₂)</div>
                 <div class="info-item"><div class="info-dot dot-ray"></div> 음파 (광선)</div>
             </div>
+            <div class="status-bar">
+                <span class="status-item">활성 광선: <span id="activeCount">0</span></span>
+                <span class="status-item">F₂ 통과: <span id="f2Count">0</span></span>
+                <span class="status-item">F₁ 복귀 완료: <span id="f1Count">0</span></span>
+            </div>
         </div>
 
         <div class="controls">
@@ -275,15 +292,14 @@
                 반사 법칙(입사각 = 반사각)으로부터 기하학적으로 증명됩니다.
             </p>
             <p>
-                반사점 P에서의 법선 벡터는 <code>n = (x/a², y/b²)</code>를 정규화하여 구하고,
-                반사 벡터는 <code>r = d - 2(d·n)n</code>으로 계산합니다.
+                이 시뮬레이션에서는 광선이 F₁ → 벽 → F₂ → 벽 → F₁ 경로를 완주하면 사라집니다.
+                모든 광선이 정확히 같은 경로 길이(2a × 2 = 4a)를 이동합니다!
             </p>
 
             <h3>🏛️ Whispering Gallery 효과</h3>
             <p>
                 런던 세인트폴 대성당, 미국 국회의사당 등의 돔형 건축물에서 이 현상을 경험할 수 있습니다.
                 한쪽 벽에서 속삭인 소리가 수십 미터 떨어진 반대편 벽에서 선명하게 들리는 신비로운 현상입니다.
-                이는 타원의 수학적 성질이 실제 음향학에 적용된 대표적 사례입니다.
             </p>
         </div>
     </div>
@@ -307,7 +323,6 @@
             init();
         });
 
-        // Get display dimensions
         function getDisplaySize() {
             return {
                 width: canvas.width / (window.devicePixelRatio || 1),
@@ -324,9 +339,9 @@
 
         // State
         let rays = [];
-        let traces = [];
         let animationId = null;
         let ellipseParams = {};
+        let completedCount = 0;
 
         // Calculate ellipse parameters
         function calculateEllipse() {
@@ -350,86 +365,97 @@
 
         // Ray class
         class Ray {
-            constructor(x, y, angle) {
+            constructor(x, y, angle, index, total) {
                 this.x = x;
                 this.y = y;
                 this.dx = Math.cos(angle);
                 this.dy = Math.sin(angle);
-                this.speed = 3;
+                this.speed = 4;
                 this.bounces = 0;
-                this.maxBounces = 2;
                 this.active = true;
                 this.trace = [{ x, y }];
-                this.reachedF2 = false;
-                this.color = `hsl(${45 + Math.random() * 30}, 100%, 60%)`;
-                this.age = 0;
+                this.state = 'toF2'; // 'toF2' -> 'toF1' -> 'done'
+                
+                // Color based on angle for variety
+                const hue = (index / total) * 60 + 30; // 30-90 (yellow-orange range)
+                this.color = `hsl(${hue}, 100%, 55%)`;
+                this.colorF2 = `hsl(${140 + (index / total) * 40}, 100%, 50%)`; // Green range
             }
 
             update(speedMultiplier) {
                 if (!this.active) return;
 
-                this.age++;
                 const step = this.speed * speedMultiplier;
+                const { f1, f2 } = ellipseParams;
                 
-                // Find intersection with ellipse
+                // Find next intersection with ellipse
                 const intersection = this.findEllipseIntersection();
                 
-                if (intersection) {
-                    const distToIntersect = Math.hypot(
-                        intersection.x - this.x,
-                        intersection.y - this.y
-                    );
+                if (!intersection) {
+                    this.active = false;
+                    return;
+                }
 
-                    if (distToIntersect <= step) {
-                        // Check if passing through F2
-                        const distToF2 = Math.hypot(
-                            ellipseParams.f2.x - this.x,
-                            ellipseParams.f2.y - this.y
-                        );
-                        
-                        if (distToF2 < step * 2) {
-                            this.reachedF2 = true;
+                const distToIntersect = Math.hypot(
+                    intersection.x - this.x,
+                    intersection.y - this.y
+                );
+
+                // Check proximity to foci along the path
+                const checkFociProximity = () => {
+                    const threshold = 12;
+                    
+                    if (this.state === 'toF2') {
+                        const distToF2 = Math.hypot(f2.x - this.x, f2.y - this.y);
+                        if (distToF2 < threshold) {
+                            this.state = 'toF1';
+                            this.trace.push({ x: f2.x, y: f2.y, focus: 'f2' });
                         }
-
-                        // Move to intersection
-                        this.x = intersection.x;
-                        this.y = intersection.y;
-                        this.trace.push({ x: this.x, y: this.y });
-
-                        // Reflect
-                        this.reflect(intersection.x, intersection.y);
-                        this.bounces++;
-
-                        if (this.bounces >= this.maxBounces) {
+                    } else if (this.state === 'toF1') {
+                        const distToF1 = Math.hypot(f1.x - this.x, f1.y - this.y);
+                        if (distToF1 < threshold) {
+                            this.state = 'done';
                             this.active = false;
-                        }
-                    } else {
-                        // Move normally
-                        this.x += this.dx * step;
-                        this.y += this.dy * step;
-                        
-                        // Check F2 proximity
-                        const newDistToF2 = Math.hypot(
-                            ellipseParams.f2.x - this.x,
-                            ellipseParams.f2.y - this.y
-                        );
-                        if (newDistToF2 < 8) {
-                            this.reachedF2 = true;
+                            this.trace.push({ x: f1.x, y: f1.y, focus: 'f1' });
+                            completedCount++;
+                            return true;
                         }
                     }
+                    return false;
+                };
+
+                if (distToIntersect <= step) {
+                    // Check foci before hitting wall
+                    if (checkFociProximity()) return;
+                    
+                    // Move to intersection point
+                    this.x = intersection.x;
+                    this.y = intersection.y;
+                    this.trace.push({ x: this.x, y: this.y, bounce: true });
+
+                    // Reflect off the wall
+                    this.reflect(intersection.x, intersection.y);
+                    this.bounces++;
+
+                    // Safety limit
+                    if (this.bounces > 10) {
+                        this.active = false;
+                    }
+                } else {
+                    // Move normally
+                    this.x += this.dx * step;
+                    this.y += this.dy * step;
+                    
+                    // Check foci proximity after moving
+                    checkFociProximity();
                 }
             }
 
             findEllipseIntersection() {
                 const { centerX, centerY, a, b } = ellipseParams;
                 
-                // Transform to ellipse-centered coordinates
                 const rx = this.x - centerX;
                 const ry = this.y - centerY;
-                
-                // Parametric ray: P(t) = (rx + t*dx, ry + t*dy)
-                // Ellipse: x²/a² + y²/b² = 1
-                // Substitute: (rx + t*dx)²/a² + (ry + t*dy)²/b² = 1
                 
                 const A = (this.dx * this.dx) / (a * a) + (this.dy * this.dy) / (b * b);
                 const B = 2 * ((rx * this.dx) / (a * a) + (ry * this.dy) / (b * b));
@@ -443,13 +469,14 @@
                 const t1 = (-B + sqrtDisc) / (2 * A);
                 const t2 = (-B - sqrtDisc) / (2 * A);
                 
-                // Get the positive t that represents forward movement
                 let t = null;
-                if (t1 > 0.001 && t2 > 0.001) {
+                const epsilon = 0.01;
+                
+                if (t1 > epsilon && t2 > epsilon) {
                     t = Math.min(t1, t2);
-                } else if (t1 > 0.001) {
+                } else if (t1 > epsilon) {
                     t = t1;
-                } else if (t2 > 0.001) {
+                } else if (t2 > epsilon) {
                     t = t2;
                 }
                 
@@ -464,11 +491,10 @@
             reflect(px, py) {
                 const { centerX, centerY, a, b } = ellipseParams;
                 
-                // Point in ellipse coordinates
                 const ex = px - centerX;
                 const ey = py - centerY;
                 
-                // Normal vector at point (x,y) on ellipse: (x/a², y/b²)
+                // Normal vector (gradient of ellipse equation)
                 let nx = ex / (a * a);
                 let ny = ey / (b * b);
                 
@@ -477,14 +503,14 @@
                 nx /= nLen;
                 ny /= nLen;
                 
-                // Ensure normal points inward
+                // Make sure normal points inward (opposite to ray direction approaching wall)
                 const dot = this.dx * nx + this.dy * ny;
-                if (dot < 0) {
+                if (dot > 0) {
                     nx = -nx;
                     ny = -ny;
                 }
                 
-                // Reflection: r = d - 2(d·n)n
+                // Reflection formula: r = d - 2(d·n)n
                 const dotProduct = this.dx * nx + this.dy * ny;
                 this.dx = this.dx - 2 * dotProduct * nx;
                 this.dy = this.dy - 2 * dotProduct * ny;
@@ -496,16 +522,19 @@
             }
 
             draw() {
-                if (!this.active && this.age > 300) return;
+                const currentColor = this.state === 'toF2' ? this.color : this.colorF2;
+                const alpha = this.active ? 0.8 : 0.4;
 
-                // Draw trace
+                // Draw complete trace
                 ctx.beginPath();
-                ctx.strokeStyle = this.reachedF2 ? 
-                    `rgba(0, 255, 136, ${this.active ? 0.6 : 0.3})` : 
-                    `rgba(255, 204, 0, ${this.active ? 0.6 : 0.3})`;
-                ctx.lineWidth = this.active ? 2 : 1;
+                ctx.strokeStyle = this.state === 'done' ? 
+                    `rgba(0, 255, 136, 0.5)` : 
+                    (this.state === 'toF1' ? `rgba(0, 255, 136, ${alpha})` : `rgba(255, 200, 50, ${alpha})`);
+                ctx.lineWidth = this.active ? 2.5 : 1.5;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
                 
-                if (this.trace.length > 1) {
+                if (this.trace.length > 0) {
                     ctx.moveTo(this.trace[0].x, this.trace[0].y);
                     for (let i = 1; i < this.trace.length; i++) {
                         ctx.lineTo(this.trace[i].x, this.trace[i].y);
@@ -516,96 +545,125 @@
                 }
                 ctx.stroke();
 
-                // Draw ray head
+                // Draw bounce points
+                for (const point of this.trace) {
+                    if (point.bounce) {
+                        ctx.beginPath();
+                        ctx.fillStyle = 'rgba(0, 212, 255, 0.8)';
+                        ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                // Draw ray head if active
                 if (this.active) {
+                    // Outer glow
                     const gradient = ctx.createRadialGradient(
                         this.x, this.y, 0,
-                        this.x, this.y, 8
+                        this.x, this.y, 12
                     );
-                    gradient.addColorStop(0, this.color);
-                    gradient.addColorStop(0.5, this.color);
+                    gradient.addColorStop(0, currentColor);
+                    gradient.addColorStop(0.4, currentColor);
                     gradient.addColorStop(1, 'transparent');
                     
                     ctx.beginPath();
                     ctx.fillStyle = gradient;
-                    ctx.arc(this.x, this.y, 8, 0, Math.PI * 2);
+                    ctx.arc(this.x, this.y, 12, 0, Math.PI * 2);
                     ctx.fill();
                     
                     // Core
                     ctx.beginPath();
                     ctx.fillStyle = '#fff';
-                    ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+                    ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
                     ctx.fill();
                 }
             }
         }
 
-        // Draw ellipse
+        // Draw ellipse and foci
         function drawEllipse() {
             const { centerX, centerY, a, b, f1, f2 } = ellipseParams;
             
-            // Ellipse glow
+            // Ellipse outer glow
             ctx.beginPath();
-            ctx.strokeStyle = 'rgba(0, 212, 255, 0.3)';
-            ctx.lineWidth = 8;
+            ctx.strokeStyle = 'rgba(0, 212, 255, 0.2)';
+            ctx.lineWidth = 12;
+            ctx.ellipse(centerX, centerY, a, b, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Ellipse mid glow
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(0, 212, 255, 0.4)';
+            ctx.lineWidth = 4;
             ctx.ellipse(centerX, centerY, a, b, 0, 0, Math.PI * 2);
             ctx.stroke();
             
             // Ellipse main
             ctx.beginPath();
-            ctx.strokeStyle = 'rgba(0, 212, 255, 0.8)';
+            ctx.strokeStyle = 'rgba(0, 212, 255, 0.9)';
             ctx.lineWidth = 2;
             ctx.ellipse(centerX, centerY, a, b, 0, 0, Math.PI * 2);
             ctx.stroke();
             
-            // Draw foci
-            // F1 (source)
-            const f1Gradient = ctx.createRadialGradient(f1.x, f1.y, 0, f1.x, f1.y, 20);
-            f1Gradient.addColorStop(0, '#ff006e');
-            f1Gradient.addColorStop(0.5, 'rgba(255, 0, 110, 0.5)');
+            // F1 (source) - Pink/Magenta
+            const f1Gradient = ctx.createRadialGradient(f1.x, f1.y, 0, f1.x, f1.y, 25);
+            f1Gradient.addColorStop(0, 'rgba(255, 0, 110, 1)');
+            f1Gradient.addColorStop(0.3, 'rgba(255, 0, 110, 0.6)');
+            f1Gradient.addColorStop(0.6, 'rgba(255, 0, 110, 0.2)');
             f1Gradient.addColorStop(1, 'transparent');
             ctx.beginPath();
             ctx.fillStyle = f1Gradient;
-            ctx.arc(f1.x, f1.y, 20, 0, Math.PI * 2);
+            ctx.arc(f1.x, f1.y, 25, 0, Math.PI * 2);
             ctx.fill();
+            
             ctx.beginPath();
             ctx.fillStyle = '#ff006e';
-            ctx.arc(f1.x, f1.y, 6, 0, Math.PI * 2);
+            ctx.arc(f1.x, f1.y, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.fillStyle = '#fff';
+            ctx.arc(f1.x, f1.y, 4, 0, Math.PI * 2);
             ctx.fill();
             
-            // F1 label
             ctx.fillStyle = '#ff006e';
-            ctx.font = 'bold 14px Arial';
-            ctx.fillText('F₁', f1.x - 8, f1.y - 25);
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('F₁', f1.x, f1.y - 35);
             
-            // F2 (receiver)
-            const f2Gradient = ctx.createRadialGradient(f2.x, f2.y, 0, f2.x, f2.y, 20);
-            f2Gradient.addColorStop(0, '#00ff88');
-            f2Gradient.addColorStop(0.5, 'rgba(0, 255, 136, 0.5)');
+            // F2 (receiver) - Green
+            const f2Gradient = ctx.createRadialGradient(f2.x, f2.y, 0, f2.x, f2.y, 25);
+            f2Gradient.addColorStop(0, 'rgba(0, 255, 136, 1)');
+            f2Gradient.addColorStop(0.3, 'rgba(0, 255, 136, 0.6)');
+            f2Gradient.addColorStop(0.6, 'rgba(0, 255, 136, 0.2)');
             f2Gradient.addColorStop(1, 'transparent');
             ctx.beginPath();
             ctx.fillStyle = f2Gradient;
-            ctx.arc(f2.x, f2.y, 20, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.fillStyle = '#00ff88';
-            ctx.arc(f2.x, f2.y, 6, 0, Math.PI * 2);
+            ctx.arc(f2.x, f2.y, 25, 0, Math.PI * 2);
             ctx.fill();
             
-            // F2 label
-            ctx.fillStyle = '#00ff88';
-            ctx.font = 'bold 14px Arial';
-            ctx.fillText('F₂', f2.x - 8, f2.y - 25);
-            
-            // Draw axes (subtle)
             ctx.beginPath();
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.fillStyle = '#00ff88';
+            ctx.arc(f2.x, f2.y, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.fillStyle = '#fff';
+            ctx.arc(f2.x, f2.y, 4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = '#00ff88';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('F₂', f2.x, f2.y - 35);
+            
+            // Draw subtle axes
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
             ctx.lineWidth = 1;
             ctx.setLineDash([5, 5]);
-            ctx.moveTo(centerX - a - 20, centerY);
-            ctx.lineTo(centerX + a + 20, centerY);
-            ctx.moveTo(centerX, centerY - b - 20);
-            ctx.lineTo(centerX, centerY + b + 20);
+            ctx.moveTo(centerX - a - 30, centerY);
+            ctx.lineTo(centerX + a + 30, centerY);
+            ctx.moveTo(centerX, centerY - b - 30);
+            ctx.lineTo(centerX, centerY + b + 30);
             ctx.stroke();
             ctx.setLineDash([]);
         }
@@ -614,6 +672,8 @@
         function init() {
             calculateEllipse();
             rays = [];
+            completedCount = 0;
+            updateStatus();
             draw();
         }
 
@@ -623,14 +683,24 @@
             document.getElementById('rayCountValue').textContent = rayCount;
             
             rays = [];
+            completedCount = 0;
             const { f1 } = ellipseParams;
             
             for (let i = 0; i < rayCount; i++) {
-                // Distribute rays but avoid going straight to F2
                 const angle = (Math.PI * 2 * i) / rayCount;
-                const ray = new Ray(f1.x, f1.y, angle);
+                const ray = new Ray(f1.x, f1.y, angle, i, rayCount);
                 rays.push(ray);
             }
+        }
+
+        // Update status display
+        function updateStatus() {
+            const activeRays = rays.filter(r => r.active).length;
+            const f2Reached = rays.filter(r => r.state === 'toF1' || r.state === 'done').length;
+            
+            document.getElementById('activeCount').textContent = activeRays;
+            document.getElementById('f2Count').textContent = f2Reached;
+            document.getElementById('f1Count').textContent = completedCount;
         }
 
         // Animation loop
@@ -639,22 +709,34 @@
             const speedMultiplier = parseFloat(speedSlider.value);
             document.getElementById('speedValue').textContent = speedMultiplier.toFixed(1);
             
-            // Clear with fade effect for trails
-            ctx.fillStyle = 'rgba(5, 5, 16, 0.15)';
+            // Clear with slight fade for trail effect
+            ctx.fillStyle = 'rgba(5, 5, 16, 0.25)';
             ctx.fillRect(0, 0, width, height);
             
             // Draw ellipse
             drawEllipse();
             
             // Update and draw rays
-            let activeRays = 0;
             for (const ray of rays) {
                 ray.update(speedMultiplier);
                 ray.draw();
-                if (ray.active) activeRays++;
             }
             
-            animationId = requestAnimationFrame(animate);
+            updateStatus();
+            
+            // Continue animation if any rays are active
+            const hasActiveRays = rays.some(r => r.active);
+            if (hasActiveRays) {
+                animationId = requestAnimationFrame(animate);
+            } else {
+                // Final redraw to show complete state
+                ctx.fillStyle = '#050510';
+                ctx.fillRect(0, 0, width, height);
+                drawEllipse();
+                for (const ray of rays) {
+                    ray.draw();
+                }
+            }
         }
 
         // Draw static frame
@@ -671,12 +753,10 @@
 
         // Event listeners
         eccentricitySlider.addEventListener('input', () => {
-            init();
             if (animationId) {
                 cancelAnimationFrame(animationId);
-                emitRays();
-                animate();
             }
+            init();
         });
 
         rayCountSlider.addEventListener('input', () => {
