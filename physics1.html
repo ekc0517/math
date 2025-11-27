@@ -292,13 +292,16 @@
                 this.speed = 4;
                 this.bounces = 0;
                 this.active = true;
-                this.trace = [{ x, y, phase: 'toF2' }];
                 this.state = 'toF2';
-                this.f2PassedIndex = -1;
+                
+                // 각 세그먼트를 개별적으로 저장 (색상 정보 포함)
+                this.segments = [];
+                this.currentSegment = [{ x, y }];
+                this.currentColor = 'yellow';
                 
                 const hue = (index / total) * 60 + 30;
-                this.colorYellow = `hsl(${hue}, 100%, 55%)`;
-                this.colorGreen = `hsl(${140 + (index / total) * 40}, 100%, 50%)`;
+                this.colorYellow = `rgba(255, 200, 50, 0.85)`;
+                this.colorGreen = `rgba(0, 255, 136, 0.85)`;
             }
 
             update(speedMultiplier) {
@@ -319,46 +322,67 @@
                     intersection.y - this.y
                 );
 
-                const checkFociProximity = () => {
-                    const threshold = 12;
-                    
-                    if (this.state === 'toF2') {
-                        const distToF2 = Math.hypot(f2.x - this.x, f2.y - this.y);
-                        if (distToF2 < threshold) {
-                            this.state = 'toF1';
-                            this.f2PassedIndex = this.trace.length;
-                            this.trace.push({ x: f2.x, y: f2.y, focus: 'f2', phase: 'toF1' });
-                        }
-                    } else if (this.state === 'toF1') {
-                        const distToF1 = Math.hypot(f1.x - this.x, f1.y - this.y);
-                        if (distToF1 < threshold) {
-                            this.state = 'done';
-                            this.active = false;
-                            this.trace.push({ x: f1.x, y: f1.y, focus: 'f1', phase: 'done' });
-                            completedCount++;
-                            return true;
-                        }
-                    }
-                    return false;
-                };
+                // 이동 전 위치
+                const prevX = this.x;
+                const prevY = this.y;
 
                 if (distToIntersect <= step) {
-                    if (checkFociProximity()) return;
-                    
+                    // 벽에 도달
                     this.x = intersection.x;
                     this.y = intersection.y;
-                    this.trace.push({ x: this.x, y: this.y, bounce: true, phase: this.state });
+                    this.currentSegment.push({ x: this.x, y: this.y });
+                    
+                    // F2 근처 체크 (벽에 닿기 전)
+                    if (this.state === 'toF2') {
+                        const distToF2 = Math.hypot(f2.x - this.x, f2.y - this.y);
+                        if (distToF2 < 50) {
+                            // 노란색 세그먼트 저장하고 초록색 시작
+                            this.segments.push({ points: [...this.currentSegment], color: 'yellow' });
+                            this.currentSegment = [{ x: this.x, y: this.y }];
+                            this.currentColor = 'green';
+                            this.state = 'toF1';
+                        }
+                    }
 
                     this.reflect(intersection.x, intersection.y);
                     this.bounces++;
 
                     if (this.bounces > 10) {
                         this.active = false;
+                        this.segments.push({ points: [...this.currentSegment], color: this.currentColor });
                     }
                 } else {
+                    // 일반 이동
                     this.x += this.dx * step;
                     this.y += this.dy * step;
-                    checkFociProximity();
+                    
+                    // F2 통과 체크
+                    if (this.state === 'toF2') {
+                        const distToF2 = Math.hypot(f2.x - this.x, f2.y - this.y);
+                        if (distToF2 < 15) {
+                            // F2 지점을 현재 세그먼트에 추가
+                            this.currentSegment.push({ x: f2.x, y: f2.y });
+                            // 노란색 세그먼트 저장
+                            this.segments.push({ points: [...this.currentSegment], color: 'yellow' });
+                            // 초록색 세그먼트 시작
+                            this.currentSegment = [{ x: f2.x, y: f2.y }];
+                            this.currentColor = 'green';
+                            this.state = 'toF1';
+                        }
+                    }
+                    
+                    // F1 도착 체크
+                    if (this.state === 'toF1') {
+                        const distToF1 = Math.hypot(f1.x - this.x, f1.y - this.y);
+                        if (distToF1 < 15) {
+                            this.currentSegment.push({ x: f1.x, y: f1.y });
+                            this.segments.push({ points: [...this.currentSegment], color: 'green' });
+                            this.currentSegment = [];
+                            this.state = 'done';
+                            this.active = false;
+                            completedCount++;
+                        }
+                    }
                 }
             }
 
@@ -428,63 +452,57 @@
             }
 
             draw() {
-                const alpha = this.active ? 0.8 : 0.5;
-                const lineWidth = this.active ? 2.5 : 1.8;
+                const lineWidth = this.active ? 2.5 : 2;
 
-                // Draw yellow segment (F1 to F2)
-                ctx.beginPath();
-                ctx.strokeStyle = `rgba(255, 200, 50, ${alpha})`;
-                ctx.lineWidth = lineWidth;
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-                
-                if (this.trace.length > 0) {
-                    ctx.moveTo(this.trace[0].x, this.trace[0].y);
+                // 저장된 모든 세그먼트 그리기
+                for (const segment of this.segments) {
+                    if (segment.points.length < 2) continue;
                     
-                    const endIndex = this.f2PassedIndex > 0 ? this.f2PassedIndex : this.trace.length;
-                    for (let i = 1; i < endIndex; i++) {
-                        ctx.lineTo(this.trace[i].x, this.trace[i].y);
-                    }
-                    
-                    if (this.state === 'toF2' && this.active) {
-                        ctx.lineTo(this.x, this.y);
-                    }
-                }
-                ctx.stroke();
-
-                // Draw green segment (F2 to F1)
-                if (this.f2PassedIndex > 0) {
                     ctx.beginPath();
-                    ctx.strokeStyle = `rgba(0, 255, 136, ${alpha})`;
+                    ctx.strokeStyle = segment.color === 'yellow' ? this.colorYellow : this.colorGreen;
                     ctx.lineWidth = lineWidth;
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
                     
-                    ctx.moveTo(this.trace[this.f2PassedIndex].x, this.trace[this.f2PassedIndex].y);
-                    
-                    for (let i = this.f2PassedIndex + 1; i < this.trace.length; i++) {
-                        ctx.lineTo(this.trace[i].x, this.trace[i].y);
+                    ctx.moveTo(segment.points[0].x, segment.points[0].y);
+                    for (let i = 1; i < segment.points.length; i++) {
+                        ctx.lineTo(segment.points[i].x, segment.points[i].y);
                     }
+                    ctx.stroke();
+                }
+
+                // 현재 진행 중인 세그먼트 그리기
+                if (this.currentSegment.length > 0) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = this.currentColor === 'yellow' ? this.colorYellow : this.colorGreen;
+                    ctx.lineWidth = lineWidth;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
                     
-                    if (this.state === 'toF1' && this.active) {
+                    ctx.moveTo(this.currentSegment[0].x, this.currentSegment[0].y);
+                    for (let i = 1; i < this.currentSegment.length; i++) {
+                        ctx.lineTo(this.currentSegment[i].x, this.currentSegment[i].y);
+                    }
+                    if (this.active) {
                         ctx.lineTo(this.x, this.y);
                     }
                     ctx.stroke();
                 }
 
-                // Draw bounce points
-                for (const point of this.trace) {
-                    if (point.bounce) {
+                // 반사 지점 표시
+                for (const segment of this.segments) {
+                    for (let i = 1; i < segment.points.length - 1; i++) {
+                        const point = segment.points[i];
                         ctx.beginPath();
-                        ctx.fillStyle = 'rgba(0, 212, 255, 0.8)';
-                        ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+                        ctx.fillStyle = 'rgba(0, 212, 255, 0.7)';
+                        ctx.arc(point.x, point.y, 3, 0, Math.PI * 2);
                         ctx.fill();
                     }
                 }
 
-                // Draw ray head if active
+                // 광선 머리 그리기
                 if (this.active) {
-                    const currentColor = this.state === 'toF2' ? this.colorYellow : this.colorGreen;
+                    const currentColor = this.currentColor === 'yellow' ? '#ffcc00' : '#00ff88';
                     
                     const gradient = ctx.createRadialGradient(
                         this.x, this.y, 0,
@@ -627,7 +645,8 @@
             const speedMultiplier = parseFloat(speedSlider.value);
             document.getElementById('speedValue').textContent = speedMultiplier.toFixed(1);
             
-            ctx.fillStyle = 'rgba(5, 5, 16, 0.25)';
+            // 매 프레임 완전히 새로 그리기 (경로 보존을 위해)
+            ctx.fillStyle = '#050510';
             ctx.fillRect(0, 0, width, height);
             
             drawEllipse();
@@ -643,12 +662,7 @@
             if (hasActiveRays) {
                 animationId = requestAnimationFrame(animate);
             } else {
-                ctx.fillStyle = '#050510';
-                ctx.fillRect(0, 0, width, height);
-                drawEllipse();
-                for (const ray of rays) {
-                    ray.draw();
-                }
+                animationId = null;
             }
         }
 
