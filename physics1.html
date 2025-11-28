@@ -293,12 +293,21 @@
                 this.active = true;
                 this.state = 'toF2';
                 this.passedF2 = false;
+                this.justReflected = false;
                 
                 this.pathPoints = [{ x, y }];
                 this.f2Index = -1;
                 
                 this.colorYellow = 'rgba(255, 200, 50, 0.9)';
                 this.colorGreen = 'rgba(0, 255, 136, 0.9)';
+            }
+
+            // 타원 내부인지 확인
+            isInsideEllipse(x, y) {
+                const { centerX, centerY, a, b } = ellipseParams;
+                const dx = x - centerX;
+                const dy = y - centerY;
+                return (dx * dx) / (a * a) + (dy * dy) / (b * b) < 1;
             }
 
             // 타원과 광선의 교차점 계산
@@ -319,12 +328,19 @@
                 const t1 = (-B - sqrtDisc) / (2 * A);
                 const t2 = (-B + sqrtDisc) / (2 * A);
                 
-                // 양수인 t 중 가장 작은 값 선택 (전방 교차점)
-                let t = -1;
-                if (t1 > 0.01) t = t1;
-                else if (t2 > 0.01) t = t2;
+                // 양수인 t 중 더 큰 값 선택 (타원 내부에서 전방 벽)
+                const epsilon = 0.0001;
+                let t = null;
                 
-                if (t < 0) return null;
+                if (t1 > epsilon && t2 > epsilon) {
+                    t = Math.max(t1, t2);
+                } else if (t2 > epsilon) {
+                    t = t2;
+                } else if (t1 > epsilon) {
+                    t = t1;
+                }
+                
+                if (t === null) return null;
                 
                 return {
                     x: this.x + this.dx * t,
@@ -337,7 +353,7 @@
             doReflect(hitX, hitY) {
                 const { centerX, centerY, a, b } = ellipseParams;
                 
-                // 타원 위 점에서의 외향 법선 벡터
+                // 법선 벡터 (타원 바깥쪽 방향)
                 let nx = (hitX - centerX) / (a * a);
                 let ny = (hitY - centerY) / (b * b);
                 const len = Math.hypot(nx, ny);
@@ -354,9 +370,11 @@
                 this.dx /= dlen;
                 this.dy /= dlen;
                 
-                // 반사점에서 안쪽으로 살짝 이동 (다음 교차점 계산을 위해)
-                this.x = hitX - nx * 0.1;
-                this.y = hitY - ny * 0.1;
+                // 반사점을 정확히 설정하고, 새 방향으로 아주 조금 이동
+                this.x = hitX + this.dx * 0.001;
+                this.y = hitY + this.dy * 0.001;
+                
+                this.justReflected = true;
             }
 
             update(speedMultiplier) {
@@ -369,27 +387,30 @@
                 const hit = this.getIntersection();
                 
                 if (!hit) {
-                    // 교차점을 못 찾으면 그냥 직진
-                    this.x += this.dx * step;
-                    this.y += this.dy * step;
+                    // 비상: 교차점을 못 찾으면 중심 방향으로 보정
+                    const { centerX, centerY } = ellipseParams;
+                    this.dx = centerX - this.x;
+                    this.dy = centerY - this.y;
+                    const len = Math.hypot(this.dx, this.dy);
+                    this.dx /= len;
+                    this.dy /= len;
                     return;
                 }
                 
                 const distToHit = hit.t;
                 
                 if (distToHit <= step) {
-                    // 벽에 도달 - 반사점으로 이동 후 반사
-                    this.pathPoints.push({ x: hit.x, y: hit.y });
-                    this.doReflect(hit.x, hit.y);
+                    // 벽에 도달 - 먼저 정확히 벽까지 이동
+                    const hitX = hit.x;
+                    const hitY = hit.y;
                     
-                    // 남은 거리만큼 추가 이동
-                    const remaining = step - distToHit;
-                    this.x += this.dx * remaining;
-                    this.y += this.dy * remaining;
+                    this.pathPoints.push({ x: hitX, y: hitY });
+                    this.doReflect(hitX, hitY);
                 } else {
                     // 일반 이동
                     this.x += this.dx * step;
                     this.y += this.dy * step;
+                    this.justReflected = false;
                 }
 
                 // F2 통과 체크
@@ -450,7 +471,7 @@
                     for (let i = this.f2Index + 1; i < this.pathPoints.length; i++) {
                         ctx.lineTo(this.pathPoints[i].x, this.pathPoints[i].y);
                     }
-                    if ((this.state === 'toF1' || this.state === 'done') && this.active) {
+                    if (this.state === 'toF1' && this.active) {
                         ctx.lineTo(this.x, this.y);
                     }
                     ctx.stroke();
