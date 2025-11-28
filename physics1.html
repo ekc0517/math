@@ -285,23 +285,23 @@
 
         class Ray {
             constructor(x, y, angle, index, total) {
+                this.startX = x;
+                this.startY = y;
                 this.x = x;
                 this.y = y;
                 this.dx = Math.cos(angle);
                 this.dy = Math.sin(angle);
                 this.speed = 4;
-                this.bounces = 0;
                 this.active = true;
-                this.state = 'toF2';
+                this.state = 'toF2'; // 'toF2', 'toF1', 'done'
+                this.passedF2 = false;
                 
-                // 각 세그먼트를 개별적으로 저장 (색상 정보 포함)
-                this.segments = [];
-                this.currentSegment = [{ x, y }];
-                this.currentColor = 'yellow';
+                // 경로를 점 배열로 저장하고 F2 통과 인덱스 기록
+                this.pathPoints = [{ x, y }];
+                this.f2Index = -1; // F2를 통과한 시점의 인덱스
                 
-                const hue = (index / total) * 60 + 30;
-                this.colorYellow = `rgba(255, 200, 50, 0.85)`;
-                this.colorGreen = `rgba(0, 255, 136, 0.85)`;
+                this.colorYellow = 'rgba(255, 200, 50, 0.9)';
+                this.colorGreen = 'rgba(0, 255, 136, 0.9)';
             }
 
             update(speedMultiplier) {
@@ -309,89 +309,78 @@
 
                 const step = this.speed * speedMultiplier;
                 const { f1, f2 } = ellipseParams;
-                
+
+                // 현재 위치에서 타원 경계까지의 교점 찾기
                 const intersection = this.findEllipseIntersection();
                 
                 if (!intersection) {
-                    this.active = false;
+                    // 교점을 찾지 못하면 위치 보정 시도
+                    this.correctPosition();
                     return;
                 }
 
-                const distToIntersect = Math.hypot(
-                    intersection.x - this.x,
-                    intersection.y - this.y
-                );
+                const distToWall = Math.hypot(intersection.x - this.x, intersection.y - this.y);
 
-                // 이동 전 위치
-                const prevX = this.x;
-                const prevY = this.y;
-
-                if (distToIntersect <= step) {
-                    // 벽에 도달
+                if (distToWall <= step) {
+                    // 벽에 도달 - 먼저 반사점까지 이동
                     this.x = intersection.x;
                     this.y = intersection.y;
-                    this.currentSegment.push({ x: this.x, y: this.y });
+                    this.pathPoints.push({ x: this.x, y: this.y });
                     
-                    // F2 근처 체크 (벽에 닿기 전)
-                    if (this.state === 'toF2') {
-                        const distToF2 = Math.hypot(f2.x - this.x, f2.y - this.y);
-                        if (distToF2 < 50) {
-                            // 노란색 세그먼트 저장하고 초록색 시작
-                            this.segments.push({ points: [...this.currentSegment], color: 'yellow' });
-                            this.currentSegment = [{ x: this.x, y: this.y }];
-                            this.currentColor = 'green';
-                            this.state = 'toF1';
-                        }
-                    }
-
-                    this.reflect(intersection.x, intersection.y);
-                    this.bounces++;
-
-                    if (this.bounces > 10) {
-                        this.active = false;
-                        this.segments.push({ points: [...this.currentSegment], color: this.currentColor });
-                    }
+                    // 반사 수행
+                    this.reflect(this.x, this.y);
                 } else {
                     // 일반 이동
                     this.x += this.dx * step;
                     this.y += this.dy * step;
-                    
-                    // F2 통과 체크
-                    if (this.state === 'toF2') {
-                        const distToF2 = Math.hypot(f2.x - this.x, f2.y - this.y);
-                        if (distToF2 < 15) {
-                            // F2 지점을 현재 세그먼트에 추가
-                            this.currentSegment.push({ x: f2.x, y: f2.y });
-                            // 노란색 세그먼트 저장
-                            this.segments.push({ points: [...this.currentSegment], color: 'yellow' });
-                            // 초록색 세그먼트 시작
-                            this.currentSegment = [{ x: f2.x, y: f2.y }];
-                            this.currentColor = 'green';
-                            this.state = 'toF1';
-                        }
+                }
+
+                // F2 통과 체크 (아직 통과하지 않았을 때만)
+                if (this.state === 'toF2') {
+                    const distToF2 = Math.hypot(f2.x - this.x, f2.y - this.y);
+                    if (distToF2 < 12) {
+                        this.state = 'toF1';
+                        this.passedF2 = true;
+                        this.f2Index = this.pathPoints.length; // 현재 인덱스 기록
+                        this.pathPoints.push({ x: f2.x, y: f2.y, isF2: true });
                     }
-                    
-                    // F1 도착 체크
-                    if (this.state === 'toF1') {
-                        const distToF1 = Math.hypot(f1.x - this.x, f1.y - this.y);
-                        if (distToF1 < 15) {
-                            this.currentSegment.push({ x: f1.x, y: f1.y });
-                            this.segments.push({ points: [...this.currentSegment], color: 'green' });
-                            this.currentSegment = [];
-                            this.state = 'done';
-                            this.active = false;
-                            completedCount++;
-                        }
+                }
+
+                // F1 복귀 체크
+                if (this.state === 'toF1') {
+                    const distToF1 = Math.hypot(f1.x - this.x, f1.y - this.y);
+                    if (distToF1 < 12) {
+                        this.state = 'done';
+                        this.active = false;
+                        this.pathPoints.push({ x: f1.x, y: f1.y });
+                        completedCount++;
                     }
+                }
+            }
+
+            correctPosition() {
+                // 타원 내부로 위치 보정
+                const { centerX, centerY, a, b } = ellipseParams;
+                const dx = this.x - centerX;
+                const dy = this.y - centerY;
+                const dist = Math.sqrt((dx * dx) / (a * a) + (dy * dy) / (b * b));
+                
+                if (dist >= 1) {
+                    // 타원 밖에 있으면 안쪽으로 이동
+                    const scale = 0.99 / dist;
+                    this.x = centerX + dx * scale;
+                    this.y = centerY + dy * scale;
                 }
             }
 
             findEllipseIntersection() {
                 const { centerX, centerY, a, b } = ellipseParams;
                 
+                // 현재 위치를 타원 중심 기준으로 변환
                 const rx = this.x - centerX;
                 const ry = this.y - centerY;
                 
+                // 광선-타원 교차 계산 (이차방정식)
                 const A = (this.dx * this.dx) / (a * a) + (this.dy * this.dy) / (b * b);
                 const B = 2 * ((rx * this.dx) / (a * a) + (ry * this.dy) / (b * b));
                 const C = (rx * rx) / (a * a) + (ry * ry) / (b * b) - 1;
@@ -404,8 +393,9 @@
                 const t1 = (-B + sqrtDisc) / (2 * A);
                 const t2 = (-B - sqrtDisc) / (2 * A);
                 
+                // 전방의 가장 가까운 교점 선택
                 let t = null;
-                const epsilon = 0.01;
+                const epsilon = 0.001;
                 
                 if (t1 > epsilon && t2 > epsilon) {
                     t = Math.min(t1, t2);
@@ -415,110 +405,133 @@
                     t = t2;
                 }
                 
-                if (t === null) return null;
+                if (t === null || t > 10000) return null;
                 
                 return {
                     x: this.x + t * this.dx,
-                    y: this.y + t * this.dy
+                    y: this.y + t * this.dy,
+                    t: t
                 };
             }
 
             reflect(px, py) {
                 const { centerX, centerY, a, b } = ellipseParams;
                 
+                // 타원 위의 점에서 법선 벡터 계산
                 const ex = px - centerX;
                 const ey = py - centerY;
                 
+                // 법선 벡터 (타원 방정식의 그래디언트)
                 let nx = ex / (a * a);
                 let ny = ey / (b * b);
                 
+                // 정규화
                 const nLen = Math.hypot(nx, ny);
+                if (nLen === 0) return;
                 nx /= nLen;
                 ny /= nLen;
                 
+                // 법선이 안쪽을 향하도록 보정
                 const dot = this.dx * nx + this.dy * ny;
                 if (dot > 0) {
                     nx = -nx;
                     ny = -ny;
                 }
                 
+                // 반사 벡터 계산: r = d - 2(d·n)n
                 const dotProduct = this.dx * nx + this.dy * ny;
                 this.dx = this.dx - 2 * dotProduct * nx;
                 this.dy = this.dy - 2 * dotProduct * ny;
                 
+                // 방향 벡터 정규화
                 const dLen = Math.hypot(this.dx, this.dy);
-                this.dx /= dLen;
-                this.dy /= dLen;
+                if (dLen > 0) {
+                    this.dx /= dLen;
+                    this.dy /= dLen;
+                }
+                
+                // 반사 후 약간 안쪽으로 이동 (벽에 붙는 것 방지)
+                this.x = px - nx * 0.5;
+                this.y = py - ny * 0.5;
             }
 
             draw() {
-                const lineWidth = this.active ? 2.5 : 2;
-
-                // 저장된 모든 세그먼트 그리기
-                for (const segment of this.segments) {
-                    if (segment.points.length < 2) continue;
-                    
+                if (this.pathPoints.length < 1) return;
+                
+                const lineWidth = 2.5;
+                
+                // F2 이전 경로 (노란색)
+                const yellowEndIndex = this.f2Index > 0 ? this.f2Index : this.pathPoints.length;
+                
+                if (yellowEndIndex > 0) {
                     ctx.beginPath();
-                    ctx.strokeStyle = segment.color === 'yellow' ? this.colorYellow : this.colorGreen;
+                    ctx.strokeStyle = this.colorYellow;
                     ctx.lineWidth = lineWidth;
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
                     
-                    ctx.moveTo(segment.points[0].x, segment.points[0].y);
-                    for (let i = 1; i < segment.points.length; i++) {
-                        ctx.lineTo(segment.points[i].x, segment.points[i].y);
+                    ctx.moveTo(this.pathPoints[0].x, this.pathPoints[0].y);
+                    for (let i = 1; i < yellowEndIndex && i < this.pathPoints.length; i++) {
+                        ctx.lineTo(this.pathPoints[i].x, this.pathPoints[i].y);
+                    }
+                    
+                    // 아직 F2 통과 전이고 활성화 상태면 현재 위치까지 연결
+                    if (this.state === 'toF2' && this.active) {
+                        ctx.lineTo(this.x, this.y);
                     }
                     ctx.stroke();
                 }
-
-                // 현재 진행 중인 세그먼트 그리기
-                if (this.currentSegment.length > 0) {
+                
+                // F2 이후 경로 (초록색)
+                if (this.f2Index > 0 && this.f2Index < this.pathPoints.length) {
                     ctx.beginPath();
-                    ctx.strokeStyle = this.currentColor === 'yellow' ? this.colorYellow : this.colorGreen;
+                    ctx.strokeStyle = this.colorGreen;
                     ctx.lineWidth = lineWidth;
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
                     
-                    ctx.moveTo(this.currentSegment[0].x, this.currentSegment[0].y);
-                    for (let i = 1; i < this.currentSegment.length; i++) {
-                        ctx.lineTo(this.currentSegment[i].x, this.currentSegment[i].y);
+                    ctx.moveTo(this.pathPoints[this.f2Index].x, this.pathPoints[this.f2Index].y);
+                    for (let i = this.f2Index + 1; i < this.pathPoints.length; i++) {
+                        ctx.lineTo(this.pathPoints[i].x, this.pathPoints[i].y);
                     }
-                    if (this.active) {
+                    
+                    // F2 통과 후 활성화 상태면 현재 위치까지 연결
+                    if (this.state === 'toF1' && this.active) {
                         ctx.lineTo(this.x, this.y);
                     }
                     ctx.stroke();
                 }
 
                 // 반사 지점 표시
-                for (const segment of this.segments) {
-                    for (let i = 1; i < segment.points.length - 1; i++) {
-                        const point = segment.points[i];
+                for (let i = 1; i < this.pathPoints.length; i++) {
+                    const point = this.pathPoints[i];
+                    if (!point.isF2) {
                         ctx.beginPath();
-                        ctx.fillStyle = 'rgba(0, 212, 255, 0.7)';
+                        ctx.fillStyle = 'rgba(0, 212, 255, 0.8)';
                         ctx.arc(point.x, point.y, 3, 0, Math.PI * 2);
                         ctx.fill();
                     }
                 }
 
-                // 광선 머리 그리기
+                // 광선 헤드 (활성 상태일 때만)
                 if (this.active) {
-                    const currentColor = this.currentColor === 'yellow' ? '#ffcc00' : '#00ff88';
+                    const headColor = this.state === 'toF2' ? '#ffcc00' : '#00ff88';
                     
                     const gradient = ctx.createRadialGradient(
                         this.x, this.y, 0,
-                        this.x, this.y, 12
+                        this.x, this.y, 14
                     );
-                    gradient.addColorStop(0, currentColor);
-                    gradient.addColorStop(0.4, currentColor);
+                    gradient.addColorStop(0, headColor);
+                    gradient.addColorStop(0.5, headColor);
                     gradient.addColorStop(1, 'transparent');
                     
                     ctx.beginPath();
                     ctx.fillStyle = gradient;
-                    ctx.arc(this.x, this.y, 12, 0, Math.PI * 2);
+                    ctx.arc(this.x, this.y, 14, 0, Math.PI * 2);
                     ctx.fill();
                     
                     ctx.beginPath();
-                    ctx.fillStyle = '#fff';
+                    ctx.fillStyle = '#ffffff';
                     ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
                     ctx.fill();
                 }
@@ -528,9 +541,10 @@
         function drawEllipse() {
             const { centerX, centerY, a, b, f1, f2 } = ellipseParams;
             
+            // 타원 글로우
             ctx.beginPath();
-            ctx.strokeStyle = 'rgba(0, 212, 255, 0.2)';
-            ctx.lineWidth = 12;
+            ctx.strokeStyle = 'rgba(0, 212, 255, 0.15)';
+            ctx.lineWidth = 15;
             ctx.ellipse(centerX, centerY, a, b, 0, 0, Math.PI * 2);
             ctx.stroke();
             
@@ -546,20 +560,20 @@
             ctx.ellipse(centerX, centerY, a, b, 0, 0, Math.PI * 2);
             ctx.stroke();
             
-            // F1
-            const f1Gradient = ctx.createRadialGradient(f1.x, f1.y, 0, f1.x, f1.y, 25);
+            // F1 (발신점)
+            const f1Gradient = ctx.createRadialGradient(f1.x, f1.y, 0, f1.x, f1.y, 28);
             f1Gradient.addColorStop(0, 'rgba(255, 0, 110, 1)');
-            f1Gradient.addColorStop(0.3, 'rgba(255, 0, 110, 0.6)');
-            f1Gradient.addColorStop(0.6, 'rgba(255, 0, 110, 0.2)');
+            f1Gradient.addColorStop(0.4, 'rgba(255, 0, 110, 0.5)');
+            f1Gradient.addColorStop(0.7, 'rgba(255, 0, 110, 0.2)');
             f1Gradient.addColorStop(1, 'transparent');
             ctx.beginPath();
             ctx.fillStyle = f1Gradient;
-            ctx.arc(f1.x, f1.y, 25, 0, Math.PI * 2);
+            ctx.arc(f1.x, f1.y, 28, 0, Math.PI * 2);
             ctx.fill();
             
             ctx.beginPath();
             ctx.fillStyle = '#ff006e';
-            ctx.arc(f1.x, f1.y, 8, 0, Math.PI * 2);
+            ctx.arc(f1.x, f1.y, 9, 0, Math.PI * 2);
             ctx.fill();
             ctx.beginPath();
             ctx.fillStyle = '#fff';
@@ -569,22 +583,22 @@
             ctx.fillStyle = '#ff006e';
             ctx.font = 'bold 16px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText('F₁', f1.x, f1.y - 35);
+            ctx.fillText('F₁', f1.x, f1.y - 38);
             
-            // F2
-            const f2Gradient = ctx.createRadialGradient(f2.x, f2.y, 0, f2.x, f2.y, 25);
+            // F2 (수신점)
+            const f2Gradient = ctx.createRadialGradient(f2.x, f2.y, 0, f2.x, f2.y, 28);
             f2Gradient.addColorStop(0, 'rgba(0, 255, 136, 1)');
-            f2Gradient.addColorStop(0.3, 'rgba(0, 255, 136, 0.6)');
-            f2Gradient.addColorStop(0.6, 'rgba(0, 255, 136, 0.2)');
+            f2Gradient.addColorStop(0.4, 'rgba(0, 255, 136, 0.5)');
+            f2Gradient.addColorStop(0.7, 'rgba(0, 255, 136, 0.2)');
             f2Gradient.addColorStop(1, 'transparent');
             ctx.beginPath();
             ctx.fillStyle = f2Gradient;
-            ctx.arc(f2.x, f2.y, 25, 0, Math.PI * 2);
+            ctx.arc(f2.x, f2.y, 28, 0, Math.PI * 2);
             ctx.fill();
             
             ctx.beginPath();
             ctx.fillStyle = '#00ff88';
-            ctx.arc(f2.x, f2.y, 8, 0, Math.PI * 2);
+            ctx.arc(f2.x, f2.y, 9, 0, Math.PI * 2);
             ctx.fill();
             ctx.beginPath();
             ctx.fillStyle = '#fff';
@@ -594,10 +608,11 @@
             ctx.fillStyle = '#00ff88';
             ctx.font = 'bold 16px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText('F₂', f2.x, f2.y - 35);
+            ctx.fillText('F₂', f2.x, f2.y - 38);
             
+            // 보조선 (축)
             ctx.beginPath();
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
             ctx.lineWidth = 1;
             ctx.setLineDash([5, 5]);
             ctx.moveTo(centerX - a - 30, centerY);
@@ -633,7 +648,7 @@
 
         function updateStatus() {
             const activeRays = rays.filter(r => r.active).length;
-            const f2Reached = rays.filter(r => r.state === 'toF1' || r.state === 'done').length;
+            const f2Reached = rays.filter(r => r.passedF2).length;
             
             document.getElementById('activeCount').textContent = activeRays;
             document.getElementById('f2Count').textContent = f2Reached;
@@ -645,12 +660,14 @@
             const speedMultiplier = parseFloat(speedSlider.value);
             document.getElementById('speedValue').textContent = speedMultiplier.toFixed(1);
             
-            // 매 프레임 완전히 새로 그리기 (경로 보존을 위해)
+            // 화면 클리어
             ctx.fillStyle = '#050510';
             ctx.fillRect(0, 0, width, height);
             
+            // 타원 및 초점 그리기
             drawEllipse();
             
+            // 모든 광선 업데이트 및 그리기
             for (const ray of rays) {
                 ray.update(speedMultiplier);
                 ray.draw();
@@ -658,6 +675,7 @@
             
             updateStatus();
             
+            // 활성 광선이 있으면 계속 애니메이션
             const hasActiveRays = rays.some(r => r.active);
             if (hasActiveRays) {
                 animationId = requestAnimationFrame(animate);
