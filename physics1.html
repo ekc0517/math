@@ -276,14 +276,14 @@
             <canvas id="canvas"></canvas>
             <div class="info-panel">
                 <div class="info-item"><div class="info-dot dot-f1"></div> <span id="f1Label">발신 초점 (F₁)</span></div>
-                <div class="info-item"><div class="info-dot dot-f2"></div> <span id="f2Label">수신 초점 (F₂)</span></div>
+                <div class="info-item" id="f2LabelContainer"><div class="info-dot dot-f2"></div> <span id="f2Label">수신 초점 (F₂)</span></div>
                 <div class="info-item"><div class="info-dot dot-ray"></div> 음파 (광선)</div>
                 <div class="info-item"><div class="info-dot dot-wgm"></div> 회랑 모드 (WGM)</div>
             </div>
             <div class="status-bar">
                 <span class="status-item">활성 광선: <span id="activeCount">0</span></span>
-                <span class="status-item" id="passLabel">F₂ 통과: <span id="f2Count">0</span></span>
-                <span class="status-item" id="completeLabel">F₁ 복귀 완료: <span id="f1Count">0</span></span>
+                <span class="status-item" id="passLabelContainer">F₂ 통과: <span id="f2Count">0</span></span>
+                <span class="status-item" id="completeLabelContainer">F₁ 복귀 완료: <span id="f1Count">0</span></span>
                 <span class="status-item" id="wgmStatus" style="display:none;">WGM 모드: <span id="wgmMode">-</span></span>
             </div>
             
@@ -414,14 +414,16 @@
             
             if (isCircle) {
                 document.getElementById('f1Label').textContent = '중심 (O)';
-                document.getElementById('f2Label').textContent = '1차 통과';
-                document.getElementById('passLabel').innerHTML = '1차 통과: <span id="f2Count">0</span>';
-                document.getElementById('completeLabel').innerHTML = '2차 통과 완료: <span id="f1Count">0</span>';
+                document.getElementById('f2LabelContainer').style.display = 'none';
+                document.getElementById('passLabelContainer').style.display = 'none';
+                document.getElementById('completeLabelContainer').innerHTML = '중심 통과 완료: <span id="f1Count">0</span>';
             } else {
                 document.getElementById('f1Label').textContent = '발신 초점 (F₁)';
+                document.getElementById('f2LabelContainer').style.display = 'flex';
                 document.getElementById('f2Label').textContent = '수신 초점 (F₂)';
-                document.getElementById('passLabel').innerHTML = 'F₂ 통과: <span id="f2Count">0</span>';
-                document.getElementById('completeLabel').innerHTML = 'F₁ 복귀 완료: <span id="f1Count">0</span>';
+                document.getElementById('passLabelContainer').style.display = 'inline';
+                document.getElementById('passLabelContainer').innerHTML = 'F₂ 통과: <span id="f2Count">0</span>';
+                document.getElementById('completeLabelContainer').innerHTML = 'F₁ 복귀 완료: <span id="f1Count">0</span>';
             }
         }
 
@@ -440,12 +442,9 @@
                 this.currentSegment = [{ x, y }];
                 this.currentColor = 'yellow';
                 
-                // 원형 모드를 위한 추가 변수
-                this.centerPassCount = 0;
-                this.hasLeftCenter = false;  // 중심에서 벗어났는지 여부
-                this.nearCenter = false;     // 현재 중심 근처인지
+                // 원형 모드를 위한 변수
+                this.hasLeftCenter = false;
                 
-                const hue = (index / total) * 60 + 30;
                 this.colorYellow = `rgba(255, 200, 50, 0.85)`;
                 this.colorGreen = `rgba(0, 255, 136, 0.85)`;
             }
@@ -495,7 +494,7 @@
                     this.y += this.dy * step;
                     
                     if (isCircle) {
-                        // 원형일 때: 중심 통과 체크
+                        // 원형일 때: 중심 1회 통과하면 종료
                         const distToCenter = Math.hypot(centerX - this.x, centerY - this.y);
                         
                         // 중심에서 충분히 벗어났는지 확인
@@ -503,32 +502,15 @@
                             this.hasLeftCenter = true;
                         }
                         
-                        // 중심 근처 도달 체크 (중심에서 벗어난 적이 있을 때만)
+                        // 중심 통과 체크 (중심에서 벗어난 적이 있을 때만)
                         if (this.hasLeftCenter && distToCenter < 15) {
-                            if (!this.nearCenter) {
-                                this.nearCenter = true;
-                                this.centerPassCount++;
-                                
-                                if (this.centerPassCount === 1) {
-                                    // 첫 번째 통과: 노란색 -> 초록색
-                                    this.currentSegment.push({ x: centerX, y: centerY });
-                                    this.segments.push({ points: [...this.currentSegment], color: 'yellow' });
-                                    this.currentSegment = [{ x: centerX, y: centerY }];
-                                    this.currentColor = 'green';
-                                    this.state = 'toF1';
-                                    firstPassCount++;
-                                } else if (this.centerPassCount >= 2) {
-                                    // 두 번째 통과: 완료
-                                    this.currentSegment.push({ x: centerX, y: centerY });
-                                    this.segments.push({ points: [...this.currentSegment], color: 'green' });
-                                    this.currentSegment = [];
-                                    this.state = 'done';
-                                    this.active = false;
-                                    completedCount++;
-                                }
-                            }
-                        } else if (distToCenter > 30) {
-                            this.nearCenter = false;
+                            // 중심 통과: 바로 완료
+                            this.currentSegment.push({ x: centerX, y: centerY });
+                            this.segments.push({ points: [...this.currentSegment], color: 'yellow' });
+                            this.currentSegment = [];
+                            this.state = 'done';
+                            this.active = false;
+                            completedCount++;
                         }
                     } else {
                         // 타원형일 때: 기존 로직
@@ -1040,9 +1022,13 @@
 
         function updateStatus() {
             const activeRays = rays.filter(r => r.active).length;
+            const isCircle = ellipseParams.isCircle;
             
             document.getElementById('activeCount').textContent = activeRays;
-            document.getElementById('f2Count').textContent = firstPassCount;
+            
+            if (!isCircle) {
+                document.getElementById('f2Count').textContent = firstPassCount;
+            }
             document.getElementById('f1Count').textContent = completedCount;
         }
 
