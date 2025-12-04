@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Whispering Gallery - 타원형 음향 전달 시뮬레이션</title>
+    <title>Whispering Gallery - 타원형/원형 음향 전달 시뮬레이션</title>
     <style>
         * {
             margin: 0;
@@ -138,6 +138,27 @@
             box-shadow: 0 5px 20px rgba(123, 44, 191, 0.4);
         }
 
+        .btn-wgm {
+            background: linear-gradient(135deg, #ff006e, #ff4d94);
+            color: #fff;
+        }
+
+        .btn-wgm:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255, 0, 110, 0.4);
+        }
+
+        .btn-wgm.active {
+            background: linear-gradient(135deg, #00ff88, #00cc6a);
+            color: #000;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 10px rgba(0, 255, 136, 0.5); }
+            50% { box-shadow: 0 0 25px rgba(0, 255, 136, 0.8); }
+        }
+
         .info-panel {
             display: flex;
             gap: 15px;
@@ -168,6 +189,7 @@
         .dot-f1 { background: #ff006e; box-shadow: 0 0 8px #ff006e; }
         .dot-f2 { background: #00ff88; box-shadow: 0 0 8px #00ff88; }
         .dot-ray { background: #ffcc00; box-shadow: 0 0 8px #ffcc00; }
+        .dot-wgm { background: #00d4ff; box-shadow: 0 0 8px #00d4ff; }
 
         .status-bar {
             display: flex;
@@ -175,10 +197,66 @@
             gap: 30px;
             margin-top: 10px;
             font-size: 0.9rem;
+            flex-wrap: wrap;
         }
 
         .status-item {
             color: #00d4ff;
+        }
+
+        .wgm-info {
+            background: rgba(255, 0, 110, 0.1);
+            border: 1px solid rgba(255, 0, 110, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .wgm-info.visible {
+            display: block;
+        }
+
+        .wgm-info h3 {
+            color: #ff006e;
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+
+        .wgm-formula {
+            font-family: 'Times New Roman', serif;
+            font-size: 1.2rem;
+            color: #00d4ff;
+            text-align: center;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        .wgm-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .wgm-detail-item {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .wgm-detail-item .value {
+            font-size: 1.3rem;
+            color: #00ff88;
+            font-weight: bold;
+        }
+
+        .wgm-detail-item .label {
+            font-size: 0.8rem;
+            color: #888;
         }
 
         @media (max-width: 600px) {
@@ -191,7 +269,7 @@
     <div class="container">
         <header>
             <h1>🔊 Whispering Gallery</h1>
-            <p class="subtitle">타원형 공간에서의 음향 전달 시뮬레이션</p>
+            <p class="subtitle">타원형/원형 공간에서의 음향 전달 및 회랑 모드 시뮬레이션</p>
         </header>
 
         <div class="canvas-container">
@@ -200,18 +278,46 @@
                 <div class="info-item"><div class="info-dot dot-f1"></div> 발신 초점 (F₁)</div>
                 <div class="info-item"><div class="info-dot dot-f2"></div> 수신 초점 (F₂)</div>
                 <div class="info-item"><div class="info-dot dot-ray"></div> 음파 (광선)</div>
+                <div class="info-item"><div class="info-dot dot-wgm"></div> 회랑 모드 (WGM)</div>
             </div>
             <div class="status-bar">
                 <span class="status-item">활성 광선: <span id="activeCount">0</span></span>
                 <span class="status-item">F₂ 통과: <span id="f2Count">0</span></span>
                 <span class="status-item">F₁ 복귀 완료: <span id="f1Count">0</span></span>
+                <span class="status-item" id="wgmStatus" style="display:none;">WGM 모드: <span id="wgmMode">-</span></span>
+            </div>
+            
+            <div class="wgm-info" id="wgmInfo">
+                <h3>🌀 Whispering Gallery Mode (회랑 모드)</h3>
+                <div class="wgm-formula">2πR = mλ</div>
+                <p style="font-size: 0.85rem; color: #aaa; margin-bottom: 10px;">
+                    원의 둘레가 파장의 정수배일 때 공명 조건이 성립하여 정상파가 형성됩니다.
+                </p>
+                <div class="wgm-details">
+                    <div class="wgm-detail-item">
+                        <div class="value" id="wgmRadius">-</div>
+                        <div class="label">반지름 R (px)</div>
+                    </div>
+                    <div class="wgm-detail-item">
+                        <div class="value" id="wgmCircumference">-</div>
+                        <div class="label">둘레 2πR (px)</div>
+                    </div>
+                    <div class="wgm-detail-item">
+                        <div class="value" id="wgmModeNumber">-</div>
+                        <div class="label">모드 번호 m</div>
+                    </div>
+                    <div class="wgm-detail-item">
+                        <div class="value" id="wgmWavelength">-</div>
+                        <div class="label">파장 λ (px)</div>
+                    </div>
+                </div>
             </div>
         </div>
 
         <div class="controls">
             <div class="control-group">
                 <label>이심률 (Eccentricity): <span id="eccentricityValue">0.60</span></label>
-                <input type="range" id="eccentricity" min="0.1" max="0.95" step="0.01" value="0.6">
+                <input type="range" id="eccentricity" min="0" max="0.95" step="0.01" value="0.6">
             </div>
             <div class="control-group">
                 <label>광선 수: <span id="rayCountValue">24</span></label>
@@ -221,8 +327,13 @@
                 <label>속도: <span id="speedValue">1.0</span>x</label>
                 <input type="range" id="speed" min="0.3" max="3" step="0.1" value="1">
             </div>
-            <div class="control-group" style="flex-direction: row; gap: 10px; align-items: flex-end;">
+            <div class="control-group">
+                <label>WGM 모드 번호 (m): <span id="wgmModeValue">8</span></label>
+                <input type="range" id="wgmModeSlider" min="3" max="30" step="1" value="8">
+            </div>
+            <div class="control-group" style="flex-direction: row; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
                 <button class="btn-primary" id="startBtn">▶ 광선 발사</button>
+                <button class="btn-wgm" id="wgmBtn">🌀 회랑 모드</button>
                 <button class="btn-secondary" id="clearBtn">↺ 초기화</button>
             </div>
         </div>
@@ -256,13 +367,18 @@
         const eccentricitySlider = document.getElementById('eccentricity');
         const rayCountSlider = document.getElementById('rayCount');
         const speedSlider = document.getElementById('speed');
+        const wgmModeSlider = document.getElementById('wgmModeSlider');
         const startBtn = document.getElementById('startBtn');
         const clearBtn = document.getElementById('clearBtn');
+        const wgmBtn = document.getElementById('wgmBtn');
 
         let rays = [];
         let animationId = null;
         let ellipseParams = {};
         let completedCount = 0;
+        let isWGMMode = false;
+        let wgmTime = 0;
+        let wgmParticles = [];
 
         function calculateEllipse() {
             const { width, height } = getDisplaySize();
@@ -271,13 +387,21 @@
             const e = parseFloat(eccentricitySlider.value);
             
             const a = Math.min(width, height) * 0.42;
-            const c = a * e;
-            const b = Math.sqrt(a * a - c * c);
+            let c, b;
+            
+            if (e === 0) {
+                c = 0;
+                b = a;
+            } else {
+                c = a * e;
+                b = Math.sqrt(a * a - c * c);
+            }
 
             ellipseParams = {
                 centerX, centerY, a, b, c,
                 f1: { x: centerX - c, y: centerY },
-                f2: { x: centerX + c, y: centerY }
+                f2: { x: centerX + c, y: centerY },
+                isCircle: e === 0
             };
 
             document.getElementById('eccentricityValue').textContent = e.toFixed(2);
@@ -294,7 +418,6 @@
                 this.active = true;
                 this.state = 'toF2';
                 
-                // 각 세그먼트를 개별적으로 저장 (색상 정보 포함)
                 this.segments = [];
                 this.currentSegment = [{ x, y }];
                 this.currentColor = 'yellow';
@@ -308,7 +431,7 @@
                 if (!this.active) return;
 
                 const step = this.speed * speedMultiplier;
-                const { f1, f2 } = ellipseParams;
+                const { f1, f2, isCircle } = ellipseParams;
                 
                 const intersection = this.findEllipseIntersection();
                 
@@ -322,21 +445,14 @@
                     intersection.y - this.y
                 );
 
-                // 이동 전 위치
-                const prevX = this.x;
-                const prevY = this.y;
-
                 if (distToIntersect <= step) {
-                    // 벽에 도달
                     this.x = intersection.x;
                     this.y = intersection.y;
                     this.currentSegment.push({ x: this.x, y: this.y });
                     
-                    // F2 근처 체크 (벽에 닿기 전)
-                    if (this.state === 'toF2') {
+                    if (!isCircle && this.state === 'toF2') {
                         const distToF2 = Math.hypot(f2.x - this.x, f2.y - this.y);
                         if (distToF2 < 50) {
-                            // 노란색 세그먼트 저장하고 초록색 시작
                             this.segments.push({ points: [...this.currentSegment], color: 'yellow' });
                             this.currentSegment = [{ x: this.x, y: this.y }];
                             this.currentColor = 'green';
@@ -352,35 +468,31 @@
                         this.segments.push({ points: [...this.currentSegment], color: this.currentColor });
                     }
                 } else {
-                    // 일반 이동
                     this.x += this.dx * step;
                     this.y += this.dy * step;
                     
-                    // F2 통과 체크
-                    if (this.state === 'toF2') {
-                        const distToF2 = Math.hypot(f2.x - this.x, f2.y - this.y);
-                        if (distToF2 < 15) {
-                            // F2 지점을 현재 세그먼트에 추가
-                            this.currentSegment.push({ x: f2.x, y: f2.y });
-                            // 노란색 세그먼트 저장
-                            this.segments.push({ points: [...this.currentSegment], color: 'yellow' });
-                            // 초록색 세그먼트 시작
-                            this.currentSegment = [{ x: f2.x, y: f2.y }];
-                            this.currentColor = 'green';
-                            this.state = 'toF1';
+                    if (!isCircle) {
+                        if (this.state === 'toF2') {
+                            const distToF2 = Math.hypot(f2.x - this.x, f2.y - this.y);
+                            if (distToF2 < 15) {
+                                this.currentSegment.push({ x: f2.x, y: f2.y });
+                                this.segments.push({ points: [...this.currentSegment], color: 'yellow' });
+                                this.currentSegment = [{ x: f2.x, y: f2.y }];
+                                this.currentColor = 'green';
+                                this.state = 'toF1';
+                            }
                         }
-                    }
-                    
-                    // F1 도착 체크
-                    if (this.state === 'toF1') {
-                        const distToF1 = Math.hypot(f1.x - this.x, f1.y - this.y);
-                        if (distToF1 < 15) {
-                            this.currentSegment.push({ x: f1.x, y: f1.y });
-                            this.segments.push({ points: [...this.currentSegment], color: 'green' });
-                            this.currentSegment = [];
-                            this.state = 'done';
-                            this.active = false;
-                            completedCount++;
+                        
+                        if (this.state === 'toF1') {
+                            const distToF1 = Math.hypot(f1.x - this.x, f1.y - this.y);
+                            if (distToF1 < 15) {
+                                this.currentSegment.push({ x: f1.x, y: f1.y });
+                                this.segments.push({ points: [...this.currentSegment], color: 'green' });
+                                this.currentSegment = [];
+                                this.state = 'done';
+                                this.active = false;
+                                completedCount++;
+                            }
                         }
                     }
                 }
@@ -454,7 +566,6 @@
             draw() {
                 const lineWidth = this.active ? 2.5 : 2;
 
-                // 저장된 모든 세그먼트 그리기
                 for (const segment of this.segments) {
                     if (segment.points.length < 2) continue;
                     
@@ -471,7 +582,6 @@
                     ctx.stroke();
                 }
 
-                // 현재 진행 중인 세그먼트 그리기
                 if (this.currentSegment.length > 0) {
                     ctx.beginPath();
                     ctx.strokeStyle = this.currentColor === 'yellow' ? this.colorYellow : this.colorGreen;
@@ -489,7 +599,6 @@
                     ctx.stroke();
                 }
 
-                // 반사 지점 표시
                 for (const segment of this.segments) {
                     for (let i = 1; i < segment.points.length - 1; i++) {
                         const point = segment.points[i];
@@ -500,7 +609,6 @@
                     }
                 }
 
-                // 광선 머리 그리기
                 if (this.active) {
                     const currentColor = this.currentColor === 'yellow' ? '#ffcc00' : '#00ff88';
                     
@@ -525,8 +633,57 @@
             }
         }
 
+        // WGM 파티클 클래스
+        class WGMParticle {
+            constructor(angle, radius, centerX, centerY, direction) {
+                this.angle = angle;
+                this.radius = radius;
+                this.centerX = centerX;
+                this.centerY = centerY;
+                this.direction = direction; // 1 또는 -1
+                this.trail = [];
+                this.maxTrail = 30;
+            }
+
+            update(speed) {
+                this.angle += 0.02 * speed * this.direction;
+                
+                const x = this.centerX + Math.cos(this.angle) * this.radius;
+                const y = this.centerY + Math.sin(this.angle) * this.radius;
+                
+                this.trail.unshift({ x, y });
+                if (this.trail.length > this.maxTrail) {
+                    this.trail.pop();
+                }
+            }
+
+            draw() {
+                if (this.trail.length < 2) return;
+                
+                for (let i = 0; i < this.trail.length - 1; i++) {
+                    const alpha = 1 - (i / this.trail.length);
+                    ctx.beginPath();
+                    ctx.strokeStyle = `rgba(0, 212, 255, ${alpha * 0.8})`;
+                    ctx.lineWidth = 3 * (1 - i / this.trail.length);
+                    ctx.moveTo(this.trail[i].x, this.trail[i].y);
+                    ctx.lineTo(this.trail[i + 1].x, this.trail[i + 1].y);
+                    ctx.stroke();
+                }
+
+                const head = this.trail[0];
+                const gradient = ctx.createRadialGradient(head.x, head.y, 0, head.x, head.y, 10);
+                gradient.addColorStop(0, '#fff');
+                gradient.addColorStop(0.3, '#00d4ff');
+                gradient.addColorStop(1, 'transparent');
+                ctx.beginPath();
+                ctx.fillStyle = gradient;
+                ctx.arc(head.x, head.y, 10, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
         function drawEllipse() {
-            const { centerX, centerY, a, b, f1, f2 } = ellipseParams;
+            const { centerX, centerY, a, b, f1, f2, isCircle } = ellipseParams;
             
             ctx.beginPath();
             ctx.strokeStyle = 'rgba(0, 212, 255, 0.2)';
@@ -546,55 +703,82 @@
             ctx.ellipse(centerX, centerY, a, b, 0, 0, Math.PI * 2);
             ctx.stroke();
             
-            // F1
-            const f1Gradient = ctx.createRadialGradient(f1.x, f1.y, 0, f1.x, f1.y, 25);
-            f1Gradient.addColorStop(0, 'rgba(255, 0, 110, 1)');
-            f1Gradient.addColorStop(0.3, 'rgba(255, 0, 110, 0.6)');
-            f1Gradient.addColorStop(0.6, 'rgba(255, 0, 110, 0.2)');
-            f1Gradient.addColorStop(1, 'transparent');
-            ctx.beginPath();
-            ctx.fillStyle = f1Gradient;
-            ctx.arc(f1.x, f1.y, 25, 0, Math.PI * 2);
-            ctx.fill();
-            
-            ctx.beginPath();
-            ctx.fillStyle = '#ff006e';
-            ctx.arc(f1.x, f1.y, 8, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.fillStyle = '#fff';
-            ctx.arc(f1.x, f1.y, 4, 0, Math.PI * 2);
-            ctx.fill();
-            
-            ctx.fillStyle = '#ff006e';
-            ctx.font = 'bold 16px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('F₁', f1.x, f1.y - 35);
-            
-            // F2
-            const f2Gradient = ctx.createRadialGradient(f2.x, f2.y, 0, f2.x, f2.y, 25);
-            f2Gradient.addColorStop(0, 'rgba(0, 255, 136, 1)');
-            f2Gradient.addColorStop(0.3, 'rgba(0, 255, 136, 0.6)');
-            f2Gradient.addColorStop(0.6, 'rgba(0, 255, 136, 0.2)');
-            f2Gradient.addColorStop(1, 'transparent');
-            ctx.beginPath();
-            ctx.fillStyle = f2Gradient;
-            ctx.arc(f2.x, f2.y, 25, 0, Math.PI * 2);
-            ctx.fill();
-            
-            ctx.beginPath();
-            ctx.fillStyle = '#00ff88';
-            ctx.arc(f2.x, f2.y, 8, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.fillStyle = '#fff';
-            ctx.arc(f2.x, f2.y, 4, 0, Math.PI * 2);
-            ctx.fill();
-            
-            ctx.fillStyle = '#00ff88';
-            ctx.font = 'bold 16px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('F₂', f2.x, f2.y - 35);
+            if (isCircle) {
+                // 원인 경우 중심점만 표시
+                const centerGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 25);
+                centerGradient.addColorStop(0, 'rgba(123, 44, 191, 1)');
+                centerGradient.addColorStop(0.3, 'rgba(123, 44, 191, 0.6)');
+                centerGradient.addColorStop(0.6, 'rgba(123, 44, 191, 0.2)');
+                centerGradient.addColorStop(1, 'transparent');
+                ctx.beginPath();
+                ctx.fillStyle = centerGradient;
+                ctx.arc(centerX, centerY, 25, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.fillStyle = '#7b2cbf';
+                ctx.arc(centerX, centerY, 8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.fillStyle = '#fff';
+                ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = '#7b2cbf';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('O', centerX, centerY - 35);
+            } else {
+                // F1
+                const f1Gradient = ctx.createRadialGradient(f1.x, f1.y, 0, f1.x, f1.y, 25);
+                f1Gradient.addColorStop(0, 'rgba(255, 0, 110, 1)');
+                f1Gradient.addColorStop(0.3, 'rgba(255, 0, 110, 0.6)');
+                f1Gradient.addColorStop(0.6, 'rgba(255, 0, 110, 0.2)');
+                f1Gradient.addColorStop(1, 'transparent');
+                ctx.beginPath();
+                ctx.fillStyle = f1Gradient;
+                ctx.arc(f1.x, f1.y, 25, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.fillStyle = '#ff006e';
+                ctx.arc(f1.x, f1.y, 8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.fillStyle = '#fff';
+                ctx.arc(f1.x, f1.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = '#ff006e';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('F₁', f1.x, f1.y - 35);
+                
+                // F2
+                const f2Gradient = ctx.createRadialGradient(f2.x, f2.y, 0, f2.x, f2.y, 25);
+                f2Gradient.addColorStop(0, 'rgba(0, 255, 136, 1)');
+                f2Gradient.addColorStop(0.3, 'rgba(0, 255, 136, 0.6)');
+                f2Gradient.addColorStop(0.6, 'rgba(0, 255, 136, 0.2)');
+                f2Gradient.addColorStop(1, 'transparent');
+                ctx.beginPath();
+                ctx.fillStyle = f2Gradient;
+                ctx.arc(f2.x, f2.y, 25, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.fillStyle = '#00ff88';
+                ctx.arc(f2.x, f2.y, 8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.fillStyle = '#fff';
+                ctx.arc(f2.x, f2.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = '#00ff88';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('F₂', f2.x, f2.y - 35);
+            }
             
             ctx.beginPath();
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
@@ -608,10 +792,108 @@
             ctx.setLineDash([]);
         }
 
+        function drawWGMStandingWave() {
+            const { centerX, centerY, a } = ellipseParams;
+            const m = parseInt(wgmModeSlider.value);
+            const radius = a;
+            const wavelength = (2 * Math.PI * radius) / m;
+            
+            // 정상파 패턴 그리기
+            const segments = 360;
+            const waveAmplitude = 20;
+            
+            // 외부 파동 (시간에 따라 진동)
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(255, 0, 110, 0.6)';
+            ctx.lineWidth = 3;
+            
+            for (let i = 0; i <= segments; i++) {
+                const theta = (i / segments) * Math.PI * 2;
+                const wavePhase = m * theta;
+                const amplitude = Math.sin(wavePhase) * Math.cos(wgmTime * 3) * waveAmplitude;
+                const r = radius + amplitude;
+                
+                const x = centerX + Math.cos(theta) * r;
+                const y = centerY + Math.sin(theta) * r;
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.closePath();
+            ctx.stroke();
+            
+            // 내부 파동 (반대 위상)
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(0, 212, 255, 0.6)';
+            ctx.lineWidth = 3;
+            
+            for (let i = 0; i <= segments; i++) {
+                const theta = (i / segments) * Math.PI * 2;
+                const wavePhase = m * theta;
+                const amplitude = Math.sin(wavePhase) * Math.cos(wgmTime * 3) * waveAmplitude * 0.5;
+                const r = radius * 0.85 + amplitude;
+                
+                const x = centerX + Math.cos(theta) * r;
+                const y = centerY + Math.sin(theta) * r;
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.closePath();
+            ctx.stroke();
+            
+            // 마디(Node) 표시
+            for (let i = 0; i < m * 2; i++) {
+                const theta = (i / (m * 2)) * Math.PI * 2;
+                const x = centerX + Math.cos(theta) * radius;
+                const y = centerY + Math.sin(theta) * radius;
+                
+                ctx.beginPath();
+                ctx.fillStyle = i % 2 === 0 ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 255, 136, 0.9)';
+                ctx.arc(x, y, i % 2 === 0 ? 6 : 4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // 강도 분포 시각화 (내부 링)
+            const intensityRadius = radius * 0.7;
+            for (let i = 0; i < segments; i++) {
+                const theta = (i / segments) * Math.PI * 2;
+                const nextTheta = ((i + 1) / segments) * Math.PI * 2;
+                
+                const intensity = Math.pow(Math.sin(m * theta), 2);
+                const alpha = intensity * 0.4;
+                
+                ctx.beginPath();
+                ctx.fillStyle = `rgba(0, 212, 255, ${alpha})`;
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, intensityRadius, theta, nextTheta);
+                ctx.closePath();
+                ctx.fill();
+            }
+            
+            // WGM 정보 업데이트
+            document.getElementById('wgmRadius').textContent = Math.round(radius);
+            document.getElementById('wgmCircumference').textContent = Math.round(2 * Math.PI * radius);
+            document.getElementById('wgmModeNumber').textContent = m;
+            document.getElementById('wgmWavelength').textContent = Math.round(wavelength);
+        }
+
         function init() {
             calculateEllipse();
             rays = [];
             completedCount = 0;
+            isWGMMode = false;
+            wgmParticles = [];
+            wgmBtn.classList.remove('active');
+            wgmBtn.textContent = '🌀 회랑 모드';
+            document.getElementById('wgmInfo').classList.remove('visible');
+            document.getElementById('wgmStatus').style.display = 'none';
             updateStatus();
             draw();
         }
@@ -622,12 +904,84 @@
             
             rays = [];
             completedCount = 0;
-            const { f1 } = ellipseParams;
+            const { f1, isCircle, centerX, centerY } = ellipseParams;
+            
+            const startX = isCircle ? centerX : f1.x;
+            const startY = isCircle ? centerY : f1.y;
             
             for (let i = 0; i < rayCount; i++) {
                 const angle = (Math.PI * 2 * i) / rayCount;
-                const ray = new Ray(f1.x, f1.y, angle, i, rayCount);
+                const ray = new Ray(startX, startY, angle, i, rayCount);
                 rays.push(ray);
+            }
+        }
+
+        function startWGMMode() {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            
+            // 이심률을 0으로 설정
+            eccentricitySlider.value = 0;
+            document.getElementById('eccentricityValue').textContent = '0.00';
+            calculateEllipse();
+            
+            isWGMMode = true;
+            wgmTime = 0;
+            rays = [];
+            
+            // WGM 파티클 생성
+            const { centerX, centerY, a } = ellipseParams;
+            const m = parseInt(wgmModeSlider.value);
+            wgmParticles = [];
+            
+            // 시계방향, 반시계방향 파티클 생성
+            for (let i = 0; i < m; i++) {
+                const angle = (i / m) * Math.PI * 2;
+                wgmParticles.push(new WGMParticle(angle, a - 5, centerX, centerY, 1));
+                wgmParticles.push(new WGMParticle(angle + Math.PI / m, a - 5, centerX, centerY, -1));
+            }
+            
+            wgmBtn.classList.add('active');
+            wgmBtn.textContent = '⏹ 정지';
+            document.getElementById('wgmInfo').classList.add('visible');
+            document.getElementById('wgmStatus').style.display = 'inline';
+            document.getElementById('wgmMode').textContent = m;
+            
+            animateWGM();
+        }
+
+        function stopWGMMode() {
+            isWGMMode = false;
+            wgmBtn.classList.remove('active');
+            wgmBtn.textContent = '🌀 회랑 모드';
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+            draw();
+        }
+
+        function animateWGM() {
+            const { width, height } = getDisplaySize();
+            const speedMultiplier = parseFloat(speedSlider.value);
+            
+            ctx.fillStyle = '#050510';
+            ctx.fillRect(0, 0, width, height);
+            
+            drawEllipse();
+            drawWGMStandingWave();
+            
+            // 파티클 업데이트 및 그리기
+            for (const particle of wgmParticles) {
+                particle.update(speedMultiplier);
+                particle.draw();
+            }
+            
+            wgmTime += 0.016 * speedMultiplier;
+            
+            if (isWGMMode) {
+                animationId = requestAnimationFrame(animateWGM);
             }
         }
 
@@ -645,7 +999,6 @@
             const speedMultiplier = parseFloat(speedSlider.value);
             document.getElementById('speedValue').textContent = speedMultiplier.toFixed(1);
             
-            // 매 프레임 완전히 새로 그리기 (경로 보존을 위해)
             ctx.fillStyle = '#050510';
             ctx.fillRect(0, 0, width, height);
             
@@ -681,6 +1034,11 @@
             if (animationId) {
                 cancelAnimationFrame(animationId);
             }
+            isWGMMode = false;
+            wgmBtn.classList.remove('active');
+            wgmBtn.textContent = '🌀 회랑 모드';
+            document.getElementById('wgmInfo').classList.remove('visible');
+            document.getElementById('wgmStatus').style.display = 'none';
             init();
         });
 
@@ -692,13 +1050,43 @@
             document.getElementById('speedValue').textContent = parseFloat(speedSlider.value).toFixed(1);
         });
 
+        wgmModeSlider.addEventListener('input', () => {
+            document.getElementById('wgmModeValue').textContent = wgmModeSlider.value;
+            if (isWGMMode) {
+                const { centerX, centerY, a } = ellipseParams;
+                const m = parseInt(wgmModeSlider.value);
+                wgmParticles = [];
+                
+                for (let i = 0; i < m; i++) {
+                    const angle = (i / m) * Math.PI * 2;
+                    wgmParticles.push(new WGMParticle(angle, a - 5, centerX, centerY, 1));
+                    wgmParticles.push(new WGMParticle(angle + Math.PI / m, a - 5, centerX, centerY, -1));
+                }
+                
+                document.getElementById('wgmMode').textContent = m;
+            }
+        });
+
         startBtn.addEventListener('click', () => {
             if (animationId) {
                 cancelAnimationFrame(animationId);
             }
+            isWGMMode = false;
+            wgmBtn.classList.remove('active');
+            wgmBtn.textContent = '🌀 회랑 모드';
+            document.getElementById('wgmInfo').classList.remove('visible');
+            document.getElementById('wgmStatus').style.display = 'none';
             calculateEllipse();
             emitRays();
             animate();
+        });
+
+        wgmBtn.addEventListener('click', () => {
+            if (isWGMMode) {
+                stopWGMMode();
+            } else {
+                startWGMMode();
+            }
         });
 
         clearBtn.addEventListener('click', () => {
