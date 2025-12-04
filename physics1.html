@@ -188,6 +188,7 @@
 
         .dot-f1 { background: #ff006e; box-shadow: 0 0 8px #ff006e; }
         .dot-f2 { background: #00ff88; box-shadow: 0 0 8px #00ff88; }
+        .dot-start { background: #ffaa00; box-shadow: 0 0 8px #ffaa00; }
         .dot-ray { background: #ffcc00; box-shadow: 0 0 8px #ffcc00; }
         .dot-wgm { background: #00d4ff; box-shadow: 0 0 8px #00d4ff; }
 
@@ -277,6 +278,7 @@
             <div class="info-panel">
                 <div class="info-item"><div class="info-dot dot-f1"></div> <span id="f1Label">발신 초점 (F₁)</span></div>
                 <div class="info-item" id="f2LabelContainer"><div class="info-dot dot-f2"></div> <span id="f2Label">수신 초점 (F₂)</span></div>
+                <div class="info-item" id="startLabelContainer" style="display:none;"><div class="info-dot dot-start"></div> <span>시작점 (S)</span></div>
                 <div class="info-item"><div class="info-dot dot-ray"></div> 음파 (광선)</div>
                 <div class="info-item"><div class="info-dot dot-wgm"></div> 회랑 모드 (WGM)</div>
             </div>
@@ -380,6 +382,7 @@
         let isWGMMode = false;
         let wgmTime = 0;
         let wgmParticles = [];
+        let randomStartPoint = null; // 원형일 때 랜덤 시작점 저장
 
         function calculateEllipse() {
             const { width, height } = getDisplaySize();
@@ -415,12 +418,14 @@
             if (isCircle) {
                 document.getElementById('f1Label').textContent = '중심 (O)';
                 document.getElementById('f2LabelContainer').style.display = 'none';
+                document.getElementById('startLabelContainer').style.display = 'flex';
                 document.getElementById('passLabelContainer').style.display = 'none';
                 document.getElementById('completeLabelContainer').innerHTML = '중심 통과 완료: <span id="f1Count">0</span>';
             } else {
                 document.getElementById('f1Label').textContent = '발신 초점 (F₁)';
                 document.getElementById('f2LabelContainer').style.display = 'flex';
                 document.getElementById('f2Label').textContent = '수신 초점 (F₂)';
+                document.getElementById('startLabelContainer').style.display = 'none';
                 document.getElementById('passLabelContainer').style.display = 'inline';
                 document.getElementById('passLabelContainer').innerHTML = 'F₂ 통과: <span id="f2Count">0</span>';
                 document.getElementById('completeLabelContainer').innerHTML = 'F₁ 복귀 완료: <span id="f1Count">0</span>';
@@ -442,8 +447,14 @@
                 this.currentSegment = [{ x, y }];
                 this.currentColor = 'yellow';
                 
-                // 원형 모드를 위한 변수
-                this.hasLeftCenter = false;
+                // 원형 모드를 위한 변수 - 시작점이 중심이 아니므로 처음부터 true
+                const { isCircle, centerX, centerY } = ellipseParams;
+                if (isCircle) {
+                    const distToCenter = Math.hypot(centerX - x, centerY - y);
+                    this.hasLeftCenter = distToCenter > 30;
+                } else {
+                    this.hasLeftCenter = false;
+                }
                 
                 this.colorYellow = `rgba(255, 200, 50, 0.85)`;
                 this.colorGreen = `rgba(0, 255, 136, 0.85)`;
@@ -497,14 +508,8 @@
                         // 원형일 때: 중심 1회 통과하면 종료
                         const distToCenter = Math.hypot(centerX - this.x, centerY - this.y);
                         
-                        // 중심에서 충분히 벗어났는지 확인
-                        if (!this.hasLeftCenter && distToCenter > 50) {
-                            this.hasLeftCenter = true;
-                        }
-                        
-                        // 중심 통과 체크 (중심에서 벗어난 적이 있을 때만)
+                        // 중심 통과 체크
                         if (this.hasLeftCenter && distToCenter < 15) {
-                            // 중심 통과: 바로 완료
                             this.currentSegment.push({ x: centerX, y: centerY });
                             this.segments.push({ points: [...this.currentSegment], color: 'yellow' });
                             this.currentSegment = [];
@@ -747,7 +752,7 @@
             ctx.stroke();
             
             if (isCircle) {
-                // 원인 경우 중심점만 표시
+                // 원인 경우 중심점 표시
                 const centerGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 25);
                 centerGradient.addColorStop(0, 'rgba(123, 44, 191, 1)');
                 centerGradient.addColorStop(0.3, 'rgba(123, 44, 191, 0.6)');
@@ -771,6 +776,36 @@
                 ctx.font = 'bold 16px Arial';
                 ctx.textAlign = 'center';
                 ctx.fillText('O', centerX, centerY - 35);
+                
+                // 랜덤 시작점 표시 (광선이 발사된 경우)
+                if (randomStartPoint) {
+                    const startGradient = ctx.createRadialGradient(
+                        randomStartPoint.x, randomStartPoint.y, 0, 
+                        randomStartPoint.x, randomStartPoint.y, 20
+                    );
+                    startGradient.addColorStop(0, 'rgba(255, 170, 0, 1)');
+                    startGradient.addColorStop(0.3, 'rgba(255, 170, 0, 0.6)');
+                    startGradient.addColorStop(0.6, 'rgba(255, 170, 0, 0.2)');
+                    startGradient.addColorStop(1, 'transparent');
+                    ctx.beginPath();
+                    ctx.fillStyle = startGradient;
+                    ctx.arc(randomStartPoint.x, randomStartPoint.y, 20, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.beginPath();
+                    ctx.fillStyle = '#ffaa00';
+                    ctx.arc(randomStartPoint.x, randomStartPoint.y, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.fillStyle = '#fff';
+                    ctx.arc(randomStartPoint.x, randomStartPoint.y, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.fillStyle = '#ffaa00';
+                    ctx.font = 'bold 14px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('S', randomStartPoint.x, randomStartPoint.y - 28);
+                }
             } else {
                 // F1
                 const f1Gradient = ctx.createRadialGradient(f1.x, f1.y, 0, f1.x, f1.y, 25);
@@ -926,6 +961,7 @@
             rays = [];
             completedCount = 0;
             firstPassCount = 0;
+            randomStartPoint = null;
             isWGMMode = false;
             wgmParticles = [];
             wgmBtn.classList.remove('active');
@@ -943,10 +979,22 @@
             rays = [];
             completedCount = 0;
             firstPassCount = 0;
-            const { f1, isCircle, centerX, centerY } = ellipseParams;
+            const { f1, isCircle, centerX, centerY, a } = ellipseParams;
             
-            const startX = isCircle ? centerX : f1.x;
-            const startY = isCircle ? centerY : f1.y;
+            let startX, startY;
+            
+            if (isCircle) {
+                // 원형일 때: 랜덤한 점에서 시작 (중심에서 반지름의 40~70% 거리)
+                const randomAngle = Math.random() * Math.PI * 2;
+                const randomRadius = a * (0.4 + Math.random() * 0.3);
+                startX = centerX + Math.cos(randomAngle) * randomRadius;
+                startY = centerY + Math.sin(randomAngle) * randomRadius;
+                randomStartPoint = { x: startX, y: startY };
+            } else {
+                startX = f1.x;
+                startY = f1.y;
+                randomStartPoint = null;
+            }
             
             for (let i = 0; i < rayCount; i++) {
                 const angle = (Math.PI * 2 * i) / rayCount;
@@ -967,6 +1015,7 @@
             isWGMMode = true;
             wgmTime = 0;
             rays = [];
+            randomStartPoint = null;
             
             const { centerX, centerY, a } = ellipseParams;
             const m = parseInt(wgmModeSlider.value);
@@ -1027,7 +1076,8 @@
             document.getElementById('activeCount').textContent = activeRays;
             
             if (!isCircle) {
-                document.getElementById('f2Count').textContent = firstPassCount;
+                const f2CountEl = document.getElementById('f2Count');
+                if (f2CountEl) f2CountEl.textContent = firstPassCount;
             }
             document.getElementById('f1Count').textContent = completedCount;
         }
