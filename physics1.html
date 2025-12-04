@@ -275,15 +275,15 @@
         <div class="canvas-container">
             <canvas id="canvas"></canvas>
             <div class="info-panel">
-                <div class="info-item"><div class="info-dot dot-f1"></div> 발신 초점 (F₁)</div>
-                <div class="info-item"><div class="info-dot dot-f2"></div> 수신 초점 (F₂)</div>
+                <div class="info-item"><div class="info-dot dot-f1"></div> <span id="f1Label">발신 초점 (F₁)</span></div>
+                <div class="info-item"><div class="info-dot dot-f2"></div> <span id="f2Label">수신 초점 (F₂)</span></div>
                 <div class="info-item"><div class="info-dot dot-ray"></div> 음파 (광선)</div>
                 <div class="info-item"><div class="info-dot dot-wgm"></div> 회랑 모드 (WGM)</div>
             </div>
             <div class="status-bar">
                 <span class="status-item">활성 광선: <span id="activeCount">0</span></span>
-                <span class="status-item">F₂ 통과: <span id="f2Count">0</span></span>
-                <span class="status-item">F₁ 복귀 완료: <span id="f1Count">0</span></span>
+                <span class="status-item" id="passLabel">F₂ 통과: <span id="f2Count">0</span></span>
+                <span class="status-item" id="completeLabel">F₁ 복귀 완료: <span id="f1Count">0</span></span>
                 <span class="status-item" id="wgmStatus" style="display:none;">WGM 모드: <span id="wgmMode">-</span></span>
             </div>
             
@@ -376,6 +376,7 @@
         let animationId = null;
         let ellipseParams = {};
         let completedCount = 0;
+        let firstPassCount = 0;
         let isWGMMode = false;
         let wgmTime = 0;
         let wgmParticles = [];
@@ -405,6 +406,23 @@
             };
 
             document.getElementById('eccentricityValue').textContent = e.toFixed(2);
+            updateLabels();
+        }
+
+        function updateLabels() {
+            const isCircle = ellipseParams.isCircle;
+            
+            if (isCircle) {
+                document.getElementById('f1Label').textContent = '중심 (O)';
+                document.getElementById('f2Label').textContent = '1차 통과';
+                document.getElementById('passLabel').innerHTML = '1차 통과: <span id="f2Count">0</span>';
+                document.getElementById('completeLabel').innerHTML = '2차 통과 완료: <span id="f1Count">0</span>';
+            } else {
+                document.getElementById('f1Label').textContent = '발신 초점 (F₁)';
+                document.getElementById('f2Label').textContent = '수신 초점 (F₂)';
+                document.getElementById('passLabel').innerHTML = 'F₂ 통과: <span id="f2Count">0</span>';
+                document.getElementById('completeLabel').innerHTML = 'F₁ 복귀 완료: <span id="f1Count">0</span>';
+            }
         }
 
         class Ray {
@@ -422,6 +440,11 @@
                 this.currentSegment = [{ x, y }];
                 this.currentColor = 'yellow';
                 
+                // 원형 모드를 위한 추가 변수
+                this.centerPassCount = 0;
+                this.hasLeftCenter = false;  // 중심에서 벗어났는지 여부
+                this.nearCenter = false;     // 현재 중심 근처인지
+                
                 const hue = (index / total) * 60 + 30;
                 this.colorYellow = `rgba(255, 200, 50, 0.85)`;
                 this.colorGreen = `rgba(0, 255, 136, 0.85)`;
@@ -431,7 +454,7 @@
                 if (!this.active) return;
 
                 const step = this.speed * speedMultiplier;
-                const { f1, f2, isCircle } = ellipseParams;
+                const { f1, f2, isCircle, centerX, centerY } = ellipseParams;
                 
                 const intersection = this.findEllipseIntersection();
                 
@@ -471,7 +494,44 @@
                     this.x += this.dx * step;
                     this.y += this.dy * step;
                     
-                    if (!isCircle) {
+                    if (isCircle) {
+                        // 원형일 때: 중심 통과 체크
+                        const distToCenter = Math.hypot(centerX - this.x, centerY - this.y);
+                        
+                        // 중심에서 충분히 벗어났는지 확인
+                        if (!this.hasLeftCenter && distToCenter > 50) {
+                            this.hasLeftCenter = true;
+                        }
+                        
+                        // 중심 근처 도달 체크 (중심에서 벗어난 적이 있을 때만)
+                        if (this.hasLeftCenter && distToCenter < 15) {
+                            if (!this.nearCenter) {
+                                this.nearCenter = true;
+                                this.centerPassCount++;
+                                
+                                if (this.centerPassCount === 1) {
+                                    // 첫 번째 통과: 노란색 -> 초록색
+                                    this.currentSegment.push({ x: centerX, y: centerY });
+                                    this.segments.push({ points: [...this.currentSegment], color: 'yellow' });
+                                    this.currentSegment = [{ x: centerX, y: centerY }];
+                                    this.currentColor = 'green';
+                                    this.state = 'toF1';
+                                    firstPassCount++;
+                                } else if (this.centerPassCount >= 2) {
+                                    // 두 번째 통과: 완료
+                                    this.currentSegment.push({ x: centerX, y: centerY });
+                                    this.segments.push({ points: [...this.currentSegment], color: 'green' });
+                                    this.currentSegment = [];
+                                    this.state = 'done';
+                                    this.active = false;
+                                    completedCount++;
+                                }
+                            }
+                        } else if (distToCenter > 30) {
+                            this.nearCenter = false;
+                        }
+                    } else {
+                        // 타원형일 때: 기존 로직
                         if (this.state === 'toF2') {
                             const distToF2 = Math.hypot(f2.x - this.x, f2.y - this.y);
                             if (distToF2 < 15) {
@@ -480,6 +540,7 @@
                                 this.currentSegment = [{ x: f2.x, y: f2.y }];
                                 this.currentColor = 'green';
                                 this.state = 'toF1';
+                                firstPassCount++;
                             }
                         }
                         
@@ -640,7 +701,7 @@
                 this.radius = radius;
                 this.centerX = centerX;
                 this.centerY = centerY;
-                this.direction = direction; // 1 또는 -1
+                this.direction = direction;
                 this.trail = [];
                 this.maxTrail = 30;
             }
@@ -798,11 +859,9 @@
             const radius = a;
             const wavelength = (2 * Math.PI * radius) / m;
             
-            // 정상파 패턴 그리기
             const segments = 360;
             const waveAmplitude = 20;
             
-            // 외부 파동 (시간에 따라 진동)
             ctx.beginPath();
             ctx.strokeStyle = 'rgba(255, 0, 110, 0.6)';
             ctx.lineWidth = 3;
@@ -825,7 +884,6 @@
             ctx.closePath();
             ctx.stroke();
             
-            // 내부 파동 (반대 위상)
             ctx.beginPath();
             ctx.strokeStyle = 'rgba(0, 212, 255, 0.6)';
             ctx.lineWidth = 3;
@@ -848,7 +906,6 @@
             ctx.closePath();
             ctx.stroke();
             
-            // 마디(Node) 표시
             for (let i = 0; i < m * 2; i++) {
                 const theta = (i / (m * 2)) * Math.PI * 2;
                 const x = centerX + Math.cos(theta) * radius;
@@ -860,7 +917,6 @@
                 ctx.fill();
             }
             
-            // 강도 분포 시각화 (내부 링)
             const intensityRadius = radius * 0.7;
             for (let i = 0; i < segments; i++) {
                 const theta = (i / segments) * Math.PI * 2;
@@ -877,7 +933,6 @@
                 ctx.fill();
             }
             
-            // WGM 정보 업데이트
             document.getElementById('wgmRadius').textContent = Math.round(radius);
             document.getElementById('wgmCircumference').textContent = Math.round(2 * Math.PI * radius);
             document.getElementById('wgmModeNumber').textContent = m;
@@ -888,6 +943,7 @@
             calculateEllipse();
             rays = [];
             completedCount = 0;
+            firstPassCount = 0;
             isWGMMode = false;
             wgmParticles = [];
             wgmBtn.classList.remove('active');
@@ -904,6 +960,7 @@
             
             rays = [];
             completedCount = 0;
+            firstPassCount = 0;
             const { f1, isCircle, centerX, centerY } = ellipseParams;
             
             const startX = isCircle ? centerX : f1.x;
@@ -921,7 +978,6 @@
                 cancelAnimationFrame(animationId);
             }
             
-            // 이심률을 0으로 설정
             eccentricitySlider.value = 0;
             document.getElementById('eccentricityValue').textContent = '0.00';
             calculateEllipse();
@@ -930,12 +986,10 @@
             wgmTime = 0;
             rays = [];
             
-            // WGM 파티클 생성
             const { centerX, centerY, a } = ellipseParams;
             const m = parseInt(wgmModeSlider.value);
             wgmParticles = [];
             
-            // 시계방향, 반시계방향 파티클 생성
             for (let i = 0; i < m; i++) {
                 const angle = (i / m) * Math.PI * 2;
                 wgmParticles.push(new WGMParticle(angle, a - 5, centerX, centerY, 1));
@@ -972,7 +1026,6 @@
             drawEllipse();
             drawWGMStandingWave();
             
-            // 파티클 업데이트 및 그리기
             for (const particle of wgmParticles) {
                 particle.update(speedMultiplier);
                 particle.draw();
@@ -987,10 +1040,9 @@
 
         function updateStatus() {
             const activeRays = rays.filter(r => r.active).length;
-            const f2Reached = rays.filter(r => r.state === 'toF1' || r.state === 'done').length;
             
             document.getElementById('activeCount').textContent = activeRays;
-            document.getElementById('f2Count').textContent = f2Reached;
+            document.getElementById('f2Count').textContent = firstPassCount;
             document.getElementById('f1Count').textContent = completedCount;
         }
 
