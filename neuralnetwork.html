@@ -1,882 +1,1104 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neural ODE vs Discrete RNN — 인터랙티브 시뮬레이션</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-    <style>
-        /* ===== CSS Reset & Base ===== */
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Discrete vs Continuous · Interactive Simulator</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
-        :root {
-            --bg: #0f1117;
-            --surface: #1a1d2e;
-            --surface2: #232740;
-            --border: #2e3350;
-            --text: #e4e6f0;
-            --text-muted: #8b8fa8;
-            --accent: #6c63ff;
-            --accent-glow: rgba(108, 99, 255, 0.25);
-            --green: #00d2a0;
-            --green-glow: rgba(0, 210, 160, 0.2);
-            --orange: #ff8c42;
-            --orange-glow: rgba(255, 140, 66, 0.15);
-            --red: #ff5c72;
-            --pink: #e74694;
-            --radius: 14px;
-            --radius-sm: 8px;
-            --shadow: 0 4px 24px rgba(0,0,0,0.35);
-        }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#04080f;
+  --bg1:#080d1a;
+  --bg2:#0b1221;
+  --border:rgba(99,179,237,0.12);
+  --border2:rgba(99,179,237,0.25);
+  --rnn:#f97316;
+  --rnn2:rgba(249,115,22,0.15);
+  --rnn-glow:rgba(249,115,22,0.6);
+  --ode:#06b6d4;
+  --ode2:rgba(6,182,212,0.15);
+  --ode-glow:rgba(6,182,212,0.6);
+  --purple:#a78bfa;
+  --green:#4ade80;
+  --text:#e2e8f0;
+  --text2:#94a3b8;
+  --text3:#475569;
+  --miss-start:8.1;
+  --miss-end:24;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;overflow:hidden}
+body{display:flex;flex-direction:column}
 
-        body {
-            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Noto Sans KR', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            line-height: 1.7;
-            min-height: 100vh;
-            padding: 24px 16px 60px;
-        }
+/* ── SCANLINES OVERLAY ── */
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);
+}
 
-        .container {
-            max-width: 960px;
-            margin: 0 auto;
-        }
+/* ── HEADER ── */
+header{
+  flex-shrink:0;display:flex;align-items:center;justify-content:space-between;
+  padding:8px 24px;border-bottom:1px solid var(--border);
+  background:rgba(8,13,26,0.95);backdrop-filter:blur(20px);z-index:100;
+}
+.hd-left{display:flex;align-items:center;gap:12px}
+.pulse-ring{
+  position:relative;width:12px;height:12px;
+}
+.pulse-ring::before,.pulse-ring::after{
+  content:'';position:absolute;inset:0;border-radius:50%;
+}
+.pulse-ring::before{background:var(--ode);box-shadow:0 0 8px var(--ode);}
+.pulse-ring::after{
+  border:2px solid var(--ode);animation:ring-pulse 2s ease-out infinite;opacity:0;
+}
+@keyframes ring-pulse{0%{transform:scale(1);opacity:0.8}100%{transform:scale(2.5);opacity:0}}
+header h1{font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--text)}
+header h1 em{font-style:normal;color:var(--ode)}
+.hd-right{display:flex;align-items:center;gap:10px}
+.tag{
+  font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);
+  border:1px solid var(--border);padding:2px 8px;border-radius:4px;letter-spacing:.06em;
+}
 
-        /* ===== Header ===== */
-        header {
-            text-align: center;
-            margin-bottom: 32px;
-        }
-        header h1 {
-            font-size: 1.75rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--accent), var(--green));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 6px;
-        }
-        header p {
-            color: var(--text-muted);
-            font-size: 0.92rem;
-        }
+/* ── MAIN ── */
+.main{flex:1;display:grid;grid-template-columns:1fr 220px;grid-template-rows:1fr auto;min-height:0;gap:0}
 
-        /* ===== Card ===== */
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: var(--shadow);
-        }
-        .card-title {
-            font-size: 1.05rem;
-            font-weight: 600;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .card-title .dot {
-            width: 10px; height: 10px; border-radius: 50%;
-            display: inline-block;
-        }
+/* ── LEFT AREA ── */
+.left-col{display:flex;flex-direction:column;min-height:0;padding:10px 0 10px 12px;gap:8px}
 
-        /* ===== Toggle Buttons ===== */
-        .toggle-group {
-            display: flex;
-            gap: 0;
-            background: var(--surface2);
-            border-radius: 50px;
-            padding: 4px;
-            margin-bottom: 20px;
-            width: fit-content;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        .toggle-btn {
-            padding: 10px 28px;
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            font-size: 0.88rem;
-            font-weight: 600;
-            color: var(--text-muted);
-            background: transparent;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-        .toggle-btn.active-a {
-            background: linear-gradient(135deg, var(--orange), #ff6b3d);
-            color: #fff;
-            box-shadow: 0 2px 16px var(--orange-glow);
-        }
-        .toggle-btn.active-b {
-            background: linear-gradient(135deg, var(--accent), #8b5cf6);
-            color: #fff;
-            box-shadow: 0 2px 16px var(--accent-glow);
-        }
-        .toggle-btn:hover:not(.active-a):not(.active-b) {
-            color: var(--text);
-            background: rgba(255,255,255,0.05);
-        }
+/* ── CHART CARDS (split) ── */
+.chart-row{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:8px;min-height:0}
+.chart-card{
+  position:relative;background:var(--bg1);border:1px solid var(--border);border-radius:12px;
+  overflow:hidden;display:flex;flex-direction:column;min-height:0;
+  transition:border-color .4s ease,box-shadow .4s ease;
+}
+.chart-card.rnn-active{border-color:rgba(249,115,22,.35);box-shadow:0 0 20px rgba(249,115,22,.08),inset 0 0 30px rgba(249,115,22,.03)}
+.chart-card.ode-active{border-color:rgba(6,182,212,.35);box-shadow:0 0 20px rgba(6,182,212,.08),inset 0 0 30px rgba(6,182,212,.03)}
+.card-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 14px 6px;border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.card-title{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase}
+.card-dot{width:8px;height:8px;border-radius:50%}
+.card-dot.rnn{background:var(--rnn);box-shadow:0 0 8px var(--rnn-glow)}
+.card-dot.ode{
+  background:var(--ode);box-shadow:0 0 8px var(--ode-glow);
+  animation:ode-dot-pulse 2s ease-in-out infinite;
+}
+@keyframes ode-dot-pulse{0%,100%{box-shadow:0 0 8px var(--ode-glow)}50%{box-shadow:0 0 20px var(--ode-glow),0 0 40px rgba(6,182,212,.3)}}
+.card-badge{
+  font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 8px;border-radius:3px;
+}
+.card-badge.rnn{background:var(--rnn2);color:var(--rnn);border:1px solid rgba(249,115,22,.3)}
+.card-badge.ode{background:var(--ode2);color:var(--ode);border:1px solid rgba(6,182,212,.3)}
+.chart-canvas-wrap{flex:1;min-height:0;position:relative;padding:4px 6px 6px}
+.chart-canvas-wrap canvas{width:100%!important;height:100%!important}
 
-        /* ===== Both Button (동시 비교) ===== */
-        .toggle-btn.active-both {
-            background: linear-gradient(135deg, var(--green), #00b89c);
-            color: #fff;
-            box-shadow: 0 2px 16px var(--green-glow);
-        }
+/* ── DELTA STRIP ── */
+.delta-strip{
+  flex-shrink:0;height:70px;background:var(--bg2);border:1px solid var(--border);
+  border-radius:10px;overflow:hidden;position:relative;
+}
+.delta-label{
+  position:absolute;top:6px;left:12px;font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--text3);z-index:2;
+}
+.delta-label span{color:var(--purple);margin-left:6px;font-family:'JetBrains Mono',monospace}
+.delta-canvas-wrap{position:absolute;inset:0;padding:6px 6px 2px}
+.delta-canvas-wrap canvas{width:100%!important;height:100%!important}
 
-        /* ===== Info Panel ===== */
-        .info-panel {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-        .info-item {
-            background: var(--surface2);
-            border-radius: var(--radius-sm);
-            padding: 14px 18px;
-            text-align: center;
-        }
-        .info-item .label {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 4px;
-        }
-        .info-item .value {
-            font-size: 1.3rem;
-            font-weight: 700;
-        }
-        .info-item .value.accent { color: var(--accent); }
-        .info-item .value.orange { color: var(--orange); }
-        .info-item .value.green { color: var(--green); }
+/* ── RIGHT SIDEBAR ── */
+.right-sidebar{
+  display:flex;flex-direction:column;gap:8px;padding:10px 12px 10px 8px;
+  border-left:1px solid var(--border);overflow:hidden;
+}
 
-        .formula-box {
-            background: var(--surface2);
-            border-left: 3px solid var(--accent);
-            border-radius: var(--radius-sm);
-            padding: 12px 18px;
-            margin-bottom: 20px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.88rem;
-            color: var(--green);
-            overflow-x: auto;
-        }
+/* ── GAUGE ── */
+.gauge-card{
+  background:var(--bg1);border:1px solid var(--border);border-radius:12px;
+  padding:12px;display:flex;flex-direction:column;align-items:center;gap:6px;
+}
+.gauge-title{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);text-align:center}
+.gauge-wrap{position:relative;width:130px;height:75px;overflow:hidden}
+.gauge-wrap canvas{position:absolute;top:0;left:0;width:100%!important;height:100%!important}
+.gauge-value{
+  font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;
+  text-align:center;line-height:1;transition:color .3s ease;
+}
+.gauge-unit{font-size:10px;color:var(--text3);text-align:center;margin-top:-2px}
+.gauge-diff{
+  font-family:'JetBrains Mono',monospace;font-size:11px;text-align:center;
+  padding:3px 10px;border-radius:4px;transition:all .3s ease;
+}
 
-        /* ===== Chart ===== */
-        .chart-wrap {
-            position: relative;
-            width: 100%;
-            height: 420px;
-        }
-        .chart-wrap canvas {
-            border-radius: var(--radius-sm);
-        }
+/* ── READOUT PANEL ── */
+.readout-card{
+  background:var(--bg1);border:1px solid var(--border);border-radius:12px;padding:10px 12px;
+  display:flex;flex-direction:column;gap:8px;flex:1;
+}
+.readout-row{display:flex;flex-direction:column;gap:3px}
+.r-label{font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3)}
+.r-val{
+  font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;
+  transition:color .2s ease,text-shadow .2s ease;
+}
+.r-val.rnn{color:var(--rnn);text-shadow:0 0 10px var(--rnn-glow)}
+.r-val.ode{color:var(--ode);text-shadow:0 0 10px var(--ode-glow)}
+.r-val.both{color:var(--text);text-shadow:none}
+.r-divider{height:1px;background:var(--border)}
+.r-compare{
+  display:grid;grid-template-columns:1fr 1fr;gap:6px;
+}
+.r-col{display:flex;flex-direction:column;gap:2px}
+.r-col-label{font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3)}
+.r-col-val{
+  font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;
+  transition:all .2s ease;
+}
+.r-col-val.rnn{color:var(--rnn)}
+.r-col-val.ode{color:var(--ode)}
 
-        /* ===== Slider ===== */
-        .slider-section {
-            margin-top: 20px;
-        }
-        .slider-section label {
-            font-size: 0.9rem;
-            font-weight: 600;
-            display: block;
-            margin-bottom: 8px;
-        }
-        .slider-row {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-        .slider-row input[type="range"] {
-            flex: 1;
-            -webkit-appearance: none;
-            appearance: none;
-            height: 6px;
-            border-radius: 3px;
-            background: var(--surface2);
-            outline: none;
-        }
-        .slider-row input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 22px; height: 22px;
-            border-radius: 50%;
-            background: var(--accent);
-            cursor: pointer;
-            box-shadow: 0 0 10px var(--accent-glow);
-            border: 2px solid #fff;
-        }
-        .slider-row input[type="range"]::-moz-range-thumb {
-            width: 22px; height: 22px;
-            border-radius: 50%;
-            background: var(--accent);
-            cursor: pointer;
-            border: 2px solid #fff;
-        }
-        .slider-value {
-            min-width: 70px;
-            text-align: center;
-            font-weight: 700;
-            font-size: 1.1rem;
-            color: var(--accent);
-        }
+/* ── MISSING ZONE INDICATOR ── */
+.miss-card{
+  background:var(--bg1);border:1px solid var(--border);border-radius:12px;
+  padding:10px 12px;display:flex;flex-direction:column;gap:6px;
+  transition:all .3s ease;
+}
+.miss-card.in-zone{
+  border-color:rgba(167,139,250,.4);
+  background:rgba(167,139,250,.06);
+  box-shadow:0 0 16px rgba(167,139,250,.1);
+}
+.miss-header{display:flex;align-items:center;justify-content:space-between}
+.miss-title{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3)}
+.miss-dot{
+  width:7px;height:7px;border-radius:50%;background:var(--purple);
+  transition:all .3s ease;
+}
+.miss-card.in-zone .miss-dot{
+  box-shadow:0 0 10px var(--purple);
+  animation:miss-blink 1s ease-in-out infinite;
+}
+@keyframes miss-blink{0%,100%{opacity:.5}50%{opacity:1}}
+@keyframes blink-live{0%,100%{opacity:.5}50%{opacity:1}}
+.miss-bar-wrap{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.miss-bar{display:flex;flex-direction:column;gap:3px}
+.miss-bar-label{font-size:8px;color:var(--text3);letter-spacing:.08em}
+.miss-bar-track{height:5px;background:rgba(255,255,255,.05);border-radius:3px;overflow:hidden}
+.miss-bar-fill{height:100%;border-radius:3px;transition:width .15s ease}
+.miss-bar-fill.rnn{background:var(--rnn)}
+.miss-bar-fill.ode{background:var(--ode)}
+.miss-status{
+  font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);
+  transition:color .3s ease;
+}
+.miss-card.in-zone .miss-status{color:var(--purple)}
 
-        /* ===== Explanation Cards ===== */
-        .explanation {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-        }
-        @media (max-width: 640px) {
-            .explanation { grid-template-columns: 1fr; }
-        }
-        .exp-card {
-            background: var(--surface2);
-            border-radius: var(--radius-sm);
-            padding: 18px;
-            border-top: 3px solid var(--accent);
-        }
-        .exp-card.discrete { border-top-color: var(--orange); }
-        .exp-card h3 {
-            font-size: 0.95rem;
-            margin-bottom: 8px;
-        }
-        .exp-card p {
-            font-size: 0.82rem;
-            color: var(--text-muted);
-            line-height: 1.65;
-        }
+/* ── CONTROL PANEL ROW ── */
+.ctrl-row{
+  grid-column:1/-1;display:flex;align-items:center;gap:10px;
+  padding:8px 12px;border-top:1px solid var(--border);
+  background:rgba(8,13,26,.98);
+}
 
-        /* ===== Bottom Educational Panel ===== */
-        .edu-panel {
-            border-top: 3px solid var(--green);
-        }
-        .edu-panel h3 {
-            color: var(--green);
-            font-size: 1rem;
-            margin-bottom: 12px;
-        }
-        .edu-panel ul {
-            padding-left: 20px;
-        }
-        .edu-panel li {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            margin-bottom: 6px;
-            line-height: 1.6;
-        }
-        .edu-panel li strong {
-            color: var(--text);
-        }
+/* Mode toggle */
+.mode-toggle{
+  display:flex;background:rgba(0,0,0,.6);border:1px solid var(--border);
+  border-radius:8px;padding:3px;gap:3px;flex-shrink:0;
+}
+.m-btn{
+  padding:8px 18px;border:none;border-radius:6px;cursor:pointer;
+  font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;
+  letter-spacing:.04em;background:transparent;color:var(--text3);
+  transition:all .3s cubic-bezier(.4,0,.2,1);display:flex;align-items:center;gap:7px;
+  white-space:nowrap;
+}
+.m-btn .m-icon{font-size:14px}
+.m-btn.act-rnn{
+  background:linear-gradient(135deg,rgba(249,115,22,.25),rgba(249,115,22,.1));
+  color:var(--rnn);box-shadow:0 0 18px rgba(249,115,22,.2);
+  text-shadow:0 0 8px var(--rnn);
+}
+.m-btn.act-ode{
+  background:linear-gradient(135deg,rgba(6,182,212,.25),rgba(6,182,212,.1));
+  color:var(--ode);box-shadow:0 0 18px rgba(6,182,212,.2);
+  text-shadow:0 0 8px var(--ode);
+}
+.m-btn.act-both{
+  background:linear-gradient(135deg,rgba(167,139,250,.2),rgba(167,139,250,.08));
+  color:var(--purple);box-shadow:0 0 18px rgba(167,139,250,.2);
+}
 
-        /* ===== Scenario Box ===== */
-        .scenario-box {
-            background: linear-gradient(135deg, rgba(108,99,255,0.08), rgba(0,210,160,0.06));
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 20px 24px;
-            margin-bottom: 20px;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            line-height: 1.75;
-        }
-        .scenario-box strong { color: var(--text); }
-        .scenario-box .highlight {
-            color: var(--green);
-            font-weight: 600;
-        }
+/* Scrubber */
+.scrub-wrap{flex:1;display:flex;align-items:center;gap:8px}
+.scrub-t{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);min-width:18px}
+.play-btn{
+  width:30px;height:30px;border-radius:50%;border:1px solid var(--border);
+  background:rgba(255,255,255,.04);color:var(--text2);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;
+  transition:all .2s ease;
+}
+.play-btn:hover{background:rgba(255,255,255,.08);border-color:var(--border2)}
+.play-btn.playing{border-color:var(--ode);color:var(--ode);box-shadow:0 0 10px rgba(6,182,212,.3)}
 
-        /* ===== Legend Badges ===== */
-        .legend-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            margin-bottom: 16px;
-            justify-content: center;
-        }
-        .legend-badge {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            background: var(--surface2);
-            padding: 4px 12px;
-            border-radius: 20px;
-        }
-        .legend-badge .swatch {
-            width: 12px; height: 12px;
-            border-radius: 3px;
-            display: inline-block;
-        }
+input[type=range]{
+  flex:1;-webkit-appearance:none;appearance:none;height:5px;
+  border-radius:3px;outline:none;cursor:pointer;
+}
+input[type=range].sl-rnn{
+  background:linear-gradient(90deg,rgba(249,115,22,.6) var(--p,0%),rgba(255,255,255,.06) var(--p,0%));
+}
+input[type=range].sl-ode{
+  background:linear-gradient(90deg,rgba(6,182,212,.6) var(--p,0%),rgba(255,255,255,.06) var(--p,0%));
+}
+input[type=range].sl-both{
+  background:linear-gradient(90deg,rgba(167,139,250,.6) var(--p,0%),rgba(255,255,255,.06) var(--p,0%));
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:18px;height:18px;border-radius:50%;
+  background:var(--ode);box-shadow:0 0 12px var(--ode-glow),0 0 24px rgba(6,182,212,.3);
+  cursor:pointer;transition:transform .15s ease,box-shadow .15s ease;
+}
+input[type=range].sl-rnn::-webkit-slider-thumb{
+  background:var(--rnn);box-shadow:0 0 12px var(--rnn-glow),0 0 24px rgba(249,115,22,.3);
+}
+input[type=range]::-webkit-slider-thumb:active{transform:scale(1.3)}
 
-        /* ===== Annotation arrow/label ===== */
-        .region-labels {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            margin-bottom: 8px;
-            font-size: 0.78rem;
-        }
-        .region-labels span {
-            padding: 3px 12px;
-            border-radius: 12px;
-            font-weight: 600;
-        }
-        .region-labels .interp {
-            background: rgba(108, 99, 255, 0.15);
-            color: var(--accent);
-        }
-        .region-labels .extrap {
-            background: rgba(255, 92, 114, 0.15);
-            color: var(--red);
-        }
-    </style>
+/* Time display */
+.time-display{
+  background:rgba(0,0,0,.5);border:1px solid var(--border);border-radius:8px;
+  padding:6px 14px;flex-shrink:0;
+}
+.td-t{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)}
+.td-t span{font-size:15px;font-weight:700;color:var(--text)}
+
+/* Drag hint overlay */
+.drag-hint{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.3);
+  border-radius:8px;padding:8px 14px;font-size:11px;color:var(--purple);
+  pointer-events:none;white-space:nowrap;z-index:10;
+  animation:hint-fade 2.5s ease 1.5s both;
+}
+@keyframes hint-fade{0%{opacity:0;transform:translate(-50%,-60%)}20%{opacity:1;transform:translate(-50%,-50%)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%)}}
+
+/* Transition flash */
+.mode-flash{
+  position:fixed;inset:0;pointer-events:none;z-index:9998;opacity:0;
+  transition:opacity .15s ease;
+}
+.mode-flash.rnn{background:radial-gradient(ellipse at center,rgba(249,115,22,.12),transparent 70%)}
+.mode-flash.ode{background:radial-gradient(ellipse at center,rgba(6,182,212,.12),transparent 70%)}
+.mode-flash.show{opacity:1}
+
+::-webkit-scrollbar{display:none}
+</style>
 </head>
 <body>
-<div class="container">
 
-    <!-- Header -->
-    <header>
-        <h1>🧠 Neural ODE vs Discrete RNN</h1>
-        <p>불규칙 시계열 데이터에서의 연속 vs 이산적 모델링 비교 시뮬레이션</p>
-    </header>
+<div class="mode-flash" id="modeFlash"></div>
 
-    <!-- Scenario Box -->
-    <div class="scenario-box">
-        <strong>📋 시나리오:</strong> 환자 A가 응급실에 방문하여 <strong>불규칙한 시간</strong>에 혈압을 측정했습니다.<br>
-        관측 시간: <span class="highlight">t=0, 2.5, 8.1, 24시간</span> — 총 4회 측정.<br>
-        의사가 <strong>t=5(보간)</strong> 또는 <strong>t=36(외삽)</strong> 시점의 혈압을 묻는다면, 각 모델은 어떻게 응답할까요?
+<!-- HEADER -->
+<header>
+  <div class="hd-left">
+    <div class="pulse-ring"></div>
+    <h1>Blood Pressure <em>Time-Series</em> Simulator</h1>
+  </div>
+  <div class="hd-right">
+    <div style="font-size:10px;color:var(--text3);display:flex;align-items:center;gap:5px">
+      <span style="color:var(--purple)">✦</span> 흰 점 드래그 가능
+    </div>
+    <div class="tag">DISCRETE</div>
+    <div style="color:var(--text3);font-size:12px">vs</div>
+    <div class="tag" style="color:var(--ode);border-color:rgba(6,182,212,.3)">CONTINUOUS</div>
+    <div id="liveTag" class="tag" style="color:var(--green);border-color:rgba(74,222,128,.3);animation:blink-live 2s ease-in-out infinite">● LIVE</div>
+  </div>
+</header>
+
+<!-- MAIN GRID -->
+<div class="main">
+
+  <!-- LEFT: charts + delta -->
+  <div class="left-col">
+
+    <!-- SPLIT CHART ROW -->
+    <div class="chart-row">
+
+      <!-- RNN Card -->
+      <div class="chart-card rnn-active" id="rnnCard">
+        <div class="card-header">
+          <div class="card-title"><div class="card-dot rnn"></div>RNN · Discrete</div>
+          <div class="card-badge rnn">STEPPED</div>
+        </div>
+        <div class="chart-canvas-wrap">
+          <canvas id="rnnChart"></canvas>
+        </div>
+      </div>
+
+      <!-- ODE Card -->
+      <div class="chart-card ode-active" id="odeCard">
+        <div class="card-header">
+          <div class="card-title"><div class="card-dot ode"></div>Neural ODE · Continuous</div>
+          <div class="card-badge ode">SMOOTH CURVE</div>
+        </div>
+        <div class="chart-canvas-wrap">
+          <div class="drag-hint" id="dragHint">✦ 흰 점을 드래그해 보세요</div>
+          <canvas id="odeChart"></canvas>
+        </div>
+      </div>
+
     </div>
 
-    <!-- Mode Toggle -->
-    <div class="toggle-group">
-        <button class="toggle-btn active-a" id="btnModeA" onclick="setMode('A')">📊 Discrete RNN</button>
-        <button class="toggle-btn" id="btnBoth" onclick="setMode('BOTH')">🔀 동시 비교</button>
-        <button class="toggle-btn" id="btnModeB" onclick="setMode('B')">🌊 Neural ODE</button>
+    <!-- DELTA STRIP -->
+    <div class="delta-strip">
+      <div class="delta-label">두 모델의 예측 차이 (Δ BP) <span id="deltaVal">—</span></div>
+      <div class="delta-canvas-wrap"><canvas id="deltaChart"></canvas></div>
     </div>
 
-    <!-- Info Panel -->
-    <div class="info-panel" id="infoPanel">
-        <div class="info-item">
-            <div class="label">현재 시점</div>
-            <div class="value accent" id="infoTime">t = 0.0 h</div>
-        </div>
-        <div class="info-item">
-            <div class="label">예측 혈압 (현재 모드)</div>
-            <div class="value green" id="infoBP">120.0 mmHg</div>
-        </div>
-        <div class="info-item">
-            <div class="label">영역</div>
-            <div class="value orange" id="infoRegion">관측점</div>
-        </div>
+  </div>
+
+  <!-- RIGHT SIDEBAR -->
+  <div class="right-sidebar">
+
+    <!-- GAUGE -->
+    <div class="gauge-card">
+      <div class="gauge-title">현재 예측 혈압</div>
+      <div class="gauge-wrap">
+        <canvas id="gaugeCanvas" width="260" height="150"></canvas>
+      </div>
+      <div class="gauge-value" id="gaugeVal" style="color:var(--ode)">—</div>
+      <div class="gauge-unit">mmHg</div>
+      <div class="gauge-diff" id="gaugeDiff">—</div>
     </div>
 
-    <!-- Formula Box -->
-    <div class="formula-box" id="formulaBox">
-        Mode A: z(t) = ForwardFill( Bin(observations, Δt=1h) )
+    <!-- READOUT -->
+    <div class="readout-card">
+      <div class="readout-row">
+        <div class="r-label">탐색 시간</div>
+        <div class="r-val both" id="rTime">t = 0.0 h</div>
+      </div>
+      <div class="r-divider"></div>
+      <div class="r-compare">
+        <div class="r-col">
+          <div class="r-col-label">RNN</div>
+          <div class="r-col-val rnn" id="rBpRnn">— mmHg</div>
+        </div>
+        <div class="r-col">
+          <div class="r-col-label">ODE</div>
+          <div class="r-col-val ode" id="rBpOde">— mmHg</div>
+        </div>
+      </div>
+      <div class="r-divider"></div>
+      <div class="readout-row">
+        <div class="r-label">예측 신뢰도</div>
+        <div style="display:flex;flex-direction:column;gap:4px;margin-top:2px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:9px;color:var(--rnn);width:26px;letter-spacing:.06em">RNN</span>
+            <div style="flex:1;height:4px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden">
+              <div id="confRnn" style="height:100%;background:var(--rnn);border-radius:2px;transition:width .2s ease;width:0%"></div>
+            </div>
+            <span class="r-col-val rnn" id="confRnnPct" style="font-size:10px;min-width:28px">—</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:9px;color:var(--ode);width:26px;letter-spacing:.06em">ODE</span>
+            <div style="flex:1;height:4px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden">
+              <div id="confOde" style="height:100%;background:var(--ode);border-radius:2px;transition:width .2s ease;width:0%"></div>
+            </div>
+            <span class="r-col-val ode" id="confOdePct" style="font-size:10px;min-width:28px">—</span>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Region Labels -->
-    <div class="region-labels">
-        <span class="interp">← 보간 영역 (0~24h) →</span>
-        <span class="extrap">← 외삽 영역 (24~40h) →</span>
+    <!-- MISSING ZONE -->
+    <div class="miss-card" id="missCard">
+      <div class="miss-header">
+        <div class="miss-title">결측 구간 (t=8.1~24)</div>
+        <div class="miss-dot"></div>
+      </div>
+      <div class="miss-bar-wrap">
+        <div class="miss-bar">
+          <div class="miss-bar-label">RNN 변화량</div>
+          <div class="miss-bar-track"><div class="miss-bar-fill rnn" id="missBarRnn" style="width:0%"></div></div>
+        </div>
+        <div class="miss-bar">
+          <div class="miss-bar-label">ODE 변화량</div>
+          <div class="miss-bar-track"><div class="miss-bar-fill ode" id="missBarOde" style="width:0%"></div></div>
+        </div>
+      </div>
+      <div class="miss-status" id="missStatus">대기 중 · 슬라이더를 이동하세요</div>
     </div>
 
-    <!-- Chart -->
-    <div class="card">
-        <div class="card-title">
-            <span class="dot" style="background: var(--accent);"></span>
-            혈압 궤적 시각화
-        </div>
-        <div class="legend-row">
-            <span class="legend-badge"><span class="swatch" style="background:#ff5c72;"></span>실제 관측점</span>
-            <span class="legend-badge"><span class="swatch" style="background:#ff8c42;"></span>Discrete RNN (계단형)</span>
-            <span class="legend-badge"><span class="swatch" style="background:#6c63ff;"></span>Neural ODE (연속 곡선)</span>
-            <span class="legend-badge"><span class="swatch" style="background:#00d2a0;"></span>예측 마커</span>
-        </div>
-        <div class="chart-wrap">
-            <canvas id="mainChart"></canvas>
-        </div>
+  </div>
+
+  <!-- CONTROL ROW -->
+  <div class="ctrl-row">
+
+    <!-- Mode toggle -->
+    <div class="mode-toggle">
+      <button class="m-btn" id="btnRnn" onclick="setView('rnn')">
+        <span class="m-icon">▦</span>RNN
+      </button>
+      <button class="m-btn act-both" id="btnBoth" onclick="setView('both')">
+        <span class="m-icon">◈</span>비교
+      </button>
+      <button class="m-btn" id="btnOde" onclick="setView('ode')">
+        <span class="m-icon">〰</span>ODE
+      </button>
     </div>
 
-    <!-- Slider -->
-    <div class="card slider-section">
-        <label>⏱️ 예측 시간(t) 설정</label>
-        <div class="slider-row">
-            <span style="font-size:0.8rem; color:var(--text-muted);">0h</span>
-            <input type="range" id="timeSlider" min="0" max="40" step="0.1" value="0">
-            <span style="font-size:0.8rem; color:var(--text-muted);">40h</span>
-            <span class="slider-value" id="sliderDisplay">0.0 h</span>
-        </div>
+    <!-- Play button -->
+    <button class="play-btn" id="playBtn" onclick="togglePlay()" title="자동 재생">▶</button>
+
+    <!-- Scrubber -->
+    <div class="scrub-wrap">
+      <span class="scrub-t">0h</span>
+      <input type="range" id="scrubber" class="sl-both" min="0" max="40" step="0.1" value="0" oninput="onScrub(this.value)">
+      <span class="scrub-t">40h</span>
     </div>
 
-    <!-- Method Explanation -->
-    <div class="explanation" style="margin-bottom:20px;">
-        <div class="exp-card discrete">
-            <h3>📊 기존 방식 (Discrete RNN / Binning)</h3>
-            <p>
-                시간을 <strong>1시간 단위 격자(Bin)</strong>로 나누고, 각 Bin에 관측치가 없으면 <strong>Forward Fill</strong>(직전 값 복사)로 채웁니다.
-                결과적으로 계단형(Step) 그래프가 생성되며, 실제 연속적 변화를 포착하지 못합니다.
-                관측 시점 사이의 미세한 변화, 외삽 영역에서의 자연스러운 추세를 표현할 수 없습니다.
-            </p>
-        </div>
-        <div class="exp-card">
-            <h3>🌊 Neural ODE (Continuous)</h3>
-            <p>
-                초기 상태 <strong>z(t₀)</strong>에서 출발하여 <strong>dz/dt = f(z(t), θ)</strong>를 신경망으로 학습합니다.
-                <strong>ODESolve</strong>로 임의 시점의 상태를 구할 수 있어, 불규칙 시간 간격에 자연스럽게 대응합니다.
-                보간(interpolation)과 외삽(extrapolation) 모두 연속적이고 부드러운 궤적을 제공합니다.
-            </p>
-        </div>
+    <!-- Time display -->
+    <div class="time-display">
+      <div class="td-t">t = <span id="tdTime">0.0</span> h</div>
     </div>
 
-    <!-- Educational Panel -->
-    <div class="card edu-panel">
-        <h3>💡 왜 Neural ODE가 불규칙한 데이터에 적합한가?</h3>
-        <ul>
-            <li><strong>시간 격자 불필요:</strong> RNN/LSTM은 고정 시간 간격을 전제하지만, Neural ODE는 관측이 발생한 정확한 시점에서 직접 계산합니다. 1시간 간격으로 Bin을 만들 필요가 없습니다.</li>
-            <li><strong>결측치 대응:</strong> Forward Fill이나 0-padding 같은 인위적 보간 없이, 미분 방정식의 역학 자체가 관측 사이의 상태를 자연스럽게 정의합니다.</li>
-            <li><strong>메모리 효율:</strong> 역전파 시 Adjoint Method를 사용하면 O(1) 메모리로 깊은 네트워크 효과를 낼 수 있습니다.</li>
-            <li><strong>보간 & 외삽:</strong> t=5(관측 사이)든 t=36(미래)든, ODESolve(z₀, f, 0, t) 한 번으로 연속 궤적 위의 값을 즉시 얻습니다.</li>
-            <li><strong>물리적 해석 가능:</strong> 학습된 f(z, θ)는 시스템의 '변화율'을 나타내므로, 모델의 행동에 물리적 직관을 부여할 수 있습니다.</li>
-        </ul>
+    <!-- Keyboard hint -->
+    <div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0;border-left:1px solid var(--border);padding-left:10px">
+      <div style="font-size:8px;color:var(--text3);letter-spacing:.1em">SHORTCUTS</div>
+      <div style="display:flex;gap:5px">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:3px;padding:1px 5px">SPACE</span>
+        <span style="font-size:9px;color:var(--text3)">재생</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:3px;padding:1px 5px">←→</span>
+        <span style="font-size:9px;color:var(--text3)">탐색</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:3px;padding:1px 5px">1·2·3</span>
+        <span style="font-size:9px;color:var(--text3)">모드</span>
+      </div>
     </div>
 
-</div>
+  </div>
+
+</div><!-- /main -->
 
 <script>
-// ================================================================
-// 1. 데이터 설정 (Mock Observations)
-// ================================================================
-const observations = [
-    { t: 0,    bp: 120 },
-    { t: 2.5,  bp: 135 },
-    { t: 8.1,  bp: 110 },
-    { t: 24,   bp: 125 }
+// ═══════════════════════════════════════════════
+//  CONSTANTS & DATA
+// ═══════════════════════════════════════════════
+const TMIN=0, TMAX=40, STEPS=401;
+const times = Array.from({length:STEPS},(_,i)=>parseFloat((i*.1).toFixed(1)));
+
+// Observation points (draggable)
+let OBS = [
+  {t:0,   y:120},
+  {t:2.5, y:135},
+  {t:8.1, y:128},
+  {t:24,  y:115},
+  {t:40,  y:122},
 ];
+const MISS_S=8.1, MISS_E=24;
 
-const T_MIN = 0;
-const T_MAX = 40;
-const BIN_SIZE = 1; // 1시간 단위 Bin
+// ═══════════════════════════════════════════════
+//  INTERPOLATION
+// ═══════════════════════════════════════════════
+function cubicHermiteAt(t, pts){
+  if(t<=pts[0].t) return pts[0].y;
+  if(t>=pts[pts.length-1].t) return pts[pts.length-1].y;
+  let i=0;
+  for(let k=0;k<pts.length-1;k++){if(t>=pts[k].t&&t<=pts[k+1].t){i=k;break;}}
+  const p0=pts[i], p1=pts[i+1];
+  const span=p1.t-p0.t;
+  const u=(t-p0.t)/span;
+  const m0=i>0 ? .5*((p1.y-pts[i-1].y)/(p1.t-pts[i-1].t))*span : (p1.y-p0.y);
+  const m1=i<pts.length-2 ? .5*((pts[i+2].y-p0.y)/(pts[i+2].t-p0.t))*span : (p1.y-p0.y);
+  let extra=0;
+  if(t>MISS_S&&t<MISS_E){
+    const pr=(t-MISS_S)/(MISS_E-MISS_S);
+    extra=8*Math.sin(pr*Math.PI*2.4)*Math.sin(pr*Math.PI*.7)
+         +4*Math.cos(pr*Math.PI*3.8)*(1-pr);
+  }
+  const h00=2*u**3-3*u**2+1, h10=u**3-2*u**2+u,
+        h01=-2*u**3+3*u**2, h11=u**3-u**2;
+  return h00*p0.y+h10*m0+h01*p1.y+h11*m1+extra;
+}
 
-// ================================================================
-// 2. Discrete RNN (Forward Fill) 모의 함수
-// ================================================================
-/**
- * 계단형 Forward Fill: 주어진 t에 대해 가장 최근 관측값 반환
- * t > 마지막 관측이면 마지막 관측값 유지
- */
-function discreteRNN(t) {
-    let val = observations[0].bp;
-    for (let i = 0; i < observations.length; i++) {
-        if (t >= observations[i].t) {
-            val = observations[i].bp;
-        }
+function stepAt(t,pts){
+  let last=pts[0].y;
+  for(let k=0;k<pts.length;k++){
+    if(pts[k].t<=t) last=pts[k].y; else break;
+  }
+  return last;
+}
+
+function buildSeries(){
+  const ode=times.map(t=>cubicHermiteAt(t,OBS));
+  const rnn=times.map(t=>stepAt(t,OBS));
+  const delta=times.map((t,i)=>Math.abs(ode[i]-rnn[i]));
+  return {ode,rnn,delta};
+}
+
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+let currentT=0, viewMode='both', isPlaying=false, playRaf=null, playDir=1;
+let series=buildSeries();
+
+// ═══════════════════════════════════════════════
+//  CHART.JS PLUGINS
+// ═══════════════════════════════════════════════
+// Scan-line marker plugin factory
+function makeScanPlugin(id, getMode){
+  return {
+    id,
+    afterDraw(chart){
+      const {ctx,scales}=chart;
+      const xS=scales.x, yS=scales.y;
+      const xPx=xS.getPixelForValue(currentT);
+      const top=yS.getPixelForValue(yS.max), bot=yS.getPixelForValue(yS.min);
+      const mode=getMode();
+      const color=mode==='rnn'?'rgba(249,115,22,.6)':'rgba(6,182,212,.6)';
+      const solid=mode==='rnn'?'#f97316':'#06b6d4';
+
+      ctx.save();
+      // vertical scan line
+      ctx.beginPath();
+      ctx.setLineDash([3,4]);
+      ctx.strokeStyle=color;
+      ctx.lineWidth=1.2;
+      ctx.moveTo(xPx,top); ctx.lineTo(xPx,bot); ctx.stroke();
+      ctx.setLineDash([]);
+
+      // get BP value
+      const bp=mode==='rnn'?stepAt(currentT,OBS):cubicHermiteAt(currentT,OBS);
+      const yPx=yS.getPixelForValue(bp);
+
+      // glow rings
+      for(let r=28;r>=10;r-=6){
+        ctx.beginPath();
+        ctx.arc(xPx,yPx,r,0,Math.PI*2);
+        ctx.fillStyle=`${solid}${Math.floor((0.04+(28-r)*.008)*255).toString(16).padStart(2,'0')}`;
+        ctx.fill();
+      }
+      // main dot
+      ctx.shadowColor=solid; ctx.shadowBlur=20;
+      ctx.beginPath(); ctx.arc(xPx,yPx,7,0,Math.PI*2);
+      ctx.fillStyle=solid; ctx.fill();
+      // core
+      ctx.shadowBlur=0;
+      ctx.beginPath(); ctx.arc(xPx,yPx,3,0,Math.PI*2);
+      ctx.fillStyle='#fff'; ctx.fill();
+
+      ctx.restore();
     }
-    return val;
+  };
 }
 
-/**
- * Discrete RNN의 전체 계단형 데이터 생성 (1시간 Bin)
- */
-function generateDiscreteData() {
-    const points = [];
-    for (let t = T_MIN; t <= T_MAX; t += BIN_SIZE) {
-        points.push({ x: t, y: discreteRNN(t) });
+// Missing zone plugin factory
+function makeMissPlugin(id){
+  return {
+    id,
+    beforeDraw(chart){
+      const {ctx,scales}=chart;
+      const xS=scales.x, yS=scales.y;
+      const x1=xS.getPixelForValue(MISS_S), x2=xS.getPixelForValue(MISS_E);
+      const top=yS.getPixelForValue(yS.max), bot=yS.getPixelForValue(yS.min);
+      const g=ctx.createLinearGradient(x1,0,x2,0);
+      g.addColorStop(0,'rgba(167,139,250,0)');
+      g.addColorStop(.12,'rgba(167,139,250,.07)');
+      g.addColorStop(.88,'rgba(167,139,250,.07)');
+      g.addColorStop(1,'rgba(167,139,250,0)');
+      ctx.save();
+      ctx.fillStyle=g; ctx.fillRect(x1,top,x2-x1,bot-top);
+      ctx.strokeStyle='rgba(167,139,250,.3)'; ctx.lineWidth=1;
+      ctx.setLineDash([3,5]);
+      ctx.beginPath(); ctx.moveTo(x1,top); ctx.lineTo(x1,bot); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x2,top); ctx.lineTo(x2,bot); ctx.stroke();
+      ctx.restore();
     }
-    return points;
+  };
 }
 
-// ================================================================
-// 3. Neural ODE 모의 함수 (연속 곡선 Mock)
-// ================================================================
-/**
- * 관측점을 통과하는 부드러운 연속 곡선을 생성합니다.
- * 실제 Neural ODE 대신, Cubic Hermite spline 보간 + 사인 결합으로 모사합니다.
- * 
- * 접근법: 
- *   - 관측 구간 내(0~24h): Cubic Hermite 보간으로 관측점을 정확히 통과
- *   - 관측 구간 외(24~40h): 자연스러운 외삽 (감쇠 사인파)
- */
+const scanDeltaPlugin = {
+  id: 'scanDelta',
+  afterDraw(chart){
+    if(chart.canvas.id!=='deltaChart') return;
+    const{ctx,scales}=chart;
+    const xS=scales.x, yS=scales.y;
+    const xPx=xS.getPixelForValue(currentT);
+    const dv=Math.abs(cubicHermiteAt(currentT,OBS)-stepAt(currentT,OBS));
+    const yPx=yS.getPixelForValue(Math.min(dv,24.5));
+    ctx.save();
+    ctx.beginPath(); ctx.setLineDash([2,3]);
+    ctx.strokeStyle='rgba(167,139,250,.5)'; ctx.lineWidth=1;
+    ctx.moveTo(xPx,yS.getPixelForValue(yS.max));
+    ctx.lineTo(xPx,yS.getPixelForValue(yS.min)); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.shadowColor='#a78bfa'; ctx.shadowBlur=14;
+    ctx.beginPath(); ctx.arc(xPx,yPx,5,0,Math.PI*2);
+    ctx.fillStyle='#a78bfa'; ctx.fill();
+    ctx.shadowBlur=0;
+    ctx.beginPath(); ctx.arc(xPx,yPx,2,0,Math.PI*2);
+    ctx.fillStyle='#fff'; ctx.fill();
+    ctx.restore();
+  }
+};
 
-// Cubic Hermite spline 보간을 위한 탄젠트 계산 (Catmull-Rom)
-function computeTangents(pts) {
-    const n = pts.length;
-    const tangents = [];
-    for (let i = 0; i < n; i++) {
-        if (i === 0) {
-            tangents.push((pts[1].bp - pts[0].bp) / (pts[1].t - pts[0].t));
-        } else if (i === n - 1) {
-            tangents.push((pts[n-1].bp - pts[n-2].bp) / (pts[n-1].t - pts[n-2].t));
-        } else {
-            tangents.push(
-                0.5 * ((pts[i+1].bp - pts[i].bp) / (pts[i+1].t - pts[i].t) +
-                        (pts[i].bp - pts[i-1].bp) / (pts[i].t - pts[i-1].t))
-            );
-        }
-    }
-    return tangents;
-}
+Chart.register(
+  makeScanPlugin('scanRnn',()=>'rnn'),
+  makeScanPlugin('scanOde',()=>'ode'),
+  makeMissPlugin('missRnn'),
+  makeMissPlugin('missOde'),
+  scanDeltaPlugin
+);
 
-const tangents = computeTangents(observations);
-
-/**
- * Cubic Hermite 보간: 구간 [p0, p1] 사이의 t에 대한 값
- */
-function hermite(t, p0, p1, m0, m1) {
-    const dt = p1.t - p0.t;
-    const s = (t - p0.t) / dt;
-    const s2 = s * s;
-    const s3 = s2 * s;
-
-    const h00 = 2*s3 - 3*s2 + 1;
-    const h10 = s3 - 2*s2 + s;
-    const h01 = -2*s3 + 3*s2;
-    const h11 = s3 - s2;
-
-    return h00 * p0.bp + h10 * dt * m0 + h01 * p1.bp + h11 * dt * m1;
-}
-
-/**
- * Neural ODE 모의: 임의 시점 t에서의 예측값
- */
-function neuralODE(t) {
-    const n = observations.length;
-    
-    // 관측 구간 내 (0 ~ 24h): Hermite 보간
-    if (t <= observations[n-1].t) {
-        // t가 첫 관측점 이전이면 첫 관측값
-        if (t <= observations[0].t) return observations[0].bp;
-        
-        // 해당 구간 찾기
-        for (let i = 0; i < n - 1; i++) {
-            if (t >= observations[i].t && t <= observations[i+1].t) {
-                return hermite(t, observations[i], observations[i+1], tangents[i], tangents[i+1]);
-            }
-        }
-    }
-    
-    // 외삽 영역 (24h ~ 40h): 마지막 관측점에서 감쇠 사인파 + 선형 추세
-    const tLast = observations[n-1].t;
-    const bpLast = observations[n-1].bp;
-    const slopeLast = tangents[n-1]; // 마지막 접선 기울기
-    
-    const dt = t - tLast;
-    
-    // 감쇠 진동 + 약한 선형 추세로 외삽 모사
-    const decay = Math.exp(-0.06 * dt);
-    const oscillation = 8 * Math.sin(0.35 * dt) * decay;
-    const trend = slopeLast * dt * 0.15 * decay; // 감쇠되는 선형 추세
-    
-    return bpLast + trend + oscillation;
-}
-
-/**
- * Neural ODE 연속 곡선 데이터 생성 (0.2h 간격)
- */
-function generateODEData() {
-    const points = [];
-    const step = 0.2;
-    for (let t = T_MIN; t <= T_MAX; t += step) {
-        points.push({ x: parseFloat(t.toFixed(1)), y: neuralODE(t) });
-    }
-    return points;
-}
-
-// ================================================================
-// 4. 차트 초기화 (Chart.js)
-// ================================================================
-const ctx = document.getElementById('mainChart').getContext('2d');
-
-// 실제 관측점 데이터
-const scatterData = observations.map(o => ({ x: o.t, y: o.bp }));
-
-// 각 모드 데이터
-const discreteData = generateDiscreteData();
-const odeData = generateODEData();
-
-// 현재 모드 상태
-let currentMode = 'A'; // 'A', 'B', 'BOTH'
-let currentT = 0;
-
-// 예측 마커 데이터 (단일 점)
-const predMarkerData = [{ x: 0, y: 120 }];
-
-// t=24 경계선을 위한 Annotation 플러그인 대체: 별도 데이터셋으로 수직선
-const boundaryLine = [{ x: 24, y: 85 }, { x: 24, y: 165 }];
-
-const chart = new Chart(ctx, {
-    type: 'scatter',
-    data: {
-        datasets: [
-            // 0: Discrete RNN 계단형
-            {
-                label: 'Discrete RNN (Forward Fill)',
-                data: discreteData,
-                borderColor: '#ff8c42',
-                backgroundColor: 'rgba(255,140,66,0.08)',
-                borderWidth: 2.5,
-                showLine: true,
-                stepped: 'before',
-                pointRadius: 0,
-                pointHoverRadius: 0,
-                fill: true,
-                tension: 0,
-                order: 3
-            },
-            // 1: Neural ODE 연속 곡선
-            {
-                label: 'Neural ODE (Continuous)',
-                data: odeData,
-                borderColor: '#6c63ff',
-                backgroundColor: 'rgba(108,99,255,0.06)',
-                borderWidth: 2.5,
-                showLine: true,
-                pointRadius: 0,
-                pointHoverRadius: 0,
-                fill: true,
-                tension: 0.4,
-                order: 2
-            },
-            // 2: 실제 관측점
-            {
-                label: '실제 관측점',
-                data: scatterData,
-                borderColor: '#ff5c72',
-                backgroundColor: '#ff5c72',
-                pointRadius: 8,
-                pointHoverRadius: 10,
-                pointStyle: 'circle',
-                pointBorderWidth: 2,
-                pointBorderColor: '#fff',
-                showLine: false,
-                order: 0
-            },
-            // 3: 예측 마커
-            {
-                label: '예측 위치',
-                data: predMarkerData,
-                borderColor: '#00d2a0',
-                backgroundColor: '#00d2a0',
-                pointRadius: 12,
-                pointHoverRadius: 14,
-                pointStyle: 'star',
-                pointBorderWidth: 2,
-                pointBorderColor: '#fff',
-                showLine: false,
-                order: -1
-            },
-            // 4: t=24 경계선
-            {
-                label: '관측 경계 (t=24h)',
-                data: boundaryLine,
-                borderColor: 'rgba(255,92,114,0.3)',
-                borderWidth: 1.5,
-                borderDash: [6, 4],
-                showLine: true,
-                pointRadius: 0,
-                order: 5
-            }
-        ]
+// ═══════════════════════════════════════════════
+//  BUILD CHARTS
+// ═══════════════════════════════════════════════
+const COMMON_OPTS=(plugins,extra={})=>({
+  responsive:true, maintainAspectRatio:false,
+  animation:{duration:400,easing:'easeInOutCubic'},
+  interaction:{mode:'nearest',intersect:false},
+  layout:{padding:{top:10,right:12,bottom:4,left:4}},
+  plugins:{legend:{display:false},tooltip:{enabled:false},...plugins},
+  scales:{
+    x:{
+      type:'linear',min:TMIN,max:TMAX,
+      ticks:{color:'#475569',font:{family:'JetBrains Mono',size:9},maxTicksLimit:9,callback:v=>`${v}h`},
+      grid:{color:'rgba(255,255,255,.04)',lineWidth:1},
+      border:{color:'rgba(255,255,255,.08)'}
     },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: {
-            duration: 150
-        },
-        interaction: {
-            mode: 'nearest',
-            intersect: false
-        },
-        plugins: {
-            legend: { display: false },
-            tooltip: {
-                backgroundColor: 'rgba(26, 29, 46, 0.95)',
-                titleColor: '#e4e6f0',
-                bodyColor: '#8b8fa8',
-                borderColor: '#2e3350',
-                borderWidth: 1,
-                cornerRadius: 8,
-                padding: 12,
-                callbacks: {
-                    label: function(ctx) {
-                        return `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)} mmHg (t=${ctx.parsed.x.toFixed(1)}h)`;
-                    }
-                }
-            }
-        },
-        scales: {
-            x: {
-                type: 'linear',
-                min: T_MIN,
-                max: T_MAX,
-                title: {
-                    display: true,
-                    text: '시간 (hours)',
-                    color: '#8b8fa8',
-                    font: { size: 13, weight: '600' }
-                },
-                grid: {
-                    color: 'rgba(255,255,255,0.06)',
-                    drawTicks: false
-                },
-                ticks: {
-                    color: '#8b8fa8',
-                    stepSize: 2,
-                    font: { size: 11 }
-                }
-            },
-            y: {
-                min: 85,
-                max: 165,
-                title: {
-                    display: true,
-                    text: '혈압 (mmHg)',
-                    color: '#8b8fa8',
-                    font: { size: 13, weight: '600' }
-                },
-                grid: {
-                    color: 'rgba(255,255,255,0.06)',
-                    drawTicks: false
-                },
-                ticks: {
-                    color: '#8b8fa8',
-                    stepSize: 10,
-                    font: { size: 11 }
-                }
-            }
-        }
-    }
+    y:{
+      min:80,max:160,
+      ticks:{color:'#475569',font:{family:'JetBrains Mono',size:9},callback:v=>`${v}`},
+      grid:{color:'rgba(255,255,255,.04)',lineWidth:1},
+      border:{color:'rgba(255,255,255,.08)'}
+    },
+    ...extra
+  }
 });
 
-// ================================================================
-// 5. 모드 전환 로직
-// ================================================================
-function setMode(mode) {
-    currentMode = mode;
-    
-    const btnA = document.getElementById('btnModeA');
-    const btnB = document.getElementById('btnModeB');
-    const btnBoth = document.getElementById('btnBoth');
-    
-    // 모든 버튼 리셋
-    btnA.className = 'toggle-btn';
-    btnB.className = 'toggle-btn';
-    btnBoth.className = 'toggle-btn';
-    
-    if (mode === 'A') {
-        btnA.classList.add('active-a');
-        chart.data.datasets[0].borderWidth = 2.5;    // Discrete 보이기
-        chart.data.datasets[0].borderColor = '#ff8c42';
-        chart.data.datasets[1].borderWidth = 0;       // ODE 숨기기
-        chart.data.datasets[1].backgroundColor = 'transparent';
-        chart.data.datasets[0].backgroundColor = 'rgba(255,140,66,0.08)';
-        
-        // x축 1시간 격자 강조
-        chart.options.scales.x.grid.color = 'rgba(255,140,66,0.12)';
-        chart.options.scales.x.ticks.stepSize = 1;
-        
-    } else if (mode === 'B') {
-        btnB.classList.add('active-b');
-        chart.data.datasets[0].borderWidth = 0;       // Discrete 숨기기
-        chart.data.datasets[0].backgroundColor = 'transparent';
-        chart.data.datasets[1].borderWidth = 2.5;     // ODE 보이기
-        chart.data.datasets[1].borderColor = '#6c63ff';
-        chart.data.datasets[1].backgroundColor = 'rgba(108,99,255,0.06)';
-        
-        // 격자 부드럽게
-        chart.options.scales.x.grid.color = 'rgba(255,255,255,0.04)';
-        chart.options.scales.x.ticks.stepSize = 4;
-        
-    } else { // BOTH
-        btnBoth.classList.add('active-both');
-        chart.data.datasets[0].borderWidth = 2;
-        chart.data.datasets[0].borderColor = 'rgba(255,140,66,0.65)';
-        chart.data.datasets[0].backgroundColor = 'rgba(255,140,66,0.04)';
-        chart.data.datasets[1].borderWidth = 2.5;
-        chart.data.datasets[1].borderColor = '#6c63ff';
-        chart.data.datasets[1].backgroundColor = 'rgba(108,99,255,0.04)';
-        
-        chart.options.scales.x.grid.color = 'rgba(255,255,255,0.05)';
-        chart.options.scales.x.ticks.stepSize = 2;
-    }
-    
-    // 예측 마커 업데이트
-    updatePrediction(currentT);
-    chart.update();
-}
+// Obs points for both charts (white dots)
+const obsDataset={
+  label:'Obs',
+  data:OBS.map(p=>({x:p.t,y:p.y})),
+  parsing:false,
+  borderColor:'#f8fafc',backgroundColor:'rgba(248,250,252,.25)',
+  borderWidth:2,pointRadius:8,pointHoverRadius:11,
+  pointStyle:'circle',showLine:false,fill:false,order:0,
+};
 
-// ================================================================
-// 6. 슬라이더 & 예측 마커 업데이트
-// ================================================================
-function updatePrediction(t) {
-    currentT = t;
-    
-    // 현재 모드에 따라 예측값 계산
-    let predictedBP;
-    let formulaText;
-    
-    if (currentMode === 'A') {
-        predictedBP = discreteRNN(t);
-        formulaText = `Mode A: z(t=${t.toFixed(1)}) = ForwardFill( Bin(observations, Δt=1h) ) = ${predictedBP.toFixed(1)} mmHg`;
-    } else if (currentMode === 'B') {
-        predictedBP = neuralODE(t);
-        formulaText = `Mode B: z(t=${t.toFixed(1)}) = ODESolve(z(0), f, 0, ${t.toFixed(1)}) = ${predictedBP.toFixed(1)} mmHg    where dz/dt = f(z(t), θ)`;
-    } else {
-        // BOTH: Neural ODE 값을 주 표시, 둘 다 보여줌
-        const bpA = discreteRNN(t);
-        const bpB = neuralODE(t);
-        predictedBP = bpB;
-        formulaText = `Discrete: z(t)=${bpA.toFixed(1)}  |  Neural ODE: z(t) = ODESolve(z(0), f, 0, ${t.toFixed(1)}) = ${bpB.toFixed(1)} mmHg`;
-    }
-    
-    // 예측 마커 위치 업데이트
-    chart.data.datasets[3].data = [{ x: t, y: predictedBP }];
-    
-    // 영역 판별
-    let region;
-    const isObservation = observations.some(o => Math.abs(o.t - t) < 0.05);
-    if (isObservation) {
-        region = '✅ 관측점';
-    } else if (t <= 24) {
-        region = '🔵 보간 (Interpolation)';
-    } else {
-        region = '🔴 외삽 (Extrapolation)';
-    }
-    
-    // UI 업데이트
-    document.getElementById('infoTime').textContent = `t = ${t.toFixed(1)} h`;
-    document.getElementById('infoBP').textContent = `${predictedBP.toFixed(1)} mmHg`;
-    document.getElementById('infoRegion').textContent = region;
-    document.getElementById('formulaBox').textContent = formulaText;
-    document.getElementById('sliderDisplay').textContent = `${t.toFixed(1)} h`;
-    
-    chart.update('none'); // 애니메이션 없이 즉시 업데이트
-}
-
-// 슬라이더 이벤트 리스너
-const slider = document.getElementById('timeSlider');
-slider.addEventListener('input', function() {
-    const t = parseFloat(this.value);
-    updatePrediction(t);
+// ── RNN CHART ──
+const rnnGradient=(c)=>{
+  const {ctx,chartArea}=c.chart;
+  if(!chartArea) return 'rgba(249,115,22,.15)';
+  const g=ctx.createLinearGradient(0,chartArea.top,0,chartArea.bottom);
+  g.addColorStop(0,'rgba(249,115,22,.18)');
+  g.addColorStop(1,'rgba(249,115,22,.01)');
+  return g;
+};
+const rnnCtx=document.getElementById('rnnChart').getContext('2d');
+const rnnChart=new Chart(rnnCtx,{
+  type:'line',
+  data:{
+    labels:times,
+    datasets:[
+      {
+        label:'RNN',data:series.rnn,
+        borderColor:'#f97316',borderWidth:2,
+        backgroundColor:rnnGradient,fill:true,
+        tension:0,stepped:'before',
+        pointRadius:0,pointHoverRadius:0,order:1,
+      },
+      {...obsDataset,data:OBS.map(p=>({x:p.t,y:p.y}))}
+    ]
+  },
+  options:COMMON_OPTS({scanRnn:true,missRnn:true})
 });
 
-// ================================================================
-// 7. 초기화
-// ================================================================
-setMode('A');
-updatePrediction(0);
+// ── ODE CHART ──
+const odeCtx=document.getElementById('odeChart').getContext('2d');
+let odeGrad=null;
+function getOdeGrad(c){
+  const{ctx,chartArea}=c.chart;
+  if(!chartArea) return '#06b6d4';
+  if(!odeGrad){
+    odeGrad=ctx.createLinearGradient(chartArea.left,0,chartArea.right,0);
+    odeGrad.addColorStop(0,'#a78bfa');
+    odeGrad.addColorStop(.35,'#38bdf8');
+    odeGrad.addColorStop(.65,'#06b6d4');
+    odeGrad.addColorStop(1,'#f472b6');
+  }
+  return odeGrad;
+}
+function getOdeFill(c){
+  const{ctx,chartArea}=c.chart;
+  if(!chartArea) return 'rgba(6,182,212,.05)';
+  const g=ctx.createLinearGradient(0,chartArea.top,0,chartArea.bottom);
+  g.addColorStop(0,'rgba(6,182,212,.15)');
+  g.addColorStop(1,'rgba(6,182,212,.01)');
+  return g;
+}
+const odeChart=new Chart(odeCtx,{
+  type:'line',
+  data:{
+    labels:times,
+    datasets:[
+      {
+        label:'ODE',data:series.ode,
+        borderColor:getOdeGrad,borderWidth:2.5,
+        backgroundColor:getOdeFill,fill:true,
+        tension:0.45,stepped:false,
+        pointRadius:0,pointHoverRadius:0,order:1,
+      },
+      {...obsDataset,data:OBS.map(p=>({x:p.t,y:p.y}))}
+    ]
+  },
+  options:{
+    ...COMMON_OPTS({scanOde:true,missOde:true}),
+    scales:{
+      ...COMMON_OPTS({}).scales,
+      x:{
+        ...COMMON_OPTS({}).scales.x,
+        grid:{color:'rgba(255,255,255,.02)',lineWidth:.5},
+      }
+    }
+  }
+});
 
+// ── DELTA CHART ──
+const deltaCtx=document.getElementById('deltaChart').getContext('2d');
+function getDeltaGrad(c){
+  const{ctx,chartArea}=c.chart;
+  if(!chartArea) return 'rgba(167,139,250,.5)';
+  const g=ctx.createLinearGradient(0,chartArea.top,0,chartArea.bottom);
+  g.addColorStop(0,'rgba(167,139,250,.6)');
+  g.addColorStop(1,'rgba(167,139,250,.05)');
+  return g;
+}
+const deltaChart=new Chart(deltaCtx,{
+  type:'line',
+  data:{labels:times,datasets:[{
+    label:'Delta',data:series.delta,
+    borderColor:'rgba(167,139,250,.8)',borderWidth:1.5,
+    backgroundColor:getDeltaGrad,fill:true,
+    tension:0.4,stepped:false,pointRadius:0,
+  }]},
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    animation:{duration:400},
+    interaction:{mode:'nearest',intersect:false},
+    layout:{padding:{top:20,right:12,bottom:4,left:4}},
+    plugins:{legend:{display:false},tooltip:{enabled:false}},
+    scales:{
+      x:{type:'linear',min:TMIN,max:TMAX,display:false},
+      y:{
+        min:0,max:25,display:true,
+        ticks:{color:'#475569',font:{family:'JetBrains Mono',size:8},maxTicksLimit:3,callback:v=>`Δ${v}`},
+        grid:{color:'rgba(255,255,255,.03)'},
+        border:{color:'rgba(255,255,255,.06)'}
+      }
+    }
+  }
+});
+// scanDelta plugin is embedded in deltaChart options above
+
+// ═══════════════════════════════════════════════
+//  GAUGE CANVAS (half donut)
+// ═══════════════════════════════════════════════
+const gc=document.getElementById('gaugeCanvas');
+const gctx=gc.getContext('2d');
+function drawGauge(bp,mode){
+  const W=gc.width,H=gc.height;
+  gctx.clearRect(0,0,W,H);
+  const cx=W/2, cy=H-10;
+  const r=H-18;
+  const startAngle=Math.PI, endAngle=0;
+  const pct=(bp-80)/(160-80);
+  const angle=Math.PI+pct*Math.PI;
+  // track
+  gctx.beginPath();
+  gctx.arc(cx,cy,r,Math.PI,0);
+  gctx.strokeStyle='rgba(255,255,255,.06)'; gctx.lineWidth=12; gctx.stroke();
+  // fill gradient
+  const grd=gctx.createLinearGradient(cx-r,0,cx+r,0);
+  if(mode==='rnn'){grd.addColorStop(0,'#fb923c');grd.addColorStop(1,'#f97316');}
+  else{grd.addColorStop(0,'#a78bfa');grd.addColorStop(.5,'#06b6d4');grd.addColorStop(1,'#f472b6');}
+  gctx.beginPath();
+  gctx.arc(cx,cy,r,Math.PI,angle);
+  gctx.strokeStyle=grd; gctx.lineWidth=12;
+  gctx.shadowColor=mode==='rnn'?'#f97316':'#06b6d4';
+  gctx.shadowBlur=16; gctx.stroke(); gctx.shadowBlur=0;
+  // needle
+  const nx=cx+r*Math.cos(angle), ny=cy+r*Math.sin(angle);
+  gctx.beginPath();
+  gctx.arc(nx,ny,5,0,Math.PI*2);
+  gctx.fillStyle=mode==='rnn'?'#f97316':'#06b6d4';
+  gctx.shadowColor=gctx.fillStyle; gctx.shadowBlur=12; gctx.fill();
+  gctx.shadowBlur=0;
+  // ticks
+  for(let i=0;i<=4;i++){
+    const ta=Math.PI+i*(Math.PI/4);
+    const tx1=cx+(r-9)*Math.cos(ta), ty1=cy+(r-9)*Math.sin(ta);
+    const tx2=cx+(r-15)*Math.cos(ta), ty2=cy+(r-15)*Math.sin(ta);
+    gctx.beginPath(); gctx.moveTo(tx1,ty1); gctx.lineTo(tx2,ty2);
+    gctx.strokeStyle='rgba(255,255,255,.2)'; gctx.lineWidth=1.5; gctx.stroke();
+  }
+  // zone labels
+  gctx.fillStyle='rgba(255,255,255,.2)';
+  gctx.font='9px JetBrains Mono, monospace';
+  gctx.textAlign='center';
+  gctx.fillText('80',cx-r-2,cy+4);
+  gctx.fillText('160',cx+r+4,cy+4);
+  gctx.fillText('120',cx,cy-r-4);
+}
+
+// ═══════════════════════════════════════════════
+//  VIEW MODE
+// ═══════════════════════════════════════════════
+function setView(mode){
+  viewMode=mode;
+  const btnRnn=document.getElementById('btnRnn');
+  const btnBoth=document.getElementById('btnBoth');
+  const btnOde=document.getElementById('btnOde');
+  const rnnCard=document.getElementById('rnnCard');
+  const odeCard=document.getElementById('odeCard');
+  const scrub=document.getElementById('scrubber');
+  const flash=document.getElementById('modeFlash');
+
+  btnRnn.className='m-btn'+(mode==='rnn'?' act-rnn':'');
+  btnBoth.className='m-btn'+(mode==='both'?' act-both':'');
+  btnOde.className='m-btn'+(mode==='ode'?' act-ode':'');
+
+  // Spotlight active card
+  rnnCard.style.opacity=(mode==='ode')?'.45':'1';
+  odeCard.style.opacity=(mode==='rnn')?'.45':'1';
+  rnnCard.style.filter=(mode==='ode')?'grayscale(.5)':'none';
+  odeCard.style.filter=(mode==='rnn')?'grayscale(.5)':'none';
+
+  // Slider color
+  scrub.className=mode==='rnn'?'sl-rnn':mode==='ode'?'sl-ode':'sl-both';
+
+  // Grid contrast
+  const rnnGrid=mode==='rnn'?'rgba(249,115,22,.15)':'rgba(255,255,255,.04)';
+  rnnChart.options.scales.x.grid.color=rnnGrid;
+  rnnChart.options.scales.x.grid.lineWidth=mode==='rnn'?1.5:1;
+  odeChart.options.scales.x.grid.color=mode==='ode'?'rgba(255,255,255,.01)':'rgba(255,255,255,.04)';
+
+  // Flash
+  flash.className='mode-flash '+mode;
+  flash.classList.add('show');
+  setTimeout(()=>flash.classList.remove('show'),300);
+
+  // Animate RNN grid bars (stepped grid lines)
+  const interval = mode === 'rnn' ? 1 : 5;
+  rnnChart.options.scales.x.ticks.stepSize = interval;
+
+  rnnChart.update('active');
+  odeChart.update('active');
+  updateAll();
+}
+
+// ═══════════════════════════════════════════════
+//  SCRUBBER + UPDATE
+// ═══════════════════════════════════════════════
+function onScrub(v){
+  currentT=parseFloat(v);
+  const pct=((currentT-TMIN)/(TMAX-TMIN)*100).toFixed(1)+'%';
+  document.getElementById('scrubber').style.setProperty('--p',pct);
+  updateAll();
+}
+
+function updateAll(){
+  const t=currentT;
+  const bpRnn=stepAt(t,OBS);
+  const bpOde=cubicHermiteAt(t,OBS);
+  const delta=Math.abs(bpOde-bpRnn);
+
+  // Time display
+  document.getElementById('tdTime').textContent=t.toFixed(1);
+  document.getElementById('rTime').textContent=`t = ${t.toFixed(1)} h`;
+
+  // BP readouts
+  document.getElementById('rBpRnn').textContent=`${Math.round(bpRnn)} mmHg`;
+  document.getElementById('rBpOde').textContent=`${Math.round(bpOde)} mmHg`;
+
+  // Gauge
+  const gaugeMode=viewMode==='rnn'?'rnn':'ode';
+  const gaugeVal=gaugeMode==='rnn'?bpRnn:bpOde;
+  drawGauge(gaugeVal,gaugeMode);
+  const gv=document.getElementById('gaugeVal');
+  gv.textContent=Math.round(gaugeVal);
+  gv.style.color=gaugeMode==='rnn'?'var(--rnn)':'var(--ode)';
+
+  // Gauge diff
+  const gd=document.getElementById('gaugeDiff');
+  const diffSign=bpOde>bpRnn?'+':bpOde<bpRnn?'-':'';
+  gd.textContent=`Δ ${diffSign}${Math.round(Math.abs(bpOde-bpRnn))} mmHg`;
+  gd.style.color=delta>5?'var(--purple)':'var(--text3)';
+  gd.style.background=delta>5?'rgba(167,139,250,.12)':'rgba(255,255,255,.03)';
+  gd.style.border=delta>5?'1px solid rgba(167,139,250,.3)':'1px solid rgba(255,255,255,.06)';
+  gd.style.borderRadius='4px';
+  gd.style.padding='2px 8px';
+
+  // Delta strip label
+  document.getElementById('deltaVal').textContent=`Δ ${Math.round(delta)} mmHg`;
+
+  // Confidence bars (RNN is less confident in missing zone, ODE is always higher)
+  const inMiss=t>MISS_S&&t<MISS_E;
+  const missProgress=inMiss?(t-MISS_S)/(MISS_E-MISS_S):0;
+  const rnnConf=inMiss?Math.max(30,70-missProgress*40):85;
+  const odeConf=inMiss?Math.max(65,90-missProgress*15):92;
+  document.getElementById('confRnn').style.width=rnnConf+'%';
+  document.getElementById('confOde').style.width=odeConf+'%';
+  document.getElementById('confRnnPct').textContent=Math.round(rnnConf)+'%';
+  document.getElementById('confOdePct').textContent=Math.round(odeConf)+'%';
+
+  // Missing zone card
+  const missCard=document.getElementById('missCard');
+  const missStatus=document.getElementById('missStatus');
+  if(inMiss){
+    missCard.classList.add('in-zone');
+    missStatus.textContent=`추론 중 ·  ${Math.round(missProgress*100)}% 진행`;
+    const rnnChange=0; // RNN doesn't change
+    const odeChange=Math.abs(bpOde-128)/20*100;
+    document.getElementById('missBarRnn').style.width=rnnChange+'%';
+    document.getElementById('missBarOde').style.width=Math.min(odeChange,100)+'%';
+  } else {
+    missCard.classList.remove('in-zone');
+    missStatus.textContent='대기 중 · 슬라이더를 이동하세요';
+    document.getElementById('missBarRnn').style.width='0%';
+    document.getElementById('missBarOde').style.width='0%';
+  }
+
+  // Update charts (no animation for scrubbing)
+  rnnChart.update('none');
+  odeChart.update('none');
+  deltaChart.update('none');
+}
+
+// ═══════════════════════════════════════════════
+//  DRAG OBS POINTS
+// ═══════════════════════════════════════════════
+function setupDrag(chart, chartEl, isOde){
+  let dragging=null;
+  chartEl.addEventListener('mousedown',e=>{
+    const rect=chartEl.getBoundingClientRect();
+    const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+    const xS=chart.scales.x, yS=chart.scales.y;
+    let closest=null, minD=Infinity;
+    OBS.forEach((p,i)=>{
+      const px=xS.getPixelForValue(p.t), py=yS.getPixelForValue(p.y);
+      const d=Math.hypot(mx-px,my-py);
+      if(d<20&&d<minD){minD=d;closest=i;}
+    });
+    if(closest!==null) dragging=closest;
+  });
+  window.addEventListener('mousemove',e=>{
+    if(dragging===null) return;
+    const rect=chartEl.getBoundingClientRect();
+    const my=e.clientY-rect.top;
+    const yS=chart.scales.y;
+    let newY=yS.getValueForPixel(my);
+    newY=Math.max(82,Math.min(158,newY));
+    OBS[dragging].y=newY;
+    // Rebuild series
+    series=buildSeries();
+    rnnChart.data.datasets[0].data=series.rnn;
+    odeChart.data.datasets[0].data=series.ode;
+    deltaChart.data.datasets[0].data=series.delta;
+    // Update obs points on both charts
+    const obsData=OBS.map(p=>({x:p.t,y:p.y}));
+    rnnChart.data.datasets[1].data=obsData;
+    odeChart.data.datasets[1].data=obsData;
+    odeGrad=null; // reset gradient
+    rnnChart.update('none');
+    odeChart.update('none');
+    deltaChart.update('none');
+    updateAll();
+  });
+  window.addEventListener('mouseup',()=>{ dragging=null; });
+}
+
+setupDrag(rnnChart, document.getElementById('rnnChart'), false);
+setupDrag(odeChart, document.getElementById('odeChart'), true);
+
+// ═══════════════════════════════════════════════
+//  AUTOPLAY
+// ═══════════════════════════════════════════════
+function togglePlay(){
+  isPlaying=!isPlaying;
+  const btn=document.getElementById('playBtn');
+  btn.textContent=isPlaying?'■':'▶';
+  btn.classList.toggle('playing',isPlaying);
+  if(isPlaying) animate();
+}
+
+function animate(){
+  if(!isPlaying) return;
+  currentT=parseFloat((currentT+0.08*playDir).toFixed(2));
+  if(currentT>=40){currentT=40;playDir=-1;}
+  if(currentT<=0){currentT=0;playDir=1;}
+  const scrub=document.getElementById('scrubber');
+  scrub.value=currentT;
+  const pct=((currentT-TMIN)/(TMAX-TMIN)*100).toFixed(1)+'%';
+  scrub.style.setProperty('--p',pct);
+  updateAll();
+  playRaf=requestAnimationFrame(animate);
+}
+
+// ═══════════════════════════════════════════════
+//  KEYBOARD SHORTCUT
+// ═══════════════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  if(e.code==='Space'){e.preventDefault();togglePlay();}
+  if(e.code==='ArrowRight'){
+    currentT=Math.min(40,parseFloat((currentT+0.5).toFixed(1)));
+    document.getElementById('scrubber').value=currentT;
+    onScrub(currentT);
+  }
+  if(e.code==='ArrowLeft'){
+    currentT=Math.max(0,parseFloat((currentT-0.5).toFixed(1)));
+    document.getElementById('scrubber').value=currentT;
+    onScrub(currentT);
+  }
+  if(e.code==='Digit1') setView('rnn');
+  if(e.code==='Digit2') setView('both');
+  if(e.code==='Digit3') setView('ode');
+});
+
+// ═══════════════════════════════════════════════
+//  INIT + ONBOARDING AUTOPLAY
+// ═══════════════════════════════════════════════
+setView('both');
+onScrub(0);
+drawGauge(120,'ode');
+
+// Auto-play on load (one pass)
+setTimeout(()=>{
+  isPlaying=true;
+  document.getElementById('playBtn').textContent='■';
+  document.getElementById('playBtn').classList.add('playing');
+  playDir=1;
+  animate();
+  // Auto-stop after one full sweep
+  setTimeout(()=>{
+    isPlaying=false;
+    document.getElementById('playBtn').textContent='▶';
+    document.getElementById('playBtn').classList.remove('playing');
+    cancelAnimationFrame(playRaf);
+  },10000);
+},600);
+
+// Resize
+const ro=new ResizeObserver(()=>{
+  odeGrad=null;
+  rnnChart.resize(); odeChart.resize(); deltaChart.resize();
+});
+ro.observe(document.querySelector('.chart-row'));
+ro.observe(document.querySelector('.delta-strip'));
 </script>
 </body>
 </html>
