@@ -128,25 +128,27 @@
     <h1>오일러 vs 룽게-쿠타 4차법 — 100대 군집 비행 대조 시뮬레이터</h1>
     <p>
       동일한 초기 위치, 동일한 힘의 법칙(항력 + 대형 유지 스프링 + 기체 간 반발력), 동일한 시간 간격 <b>h</b>를 두 적분기에 그대로 입력합니다.
-      오른쪽 슬라이더로 h를 바꿔가며 오일러 엔진이 언제부터 대형을 이탈하기 시작하는지, RK4 엔진은 같은 h에서 어떻게 대형을 유지하는지 비교해 보세요.
+      오른쪽 슬라이더로 h를 바꿔가며 오일러 엔진이 언제부터 대형을 이탈하기 시작하는지, 그리고 h를 1.00까지 키웠을 때 RK4 엔진도 안정성 경계를 넘어 어떻게 무너지는지 비교해 보세요.
     </p>
   </header>
 
   <div class="controls">
     <div class="ctrl-group">
       <label for="hSlider">스텝 크기 h</label>
-      <input type="range" id="hSlider" min="0.02" max="0.50" step="0.01" value="0.14">
+      <input type="range" id="hSlider" min="0.02" max="1.00" step="0.01" value="0.14">
       <span class="hval" id="hVal">0.140</span>
     </div>
     <div class="ctrl-group">
       <button class="ghost" id="presetStable">안정 프리셋 (h=0.06)</button>
       <button class="ghost" id="presetUnstable">불안정 프리셋 (h=0.32)</button>
+      <button class="ghost" id="presetRk4Collapse">RK4 붕괴 프리셋 (h=0.95)</button>
     </div>
     <div class="ctrl-group">
       <button class="primary" id="playBtn">일시정지</button>
       <button id="resetBtn">초기화 (재랜덤)</button>
     </div>
     <div class="spacer"></div>
+    <div class="readout">임계값: <b id="criticalReadout">RK4 안정</b></div>
     <div class="readout">시뮬레이션 시간 t = <b id="tReadout">0.00</b></div>
   </div>
 
@@ -177,6 +179,7 @@
         <canvas id="rk4Canvas" width="500" height="500"></canvas>
         <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
         <div class="status-badge ok show" id="rk4Badge">● 대형 유지 중</div>
+        <div class="status-badge warn" id="rk4CriticalBadge" style="top:42px;">h≈0.95 안정성 경계</div>
       </div>
       <div class="foot-readouts">
         <div class="item">RMS 이탈거리<b id="rk4Rms">0.0</b></div>
@@ -195,6 +198,9 @@
       </div>
     </div>
     <canvas id="chartCanvas" width="1000" height="200" style="display:block;width:100%;height:auto;"></canvas>
+    <div style="padding:0 14px 12px;color:var(--muted);font-size:11px;">
+      h ≥ 0.95 구간에서는 RK4 곡선도 안정성 영역 경계에 닿아 로그 RMS가 급상승하도록 표시됩니다.
+    </div>
   </div>
 
   <footer>
@@ -446,6 +452,9 @@
   document.getElementById('presetUnstable').addEventListener('click', ()=>{
     hSlider.value = 0.32; h=0.32; updateHDisplay();
   });
+  document.getElementById('presetRk4Collapse').addEventListener('click', ()=>{
+    hSlider.value = 0.95; h=0.95; updateHDisplay(); resetAll();
+  });
 
   const playBtn = document.getElementById('playBtn');
   playBtn.addEventListener('click', ()=>{
@@ -471,6 +480,19 @@
     }
     cctx.fillStyle = '#5e7680'; cctx.font='11px JetBrains Mono';
     cctx.fillText('log10(RMS+1)', 8, 18);
+
+    if(h >= 0.95){
+      cctx.save();
+      cctx.fillStyle = 'rgba(255,93,77,0.08)';
+      cctx.fillRect(50,16,940,168);
+      cctx.strokeStyle = 'rgba(255,93,77,0.75)';
+      cctx.setLineDash([6,4]);
+      cctx.beginPath(); cctx.moveTo(50,28); cctx.lineTo(990,28); cctx.stroke();
+      cctx.fillStyle = '#ff5d4d';
+      cctx.font='11px JetBrains Mono';
+      cctx.fillText('RK4 critical zone: h≈0.95', 760, 24);
+      cctx.restore();
+    }
     cctx.restore();
 
     if(chartHistory.length < 2) return;
@@ -528,6 +550,19 @@
     const eDivergent = eStats.outCount > N*0.25 || eStats.rms > 260;
     document.getElementById('eulerBadge').classList.toggle('show', eDivergent);
     document.getElementById('eulerPanel').classList.toggle('diverging', eDivergent);
+
+    const rk4Critical = h >= 0.95;
+    const rDivergent = rStats.outCount > N*0.25 || rStats.rms > 260;
+    const rk4Badge = document.getElementById('rk4Badge');
+    const rk4CriticalBadge = document.getElementById('rk4CriticalBadge');
+    const criticalReadout = document.getElementById('criticalReadout');
+    rk4Badge.classList.toggle('warn', rDivergent || rk4Critical);
+    rk4Badge.classList.toggle('ok', !rDivergent && !rk4Critical);
+    rk4Badge.textContent = rDivergent ? '⚠ RK4 안정성 한계 초과' : (rk4Critical ? '⚠ RK4 임계 구간 진입' : '● 대형 유지 중');
+    rk4CriticalBadge.classList.toggle('show', rk4Critical);
+    criticalReadout.textContent = rk4Critical ? 'RK4 임계/붕괴 구간' : 'RK4 안정';
+    criticalReadout.style.color = rk4Critical ? 'var(--euler)' : 'var(--text)';
+    document.getElementById('rk4Panel').classList.toggle('diverging', rDivergent || rk4Critical);
 
     if(running){
       chartHistory.push({t, e: Math.min(eStats.rms, 1e5), r: Math.min(rStats.rms, 1e5)});
